@@ -17,6 +17,7 @@ import {
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { Field, inputClass, Toggle } from './Fields';
 import { SectionEditor } from './SectionEditor';
+import { missingReferenceSummary, parseMissingReferences, removeMissingReferences, type MissingReferences } from './missingReferences';
 
 const LABELS = { grocery: 'Grocery', fresh: 'Fruit & Veg', regional: 'Regional', festivals: 'Festivals', meat: 'Meat' };
 // Human labels for the section-kind picker + the section list. Unlisted kinds
@@ -40,6 +41,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
   const [selectedId, setSelectedId] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [missingReferences, setMissingReferences] = useState<MissingReferences | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [liveRevision, setLiveRevision] = useState(0);
@@ -48,10 +50,10 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
   const dirty = Boolean(
     draft && record && JSON.stringify(draft) !== JSON.stringify(record.content),
   );
-  const state = useRef({ dirty, record, tab });
+  const state = useRef({ dirty, record, tab, repairNeeded: false });
   useEffect(() => {
-    state.current = { dirty, record, tab };
-  }, [dirty, record, tab]);
+    state.current = { dirty, record, tab, repairNeeded: missingReferences !== null };
+  }, [dirty, record, tab, missingReferences]);
   const mounted = useRef(true);
   const requestId = useRef(0);
   const load = useCallback(
@@ -66,7 +68,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
         if (state.current.record?.tabKey === tab && data.revision < state.current.record.revision)
           return;
         setLiveRevision(data.revision);
-        if (replace || !state.current.dirty) {
+        if (replace || (!state.current.dirty && !state.current.repairNeeded)) {
           setRecord(data);
           setDraft(data.content);
           setSelectedId((old) =>
@@ -75,6 +77,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
               : (data.content.sections[0]?.id ?? ''),
           );
           setError('');
+          setMissingReferences(null);
         }
       } catch (err) {
         if (mounted.current && id === requestId.current)
@@ -113,6 +116,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
     if (!record || !draft) return;
     setError('');
     setMessage('');
+    setMissingReferences(null);
     let content: HomeContentDocument;
     try {
       content = validateContent(draft);
@@ -130,6 +134,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
       const data = await response.json();
       if (!response.ok) {
         if (response.status === 409) setLiveRevision(record.revision + 1);
+        if (data.code === 'CATALOGUE_REFERENCES_MISSING') setMissingReferences(parseMissingReferences(data.missingReferences));
         throw new Error(data.error);
       }
       ++requestId.current;
@@ -166,6 +171,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
   }
   const selected = draft?.sections.find((section) => section.id === selectedId);
   const conflict = Boolean(record && liveRevision > record.revision);
+  const missingSummary = draft && missingReferences ? missingReferenceSummary(draft, missingReferences) : [];
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -191,7 +197,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
             onClick={() => {
               if (key === tab) return;
               ++requestId.current;
-              state.current = { dirty: false, record: null, tab: key };
+              state.current = { dirty: false, record: null, tab: key, repairNeeded: false };
               setRecord(null);
               setDraft(null);
               setLoading(true);
@@ -210,7 +216,22 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
         >
-          {error}
+          <p>{error}</p>
+          {missingReferences && missingSummary.length > 0 && <>
+            <ul className="my-3 max-h-56 space-y-1 overflow-auto">
+              {missingSummary.map((entry, index) => <li key={`${entry.sectionId}:${index}`}>
+                <button type="button" className="text-left underline" onClick={() => setSelectedId(entry.sectionId)}>
+                  {entry.label}{entry.hidden ? ' (hidden section)' : ''} · {entry.count} unavailable selection{entry.count === 1 ? '' : 's'}
+                </button>
+              </li>)}
+            </ul>
+            <button type="button" disabled={saving} className="min-h-11 rounded-xl bg-white px-4 py-2 font-semibold disabled:opacity-50"
+              onClick={() => {
+                setDraft(current => current ? removeMissingReferences(current, missingReferences) : current);
+                setMissingReferences(null); setError('');
+                setMessage('Unavailable selections removed from the draft. Valid selections are preserved. Review and publish to save.');
+              }}>Remove unavailable selections from draft</button>
+          </>}
         </div>
       )}
       {message && (

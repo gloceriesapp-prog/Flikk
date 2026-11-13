@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   row: null as unknown,
   error: null as unknown,
   refs: true,
+  missingIds: [] as string[],
+  validationError: false,
   update: vi.fn(),
   from: vi.fn(),
 }));
@@ -39,6 +41,8 @@ beforeEach(() => {
   };
   mocks.error = null;
   mocks.refs = true;
+  mocks.missingIds = [];
+  mocks.validationError = false;
   mocks.update.mockClear();
   mocks.from.mockClear();
   mocks.from.mockImplementation(() => {
@@ -51,8 +55,8 @@ beforeEach(() => {
       }),
       maybeSingle: vi.fn(async () => ({ data: mocks.row, error: mocks.error })),
       in: vi.fn(async (_key, ids: string[]) => ({
-        data: mocks.refs ? ids.map((id) => ({ id })) : [],
-        error: null,
+        data: mocks.refs ? ids.filter(id => !mocks.missingIds.includes(id)).map((id) => ({ id })) : [],
+        error: mocks.validationError ? { message: 'private lookup error' } : null,
       })),
     };
     return query;
@@ -141,4 +145,48 @@ it('publishes all named festival shelves through the authenticated revision-chec
   expect(published.content.sections).toHaveLength(10);
   expect(published.content.sections.find((section: { id: string }) => section.id === 'festival-flowers').enabled).toBe(false);
   expect(mocks.update).toHaveBeenCalledWith({ content, updated_by: mocks.user!.id });
+});
+
+
+it('reports exact missing IDs from all sections while preserving valid selections and preventing publication', async () => {
+  const content = structuredClone(DEFAULT_CONTENT.grocery);
+  const good = '00000000-0000-4000-8000-000000000010';
+  const product = '00000000-0000-4000-8000-000000000011';
+  const category = '00000000-0000-4000-8000-000000000012';
+  const store = '00000000-0000-4000-8000-000000000013';
+  Object.assign(content.sections[0]!.selection, { productIds: [good, product], categoryIds: [category], storeIds: [store] });
+  content.sections[0]!.enabled = false;
+  mocks.missingIds = [product, category, store];
+  const response = await PUT(publish({ revision: 3, content }), context);
+  expect(response.status).toBe(400);
+  expect(await response.json()).toMatchObject({ code: 'CATALOGUE_REFERENCES_MISSING', missingReferences: { productIds: [product], categoryIds: [category], storeIds: [store] } });
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(content.sections[0]!.selection.productIds).toEqual([good, product]);
+});
+it('never reports missing selections or permits repair when the catalogue lookup fails', async () => {
+  const content = structuredClone(DEFAULT_CONTENT.grocery);
+  content.sections[0]!.selection.productIds = ['00000000-0000-4000-8000-000000000010'];
+  mocks.validationError = true;
+  const response = await PUT(publish({ revision: 3, content }), context);
+  expect(response.status).toBe(503);
+  expect(await response.json()).not.toHaveProperty('missingReferences');
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+it('checks every lookup batch and can publish the repaired draft without losing valid pins', async () => {
+  const { removeMissingReferences } = await import('../../../apps/admin/src/features/home-content/missingReferences');
+  const content = structuredClone(DEFAULT_CONTENT.grocery);
+  const ids = Array.from({ length: 102 }, (_, index) => `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`);
+  content.sections[0]!.selection.productIds = ids.slice(0, 100);
+  content.sections[1]!.selection.productIds = ids.slice(100);
+  mocks.missingIds = [ids[0]!, ids[101]!];
+  const blocked = await PUT(publish({ revision: 3, content }), context);
+  expect(blocked.status).toBe(400);
+  const report = await blocked.json();
+  expect(report.missingReferences.productIds).toEqual([ids[0], ids[101]]);
+  const repaired = removeMissingReferences(content, report.missingReferences);
+  expect(repaired.sections[0]!.selection.productIds).toEqual(ids.slice(1, 100));
+  expect(repaired.sections[1]!.selection.productIds).toEqual([ids[100]]);
+  expect((await PUT(publish({ revision: 3, content: repaired }), context)).status).toBe(200);
+  expect(mocks.update).toHaveBeenLastCalledWith({ content: repaired, updated_by: mocks.user!.id });
 });

@@ -94,6 +94,7 @@ export async function PUT(request: Request, context: Context) {
   // Check references, including hidden sections, before the single atomic
   // update. Catalogue removal later never creates fake customer products.
   const refs = referencedIds(content);
+  const missingReferences = { productIds: [] as string[], categoryIds: [] as string[], storeIds: [] as string[] };
   for (const [key, table] of [
     ['productIds', 'products'],
     ['categoryIds', 'sub_categories'],
@@ -108,15 +109,16 @@ export async function PUT(request: Request, context: Context) {
           { error: 'Could not validate catalogue selections.' },
           { status: 503 },
         );
-      if (data.length !== batch.length)
-        return NextResponse.json(
-          {
-            error: `Some selected ${table.replaceAll('_', ' ')} no longer exist. Remove them before publishing.`,
-          },
-          { status: 400 },
-        );
+      if (!Array.isArray(data)) return NextResponse.json({ error: 'Could not validate catalogue selections.' }, { status: 503 });
+      const found = new Set(data.map(row => row.id));
+      missingReferences[key].push(...batch.filter(id => !found.has(id)));
     }
   }
+  if (Object.values(missingReferences).some(ids => ids.length)) return NextResponse.json({
+    code: 'CATALOGUE_REFERENCES_MISSING',
+    error: 'Some saved selections refer to items removed from the catalogue. Review the affected sections below, remove unavailable selections, then publish again.',
+    missingReferences,
+  }, { status: 400 });
   const { data, error } = await supabaseAdmin
     .from('home_content')
     .update({ content, updated_by: actor.id })
