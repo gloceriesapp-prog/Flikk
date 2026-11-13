@@ -8,7 +8,7 @@ In **Category-tab content → Grocery**, select the category-tiles section and e
 - Selecting a new source clears previous template product/category/word/store/discount filters. Optional matching rules can be set afterwards.
 - The image, visibility and ordering remain editable. Publish saves through the existing authenticated, revision-checked workflow.
 
-The customer app uses the same artwork aspect ratio (0.85), 18px corners, 90% contained image and label typography as its Categories screen. The Admin grid-column and horizontal/grid layout choices are honoured; four columns produces four equal cards, including the first row.
+The customer app uses the same artwork aspect ratio (0.85), 18px corners, 90% contained image and label typography as its Categories screen. The Admin grid-column and horizontal/grid layout choices are honoured; four columns uses four slots per row, with the first tile spanning two slots.
 
 An unfinished category tile does not fall back to unrelated stock. Category-tile collections use the tile’s own rules, not the hidden parent section selection. Product sections retain their existing parent filtering.
 

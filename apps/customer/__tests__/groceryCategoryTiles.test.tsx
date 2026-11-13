@@ -8,15 +8,18 @@ jest.mock('../src/components/AppImage', () => ({ AppImage: (props: unknown) => {
   return <View {...props as object} testID="category-artwork" />;
 } }));
 
-it('uses the standard category dimensions with four equal cells, two-line labels and uncropped art', async () => {
+it('uses a two-slot lead tile and standard gray category cards with aligned artwork heights', async () => {
   const items = Array.from({ length: 5 }, (_, i) => createItem(`tile-${i}`, i === 0 ? 'Rice & Atta' : `Tile ${i}`));
   const onOpen = jest.fn();
   const view = await render(<GroceryCategoryGrid items={items} imageForItem={() => 'https://images.gloceries.com/rice.png'} onOpen={onOpen} />);
-  for (const cell of view.getAllByTestId('grocery-category-cell')) expect(cell.props.style.width).toBe('25%');
+  expect(view.getAllByTestId('grocery-category-cell').map(cell => cell.props.style.width)).toEqual(['50%', '25%', '25%', '25%', '25%']);
   const image = view.getAllByTestId('category-artwork')[0]!;
   expect(image.props.resizeMode).toBe('contain');
   expect(image.props.style).toMatchObject({ width: '90%', height: '90%' });
-  expect(image.parent!.props.style).toMatchObject({ aspectRatio: 0.85, borderRadius: 18 });
+  expect(image.parent!.props.style).toMatchObject({ backgroundColor: '#F2F2F2', borderRadius: 18 });
+  const height = image.parent!.props.style.height;
+  expect(height).toBeGreaterThan(0);
+  for (const photo of view.getAllByTestId('category-artwork')) expect(photo.parent!.props.style.height).toBe(height);
   await fireEvent.press(view.getByRole('button', { name: 'Shop Rice & Atta' }));
   expect(onOpen).toHaveBeenCalledWith(items[0]);
   await view.rerender(<GroceryCategoryGrid items={items} columns={3} imageForItem={() => undefined} onOpen={onOpen} />);
