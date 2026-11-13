@@ -225,13 +225,22 @@ export default function AppContentPage() {
                   {registered?.image && (
                     <ProductImageUpload imageUrl={row.value || undefined} onChange={(url) => updateRow(row.id, { value: url })} bucket="banners" />
                   )}
-                  <input
+                  {registered?.toggle ? (
+                    <label className="flex flex-1 items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+                      <span className="text-sm font-semibold">High demand indicator</span>
+                      <input type="checkbox" role="switch" aria-label="High demand indicator"
+                        checked={row.value === 'true'}
+                        onChange={(e) => updateRow(row.id, { value: String(e.target.checked) })}
+                        className="peer sr-only" />
+                      <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-gray-300 transition-colors peer-checked:bg-[#175CFF] peer-focus-visible:ring-2 peer-focus-visible:ring-[#175CFF] peer-focus-visible:ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5" />
+                    </label>
+                  ) : <input
                     value={row.value}
                     onChange={(e) => updateRow(row.id, { value: e.target.value })}
                     placeholder={registered?.image ? '(built-in artwork) — upload or paste an https:// link' : registered ? registered.defaultValue || '(app built-in text / none)' : 'Text shown in the app'}
                     aria-label={`Value for ${row.key || 'new key'}`}
                     className={`${INPUT} flex-1`}
-                  />
+                  />}
                   <button
                     type="button"
                     onClick={() => row.registered ? updateRow(row.id, { value: '' }) : setRows((prev) => prev.filter((r) => r.id !== row.id))}

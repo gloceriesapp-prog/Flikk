@@ -61,3 +61,13 @@ it('admin validation requires https links for registered artwork keys and trims 
   expect(() => validateAppContentInput({ ...valid, copy: { 'stores.promo.imageUrl': 'http://x.in/a.png' } })).toThrow(/https/);
   expect(() => validateAppContentInput({ ...valid, copy: { 'home.groceries.headerImageUrl': 'not a link' } })).toThrow(/https/);
 });
+
+
+it('accepts explicit demand toggle states and rejects ambiguous values', () => {
+  for (const value of ['', 'true', 'false']) {
+    expect(validateAppContentInput({ ...valid, copy: { 'home.highDemand.enabled': value } }).copy['home.highDemand.enabled']).toBe(value);
+  }
+  for (const value of ['yes', 'TRUE', ' false ', true, 1]) {
+    expect(() => validateAppContentInput({ ...valid, copy: { 'home.highDemand.enabled': value } })).toThrow();
+  }
+});
