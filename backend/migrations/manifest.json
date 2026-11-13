@@ -752,6 +752,10 @@
     {
       "file": "20261114030000_flavour_stock_quantities.sql",
       "sha256": "5d8c3d3f4f3227ef0f02c0b9782c928c39a4b61ab40f9288127ae3eeccdc587d"
+    },
+    {
+      "file": "20261114040000_foreign_key_indexes.sql",
+      "sha256": "80179f2e8a382882306c0950ad38faa6ea49fc7b26f8fc69d9f8074134e179f2"
     }
   ]
 }
