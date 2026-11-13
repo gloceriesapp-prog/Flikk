@@ -51,7 +51,7 @@ export function CategoriesScreen({ navigation }: Props) {
       <StatusBar style="dark" />
 
       <View className="flex-row items-center justify-between px-5 pb-2 pt-2">
-        <Text className="text-[20px] font-bold text-ink/90">Categories</Text>
+        <Text accessibilityRole="header" className="text-[22px] font-bold tracking-tight text-ink">Categories</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Search" onPress={() => navigation.navigate('Search')} hitSlop={10} className="h-9 w-9 items-center justify-center">
           <AppIcon icon={Search01Icon} size={22} color={colors.ink} />
         </Pressable>

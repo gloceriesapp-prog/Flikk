@@ -20,6 +20,24 @@ beforeEach(() => {
 });
 afterEach(() => client.clear());
 
+it('shows one five-brand Store row with See all even when fewer brands exist', async () => {
+  const select = jest.fn(); const seeAll = jest.fn();
+  const { rerender } = await render(<PopularBrands previewLimit={5} alwaysShowSeeAll onSelect={select} onSeeAll={seeAll} />, { wrapper: Wrapper });
+  await screen.findByLabelText('Brand 4');
+  expect(screen.queryByLabelText('Brand 5')).toBeNull();
+  await fireEvent.press(screen.getByLabelText('Brand 2'));
+  expect(select).toHaveBeenCalledWith(brands[2]);
+  await fireEvent.press(screen.getByLabelText('See all brands'));
+  expect(seeAll).toHaveBeenCalledTimes(1);
+  mockFocused = false;
+  await rerender(<PopularBrands previewLimit={5} alwaysShowSeeAll onSelect={select} onSeeAll={seeAll} />);
+  jest.mocked(fetchPopularBrands).mockResolvedValue(brands.slice(0, 2));
+  mockFocused = true;
+  await rerender(<PopularBrands previewLimit={5} alwaysShowSeeAll onSelect={select} onSeeAll={seeAll} />);
+  await waitFor(() => expect(screen.queryByLabelText('Brand 2')).toBeNull());
+  expect(screen.getByLabelText('See all brands')).toBeTruthy();
+});
+
 it('refreshes admin changes on returning to Categories while preserving the ten-tile preview', async () => {
   const select = jest.fn(); const seeAll = jest.fn();
   const { rerender } = await render(<PopularBrands onSelect={select} onSeeAll={seeAll} />, { wrapper: Wrapper });
