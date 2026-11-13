@@ -253,7 +253,7 @@ export function AddProductModal({
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
-          <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
+          <ProductFlavoursEditor variants={draft.variants} options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
 
           <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
           <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} />

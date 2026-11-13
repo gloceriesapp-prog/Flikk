@@ -5,7 +5,7 @@ import { beginCheckoutFlow } from '../../../features/checkout-recovery/checkoutA
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CheckoutQuote } from '../../../api/checkout';
 import { fetchCheckoutQuote } from '../../../api/checkout';
-import { quotedCartItems, quoteHasPriceChanges } from '../quote/quoteItems';
+import { quotedCartItems, quoteHasPriceChanges, matchesQuotedLine } from '../quote/quoteItems';
 import type { CartItem } from '../../../store/useCartStore';
 import { checkoutItems, cartPurchaseSignature } from '../../../store/cartIdentity';
 import { Alert } from 'react-native';
@@ -183,8 +183,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       onQuoteChanged();
       if (freshQuote.version !== quote.version || quoteHasPriceChanges(items, freshQuote)) {
         const changes = freshQuote.items.flatMap((line) => {
-          const source = items.find((item) => (item.productId ?? item.id.split('::')[0]) === line.product_id
-            && (!item.variantId || item.variantId === line.variant_id));
+          const source = items.find((item) => matchesQuotedLine(item, line));
           return source && source.price !== line.unit_price_at_order
             ? [`${source.name}: ₹${source.price} → ₹${line.unit_price_at_order}`] : [];
         }).slice(0, 5);

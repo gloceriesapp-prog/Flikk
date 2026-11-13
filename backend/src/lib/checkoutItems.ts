@@ -1,4 +1,5 @@
 import { AppError } from './errors.js';
+import { flavourPriceOverride, type FlavourPrices } from './flavourPricing.js';
 import { customerUnitPrice } from './customerPrice.js';
 import { CUT_SIZES, SERVINGS, type CartItem, type CartProduct, type CutSize, type Serving } from './orderValidation.js';
 
@@ -20,7 +21,7 @@ export interface CheckoutProduct extends CartProduct {
   bulk_min_kg?: number | string | null;
   product_variants: CheckoutVariant[];
   // Flavours; a product with any needs one picked per line.
-  product_options?: { id: string; is_available: boolean }[] | null;
+  product_options?: { id: string; is_available: boolean; price_overrides?: FlavourPrices }[] | null;
   // Chilled / room temperature offered; two = the customer picks one.
   serving_options?: Serving[] | null;
   // Pre-order only (Home Pre-orders section): bulk minimum and notice.
@@ -97,9 +98,18 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
     if ((item.variant_id || variants.length > 0) && !variant) {
       throw new AppError(400, 'VARIANT_UNAVAILABLE', 'The selected pack is no longer available. Choose a pack again.');
     }
-    const storePrice = Number(variant?.price ?? product.price);
+    const options = product.product_options ?? [];
+    const optionId = item.option_id ?? null;
+    if (optionId) {
+      const option = options.find((o) => o.id === optionId);
+      if (!option) throw new AppError(400, 'FLAVOUR_UNAVAILABLE', 'That flavour is no longer offered. Remove it and add it again.');
+      if (!option.is_available) throw new AppError(409, 'FLAVOUR_UNAVAILABLE', 'That flavour is out of stock. Choose another flavour.');
+    }
+    const override = flavourPriceOverride(options.find(option => option.id === optionId)?.price_overrides, variant);
+    const storePrice = Number(override?.price ?? variant?.price ?? product.price);
+    const mrp = override?.original_price ?? (variant ? variant.original_price : product.original_price);
     // Products without packs carry no markup (snapshot_order_item_variant).
-    const price = variant ? customerUnitPrice(storePrice, Number(variant.platform_markup ?? 0), variant.original_price) : storePrice;
+    const price = variant ? customerUnitPrice(storePrice, Number(variant.platform_markup ?? 0), mrp) : storePrice;
     if (!Number.isFinite(price) || price < 0) throw new AppError(409, 'INVALID_PRICE', 'This pack cannot be ordered right now.');
     if (item.expected_unit_price != null && item.expected_unit_price !== price) {
       throw new AppError(409, 'PRICE_CHANGED', 'A pack price has changed. Remove it and add it again to confirm the new price.');
@@ -107,13 +117,6 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
     const cutSize = item.cut_size ?? null;
     if (cutSize && !product.cut_options_enabled) {
       throw new AppError(400, 'CUT_SIZE_UNAVAILABLE', 'This product has no cut size options. Remove it and add it again.');
-    }
-    const options = product.product_options ?? [];
-    const optionId = item.option_id ?? null;
-    if (optionId) {
-      const option = options.find((o) => o.id === optionId);
-      if (!option) throw new AppError(400, 'FLAVOUR_UNAVAILABLE', 'That flavour is no longer offered. Remove it and add it again.');
-      if (!option.is_available) throw new AppError(409, 'FLAVOUR_UNAVAILABLE', 'That flavour is out of stock. Choose another flavour.');
     }
     const serving = resolveServing(product.serving_options ?? [], item.serving ?? null);
     const variantId = variant?.id ?? null;
@@ -125,7 +128,7 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
       unit_price_at_order: price,
       store_unit_price: storePrice,
       unit_at_order: variant ? `${Number(variant.quantity)} ${variant.unit_type === 'l' ? 'L' : variant.unit_type}` : product.unit ?? '',
-      variant_mrp_at_order: Math.max(price, Number(variant ? variant.original_price ?? price : product.original_price ?? price)),
+      variant_mrp_at_order: Math.max(price, Number(mrp ?? price)),
       cut_size: cutSize, option_id: optionId, serving, bulk: false,
       preorder_lead_days: product.preorder_enabled ? Number(product.preorder_lead_days ?? 1) : null });
   }

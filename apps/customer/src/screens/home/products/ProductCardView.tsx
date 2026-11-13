@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import { Add01Icon, FlashIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
+import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
 import { RupeePrice } from '../../../components/RupeePrice';
@@ -26,6 +27,7 @@ interface Props {
   // Everything with its own light chip/pill bg is left untouched.
   onDark?: boolean;
   onPress?: () => void;
+  onAdd?: () => void;
   // Lifted from the parent section so one shared 30s browse-clock tick / a
   // delivery-settings refetch re-renders the section node once instead of
   // every card. ProductCard supplies these — either passing a section's
@@ -38,7 +40,7 @@ interface Props {
   availabilityLabel?: string;
 }
 
-function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscountBadge = false, compact = false, onDark = false, onPress, estimatedMinutes, isAvailable, availabilityLabel }: Props) {
+function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscountBadge = false, compact = false, onDark = false, onPress, onAdd, estimatedMinutes, isAvailable, availabilityLabel }: Props) {
   const {
     id,
     name,
@@ -86,14 +88,15 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
         >
           {!isAvailable ? (
             <View className="rounded-lg bg-[#FFF0EE] px-2 py-2"><Text className="text-[10px] font-bold text-[#B42318]">{availabilityLabel}</Text></View>
-          ) : quantity === 0 ? (
+          ) : quantity === 0 || !!product.options?.length ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
-              onPress={() =>
-                // Flavours / chilled-or-not: open the detail view to pick.
+              onPress={(event) => {
+                event.stopPropagation();
+                if (product.options?.length && onAdd) { onAdd(); return; }
                 mustPickInDetail(product)
                   ? onPress?.()
-                  : addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
-              }
+                  : addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
+              }}
               className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
             >
               {compact ? (
@@ -207,12 +210,14 @@ export function SelfServiceProductCardView(
 ) {
   const estimatedMinutes = useDeliveryEstimateMinutes();
   const availability = useProductAvailability(props.product);
+  const [pickerOpen, setPickerOpen] = useState(false);
   return (
-    <ProductCardView
+    <><ProductCardView
       {...props}
+      onAdd={() => setPickerOpen(true)}
       estimatedMinutes={estimatedMinutes}
       isAvailable={availability.isAvailable}
       availabilityLabel={availability.label}
-    />
+    /><FlavourPickerSheet product={props.product} visible={pickerOpen} onClose={() => setPickerOpen(false)} isAvailable={availability.isAvailable} availabilityLabel={availability.label} /></>
   );
 }

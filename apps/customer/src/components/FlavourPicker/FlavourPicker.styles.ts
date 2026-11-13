@@ -1,0 +1,22 @@
+import { StyleSheet } from 'react-native';
+export const styles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.48)' },
+  container: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 22 },
+  close: { position: 'absolute', top: -68, alignSelf: 'center', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: '#353638', borderWidth: 1, borderColor: '#FFFFFF50' },
+  title: { fontFamily: 'Gilroy-Bold', fontSize: 22, lineHeight: 28, color: '#151A17', paddingHorizontal: 18, marginBottom: 4 },
+  hint: { fontFamily: 'Gilroy-Medium', fontSize: 13, color: '#747A83' },
+  list: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 },
+  card: { flex: 1, maxWidth: '50%', borderWidth: 1, borderColor: '#E6E8EC', borderRadius: 18, padding: 5, marginBottom: 12, backgroundColor: '#FFFFFF' },
+  imageBox: { aspectRatio: 0.92, backgroundColor: '#F7F8FA', borderRadius: 14, marginBottom: 12 },
+  image: { width: '100%', height: '100%', borderRadius: 14 },
+  add: { position: 'absolute', bottom: -8, right: 5 },
+  addButton: { minWidth: 76, height: 38, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', borderRadius: 11, borderWidth: 1.5, borderColor: '#155DFC', backgroundColor: '#FFFFFF' },
+  actionText: { fontFamily: 'Gilroy-Bold', fontSize: 14, color: '#155DFC' },
+  disabled: { borderColor: '#D5D8DE', opacity: 0.6 },
+  stepper: { height: 38, flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#155DFC', borderRadius: 11, backgroundColor: '#FFFFFF' },
+  step: { minWidth: 32, height: 38, alignItems: 'center', justifyContent: 'center' },
+  details: { paddingHorizontal: 7, paddingBottom: 8, gap: 5 },
+  name: { fontFamily: 'Gilroy-SemiBold', fontSize: 14, lineHeight: 18, color: '#151A17' },
+  pack: { fontFamily: 'Gilroy-Medium', fontSize: 13, color: '#5D646B' },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' },
+});

@@ -34,6 +34,7 @@ import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { ProductVariantOptions, discountPercentOf } from './ProductVariantOptions';
 import { ProductCutOptions } from './ProductCutOptions';
 import { ProductFlavourOptions } from './ProductFlavourOptions';
+import { flavourPrice } from '../FlavourPicker/flavourPricing';
 import { flavourChoices } from './flavourSelection';
 import { ProductServingOptions } from './ProductServingOptions';
 import { ProductPreorderOptions } from './ProductPreorderOptions';
@@ -71,7 +72,10 @@ interface Props {
 }
 
 export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder, onSelectProduct }: Props) {
-  const { name, localName, weight, price, originalPrice, storeName, variants, sellerDetails } = product;
+  const { name, localName, weight, storeName, sellerDetails } = product;
+  const option = product.options?.find(o => o.id === selectedOptionId);
+  const { price, originalPrice, unitPriceLabel } = flavourPrice(product, option);
+  const variants = product.variants?.map(v => ({ ...v, ...flavourPrice(product, option, v) }));
   const hasRealVariants = variants && variants.length > 1;
   const selectedVariant = hasRealVariants ? variants!.find((v) => v.id === selectedVariantId) : undefined;
   const displayPrice = selectedVariant?.price ?? price;
@@ -135,8 +139,8 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
           {displayPercent ? (
             <Text className="mt-1 text-[13px] font-bold text-[#16A34A]">{displayPercent}% OFF on MRP</Text>
           ) : null}
-          {(selectedVariant?.unitPriceLabel ?? product.unitPriceLabel) ? (
-            <Text className="mt-1 text-[13px] text-ink/70">{selectedVariant?.unitPriceLabel ?? product.unitPriceLabel}</Text>
+          {(selectedVariant?.unitPriceLabel ?? unitPriceLabel) ? (
+            <Text className="mt-1 text-[13px] text-ink/70">{selectedVariant?.unitPriceLabel ?? unitPriceLabel}</Text>
           ) : null}
         </View>}
 

@@ -1,3 +1,4 @@
+import { flavourPrice } from '../FlavourPicker/flavourPricing';
 import type { Product, ProductOption } from '../../screens/home/products/types';
 
 // UI-only identity. Never sent as option_id: the original product is the
@@ -22,6 +23,6 @@ export function initialFlavourChoice(product: Product): string {
 // original product and its full choice list. Cart IDs always use the original.
 export function searchProductDisplay(product: Product): Product {
   const option = product.options?.find((item) => item.id === product.initialOptionId);
-  return option ? { ...product, name: option.name, imageUrl: option.imageUrl ?? product.imageUrl,
+  return option ? { ...product, ...flavourPrice(product, option), name: option.name, imageUrl: option.imageUrl ?? product.imageUrl,
     imageUrls: flavourPhotos(product, option.id) } : product;
 }

@@ -486,8 +486,9 @@ export const SERVINGS = ['chilled', 'room_temperature'] as const;
 export type Serving = typeof SERVINGS[number];
 export const SERVING_LABEL: Record<Serving, string> = { chilled: 'Chilled', room_temperature: 'Room temperature' };
 
-// One flavour of a product (product_options). Same sizes and prices.
+// One flavour of a product, with optional store-price overrides per pack.
 export interface ProductOption {
+  priceOverrides?: Record<string, { price: number; originalPrice?: number }>;
   /** Stable identity for an unsaved editor row; never persisted. */
   editorId?: string;
   extraImageUrls?: string[];
