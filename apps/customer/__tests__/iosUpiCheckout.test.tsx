@@ -48,15 +48,15 @@ async function setup() {
   const hook = await renderHook(() => useRecoveredPayment(target, navigation as never));
   return { ...hook, navigation };
 }
-it('pays an existing iOS order through native UPI checkout and verifies the same order', async () => {
+it('hands the existing iOS order to merchant processing before launching native UPI', async () => {
   const { result, navigation } = await setup();
   await act(async () => result.current.select('upi_app:gpay'));
   expect(createPaymentOrder).toHaveBeenCalledWith(target);
   expect(createUpiIntentSession).not.toHaveBeenCalled();
-  expect(openIosUpiCheckout).toHaveBeenCalledWith(expect.objectContaining({ providerOrderId: 'order_abc', amountPaise: 6300 }), 'upi_app:gpay');
+  expect(openIosUpiCheckout).not.toHaveBeenCalled();
   expect(RazorpayCheckout.open).not.toHaveBeenCalled();
-  expect(verifyPayment).toHaveBeenCalledWith(target, evidence);
-  expect(navigation.replace).toHaveBeenCalledWith('PaymentRecovery', { target });
+  expect(verifyPayment).not.toHaveBeenCalled();
+  expect(navigation.replace).toHaveBeenCalledWith('PaymentProcessing', expect.objectContaining({ target, recovered: true, paymentMethod: 'upi_app:gpay', iosUpiOrder: expect.objectContaining({ providerOrderId: 'order_abc', amountPaise: 6300 }) }));
 });
 it('does not start another iOS payment while an Android intent remains pending', async () => {
   mockRecovery = { state: 'pending', canResumeUpiIntent: true, record: { total: 63 } };
@@ -68,13 +68,13 @@ it('does not start another iOS payment while an Android intent remains pending',
   expect(RazorpayCheckout.open).not.toHaveBeenCalled();
   expect(result.current.error).toContain('still being checked');
 });
-it('retains recovery and never claims success when iOS native checkout is cancelled', async () => {
+it('leaves native cancellation reconciliation to merchant processing without claiming success in the chooser', async () => {
   jest.mocked(openIosUpiCheckout).mockRejectedValue(new Error('Payment cancelled. Check your saved order.'));
-  const { result } = await setup();
+  const { result, navigation } = await setup();
   await act(async () => result.current.select('upi_app:phonepe'));
+  expect(openIosUpiCheckout).not.toHaveBeenCalled();
   expect(verifyPayment).not.toHaveBeenCalled();
-  expect(result.current.error).toContain('cancelled');
-  expect(mockRefetch).toHaveBeenCalled();
+  expect(navigation.replace).toHaveBeenCalledWith('PaymentProcessing', expect.objectContaining({ target, recovered: true, paymentMethod: 'upi_app:phonepe' }));
 });
 it('preserves Android provider-created intent flow', async () => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
