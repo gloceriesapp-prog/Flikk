@@ -15,6 +15,7 @@ import { createTrip } from '../../../api/trips';
 import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { fetchAvailableWallets, fetchNetbankingBanks, fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
+import { popularUpiApps } from '../../../payments/popularUpiApps';
 import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
 import { usePaymentReceiptEmail } from '../../../payments/usePaymentReceiptEmail';
 import { usesIosUpiCheckout } from '../../../payments/iosUpiCheckout';
@@ -63,7 +64,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
     const preference = accessToken ? fetchPaymentPreference().catch(() => ({ method: null })) : Promise.resolve({ method: null });
     Promise.all([detectInstalledUpiApps().catch(() => [] as UpiApp[]), preference]).then(([apps, saved]) => {
       if (cancelled) return;
-      setMethodState({ token: accessToken, method: saved.method, apps });
+      setMethodState({ token: accessToken, method: saved.method, apps: popularUpiApps(apps) });
     });
     return () => { cancelled = true; };
   }, [accessToken]);
@@ -272,6 +273,14 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       // callback is never enough to show a receipt: verify captured state.
       const providerOrder = await createPaymentOrder(payTarget);
       if (!stillOwner()) return;
+      if (usesIosUpiCheckout(paymentMethod)) {
+        navigation.navigate('PaymentProcessing', {
+          target: payTarget, appName: upiApps.find(app => paymentMethod === `upi_app:${app.id}`)?.name ?? 'your UPI app',
+          paymentMethod, amount: confirmedAmount, order: orderSummary, items: orderedItems,
+          deliveryAddress, isTrip: isMultiStore, expiresAt: providerOrder.expiresAt, iosUpiOrder: providerOrder,
+        });
+        return;
+      }
       // Customers can change methods inside secure checkout, so the receipt
       // must not falsely claim that a preferred UPI app/card actually charged.
       const label = 'Online payment';

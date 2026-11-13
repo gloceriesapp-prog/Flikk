@@ -5,7 +5,8 @@ export interface Refund {
     target_id: string;
     reference: string;
     amount: number;
-    status: 'queued' | 'processing' | 'completed' | 'failed';
+    status: 'queued' | 'processing' | 'completed' | 'failed' | 'manual_required';
+    provider_refund_id?: string | null;
     reason: string;
     destination: string;
     order_placed_at: string;

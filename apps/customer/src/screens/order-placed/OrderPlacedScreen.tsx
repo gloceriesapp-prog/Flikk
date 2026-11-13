@@ -1,3 +1,4 @@
+import { useIsFocused } from '@react-navigation/native';
 // The moment after checkout succeeds (Blinkit/Instamart style): a full-screen
 // "Order placed": a green verified badge whose tick draws itself, a success haptic and,
 // for a confirmed online payment, the payment chime. After ORDER_PLACED_MS it
@@ -5,8 +6,8 @@
 // there at once. The stack is reset to Home → TrackOrder so back from
 // tracking lands on Home, never on checkout. The bill lives in Track Order's
 // "View order summary"; there is no separate receipt screen.
-import { useCallback, useEffect, useRef } from 'react';
-import { BackHandler, Pressable, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, BackHandler, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -63,6 +64,14 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
   const { orderId, paymentMethodLabel, paid, isTrip } = route.params;
   const reduceMotion = useReducedMotion();
   const left = useRef(false);
+  const celebrated = useRef(false);
+  const focused = useIsFocused();
+  const [foreground, setForeground] = useState(AppState.currentState == null || AppState.currentState === 'active');
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', state => setForeground(state === 'active'));
+    return () => listener.remove();
+  }, []);
+  const visible = focused && foreground;
 
   const seal = useSharedValue(reduceMotion ? 1 : 0);
   const tick = useSharedValue(reduceMotion ? 0 : TICK_LENGTH);
@@ -77,13 +86,16 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
   }, [isTrip, navigation, orderId, paymentMethodLabel]);
 
   useEffect(() => {
+    if (!visible) return;
     // Only a confirmed online payment gets the chime (cash is paid later).
-    const chime = paid ? loadPaymentChime() : null;
+    const chime = paid && !celebrated.current ? loadPaymentChime() : null;
     if (!reduceMotion) {
       seal.value = withSpring(1, { damping: 11, stiffness: 160 });
       tick.value = withDelay(TICK_AT_MS, withTiming(0, { duration: 380, easing: Easing.out(Easing.cubic) }));
     }
     const tickTimer = setTimeout(() => {
+      if (celebrated.current) return;
+      celebrated.current = true;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       chime?.play();
     }, TICK_AT_MS);
@@ -96,7 +108,7 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
       // Let the chime finish if it is still playing as tracking opens.
       setTimeout(() => chime?.release(), 1500);
     };
-  }, [goToTracking, paid, reduceMotion, seal, tick]);
+  }, [goToTracking, paid, reduceMotion, seal, tick, visible]);
 
   const sealStyle = useAnimatedStyle(() => ({ transform: [{ scale: seal.value }] }));
   const tickProps = useAnimatedProps(() => ({ strokeDashoffset: tick.value }));

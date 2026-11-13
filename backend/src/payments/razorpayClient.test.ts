@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import crypto from 'node:crypto';
 import { env } from '../config/env.js';
-import { checkoutReceipt, refundRequestKey, toPaise, verifyCheckoutSignature, verifyWebhookSignature, createProviderOrder, createProviderRefund, getPaymentRefunds, findProviderOrder, createProviderUpiIntent } from './razorpayClient.js';
+import { providerDiagnosticToken, checkoutReceipt, refundRequestKey, toPaise, verifyCheckoutSignature, verifyWebhookSignature, createProviderOrder, createProviderRefund, getPaymentRefunds, findProviderOrder, createProviderUpiIntent } from './razorpayClient.js';
 afterEach(() => { vi.unstubAllGlobals(); env.razorpayEnv = 'test'; env.razorpayUpiEmailOptional = false; });
 it('uses paise, rejects unsafe amounts and derives stable bounded identifiers', () => {
   expect(toPaise('12.34')).toBe(1234); expect(() => toPaise(-1)).toThrow(); expect(() => toPaise(Infinity)).toThrow();
@@ -75,4 +75,19 @@ it('blocks email omission before a provider POST unless optional mode was enable
   expect(() => createProviderUpiIntent({ providerOrderId: 'order_one', amountPaise: 100, contact: '919999999999', notes: {} }))
     .toThrow('Add your email address');
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it('retains bounded provider diagnostic codes but rejects private/free-form values', () => {
+  expect(providerDiagnosticToken('insufficient_balance')).toBe('insufficient_balance');
+  expect(providerDiagnosticToken('BAD_REQUEST_ERROR')).toBe('BAD_REQUEST_ERROR');
+  for (const value of [null, {}, 'contact@example.com', 'payment details here', 'x'.repeat(81)]) expect(providerDiagnosticToken(value)).toBeUndefined();
+});
+
+it('classifies the documented low-balance refund response without retaining free-form data',async()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:400,json:async()=>({error:{code:'BAD_REQUEST_ERROR',reason:'NA',description:'Your account does not have enough balance to carry out the refund operation. You can add funds to your account from your Razorpay dashboard or capture new payments.'}})}));
+ await expect(createProviderRefund('pay_one',{requestKey:refundRequestKey('test-job'),amountPaise:100,note:'Cancelled'})).rejects.toMatchObject({providerStatus:400,providerReason:'insufficient_balance'});
+});
+it('does not classify arbitrary or private refund messages as low balance',async()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:400,json:async()=>({error:{code:'BAD_REQUEST_ERROR',description:'Unable to refund customer@example.com: insufficient balance'}})}));
+ await expect(createProviderRefund('pay_one',{requestKey:refundRequestKey('test-job'),amountPaise:100,note:'Cancelled'})).rejects.toMatchObject({providerStatus:400,providerReason:undefined});
 });

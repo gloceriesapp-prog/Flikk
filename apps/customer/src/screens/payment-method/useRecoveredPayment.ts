@@ -1,3 +1,4 @@
+import { usesIosUpiCheckout } from '../../payments/iosUpiCheckout';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
@@ -100,6 +101,11 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
       }
       const order = await createPaymentOrder(target);
       if (!stillOwner()) return;
+      if (usesIosUpiCheckout(action)) {
+        navigation.replace('PaymentProcessing', { target, appName: 'your UPI app', paymentMethod: action,
+          amount: Number(latest.record.total), expiresAt: order.expiresAt, iosUpiOrder: order, recovered: true });
+        return;
+      }
       const result = await openRazorpayCheckout(order, action, bank, contact);
       if (!stillOwner()) return;
       await verifyPayment(target, result).catch(() => ({ ok: false }));

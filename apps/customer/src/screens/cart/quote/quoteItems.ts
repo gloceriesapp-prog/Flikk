@@ -32,3 +32,15 @@ export function quoteHasPriceChanges(items: CartItem[], quote: CheckoutQuote): b
     return !line || line.unit_price_at_order !== item.price || line.unit_at_order.replace(/\s/g, '').toLowerCase() !== item.weight.replace(/\s/g, '').toLowerCase();
   });
 }
+
+// React Query can retain the previous quote for one render after a cart edit
+// or successful checkout. Never apply that quote to a different/empty cart.
+export function quoteMatchesCart(items: CartItem[], quote: CheckoutQuote): boolean {
+  if (!items.length || items.length !== quote.items.length) return false;
+  return quote.items.every(line => items.some(item => {
+    const identity = cartIdentity(item);
+    return identity.productId === line.product_id && (!identity.variantId || identity.variantId === line.variant_id)
+      && (identity.cutSize ?? null) === (line.cut_size ?? null) && (identity.optionId ?? null) === (line.option_id ?? null)
+      && sameServing(identity.serving, line.serving) && item.quantity === line.quantity;
+  }));
+}

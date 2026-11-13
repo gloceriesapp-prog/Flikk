@@ -736,6 +736,10 @@
     {
       "file": "20261113160000_home_quick_categories.sql",
       "sha256": "ea553ec09bebe6abf2ba638644785b1fcf8e3e6b1761421f97fac9d1fb38fa55"
+    },
+    {
+      "file": "20261113210000_customer_refund_lifecycle.sql",
+      "sha256": "0d4ac7917dafe72a65192044de172235291bc1dab9123416dc083772de15e327"
     }
   ]
 }

@@ -3,10 +3,28 @@ const m=vi.hoisted(()=>({rpc:vi.fn(),source:vi.fn(),list:vi.fn(),create:vi.fn()}
 vi.mock('../db/supabase.js',()=>({supabase:{rpc:m.rpc}}));
 vi.mock('./refundPayment.js',async load=>({...await load<typeof import('./refundPayment.js')>(),refundSource:m.source,listRefunds:m.list,createOrAdoptRefund:m.create}));
 import { processOrderRefund } from './orderRefunds.js';
-import { refundRequestKey } from './razorpayClient.js';
+import { RazorpayError, refundRequestKey } from './razorpayClient.js';
 const job={id:'job-one',order_id:'checkout-one',payment_id:'pay_one',target_paise:5000,request_key:'request-one',request_paise:null,provider_refund_id:null,lease_token:'lease',attempts:1,refunded_paise:0,status:'pending'};
 beforeEach(()=>{vi.resetAllMocks();m.rpc.mockResolvedValue({data:true,error:null});m.source.mockResolvedValue({provider:'razorpay',paymentId:'pay_one'});m.list.mockResolvedValue([]);m.create.mockResolvedValue({id:'rfnd_one',requestKey:refundRequestKey(job.request_key),amount:5000,status:'processing'});});
 it('uses captured payment, freezes amount and stores real provider refund ID',async()=>{await processOrderRefund(job);expect(m.create).toHaveBeenCalledWith('pay_one',refundRequestKey(job.request_key),5000,expect.any(String));expect(m.rpc).toHaveBeenCalledWith('save_order_refund',expect.objectContaining({p_patch:expect.objectContaining({request_paise:5000})}));expect(m.rpc).toHaveBeenCalledWith('save_order_refund',expect.objectContaining({p_patch:expect.objectContaining({provider_refund_id:'rfnd_one'})}));});
 it('adopts own receipt refund after lost response rather than creating twice',async()=>{m.list.mockResolvedValue([{id:'rfnd_existing',requestKey:refundRequestKey(job.request_key),amount:5000,status:'processing'}]);await processOrderRefund(job);expect(m.create).not.toHaveBeenCalled();});
 it('excludes failed refunds and never refunds historic provider through Razorpay',async()=>{m.source.mockResolvedValue({provider:'legacy'});await processOrderRefund(job);expect(m.list).not.toHaveBeenCalled();expect(m.create).not.toHaveBeenCalled();expect(m.rpc).toHaveBeenCalledWith('save_order_refund',expect.objectContaining({p_patch:expect.objectContaining({status:'manual_required'})}));});
 it('keeps unknown financial outcomes retryable with the same frozen request',async()=>{m.create.mockRejectedValue(new Error('timeout'));await processOrderRefund({...job,request_paise:5000});expect(m.rpc).toHaveBeenCalledWith('save_order_refund',expect.objectContaining({p_patch:expect.objectContaining({release:true,next_attempt_at:expect.any(String)})}));});
+
+it('keeps low-balance rejections retryable with the same frozen request',async()=>{
+ m.create.mockRejectedValueOnce(new RazorpayError(400,'BAD_REQUEST_ERROR','insufficient_balance'));
+ await processOrderRefund({...job,request_paise:5000});
+ expect(m.rpc).toHaveBeenLastCalledWith('save_order_refund',expect.objectContaining({p_patch:expect.objectContaining({status:'processing',release:true,next_attempt_at:expect.any(String)})}));
+ await processOrderRefund({...job,request_paise:5000,attempts:2});
+ expect(m.create).toHaveBeenNthCalledWith(2,'pay_one',refundRequestKey(job.request_key),5000,expect.any(String));
+});
+it('does not automatically retry an unknown permanent rejection',async()=>{
+ m.create.mockRejectedValue(new RazorpayError(400,'BAD_REQUEST_ERROR','input_validation_failed'));
+ await processOrderRefund(job);
+ expect(m.rpc).toHaveBeenLastCalledWith('save_order_refund',expect.objectContaining({p_patch:expect.objectContaining({status:'failed'})}));
+});
+it('recognizes completion without sending another refund',async()=>{
+ m.list.mockResolvedValue([{id:'rfnd_existing',amount:5000,status:'completed',requestKey:refundRequestKey(job.request_key)}]);
+ await processOrderRefund(job);expect(m.create).not.toHaveBeenCalled();
+ expect(m.rpc).toHaveBeenLastCalledWith('save_order_refund',expect.objectContaining({p_patch:expect.objectContaining({status:'completed'})}));
+});
