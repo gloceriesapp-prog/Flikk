@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import Animated, { cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { HighDemandBadge } from './HighDemandBadge';
 import { GILROY } from '../../../theme/fonts';
 
@@ -11,13 +11,15 @@ const HOLD_MS = 1500;
 const COLLAPSE_MS = 420;
 
 export function DeliveryHeading({ minutes, light, highDemand = false }: { minutes: number; light: boolean; highDemand?: boolean }) {
+  const [introComplete, setIntroComplete] = useState(introPlayed);
+  const finishIntro = useCallback(() => setIntroComplete(true), []);
   return <View style={styles.heading}>
-    <View style={styles.estimate}><DeliveryEstimate minutes={minutes} light={light} compact={highDemand} /></View>
-    {highDemand && <HighDemandBadge />}
+    <View style={styles.estimate}><DeliveryEstimate minutes={minutes} light={light} onIntroComplete={finishIntro} /></View>
+    {highDemand && introComplete && <HighDemandBadge />}
   </View>;
 }
 
-function DeliveryEstimate({ minutes, light, compact }: { minutes: number; light: boolean; compact: boolean }) {
+function DeliveryEstimate({ minutes, light, onIntroComplete }: { minutes: number; light: boolean; onIntroComplete: () => void }) {
   const focused = useIsFocused();
   const reducedMotion = useReducedMotion();
   const progress = useSharedValue(introPlayed || reducedMotion ? 1 : 0);
@@ -29,23 +31,27 @@ function DeliveryEstimate({ minutes, light, compact }: { minutes: number; light:
   const fits = sizes.brand + sizes.short <= sizes.available;
   const color = light ? '#000000' : '#FFFFFF';
   const shortLabel = `in ${minutes} min`;
-  const fullLabel = compact ? `In ${minutes} min` : `In ${minutes} minutes`;
+  const fullLabel = `In ${minutes} minutes`;
 
 
   useEffect(() => {
     if (!ready || !focused) return;
     if (introPlayed || reducedMotion || !fits) {
       progress.value = 1;
+      onIntroComplete();
       return;
     }
     if (AppState.currentState !== 'active') return;
     introPlayed = true;
     progress.value = 0;
-    progress.value = withDelay(HOLD_MS, withTiming(1, { duration: COLLAPSE_MS, easing: Easing.inOut(Easing.cubic) }));
+    progress.value = withDelay(HOLD_MS, withTiming(1, { duration: COLLAPSE_MS, easing: Easing.inOut(Easing.cubic) }, finished => {
+      if (finished) runOnJS(onIntroComplete)();
+    }));
     const subscription = AppState.addEventListener('change', state => {
       if (state !== 'active') {
         cancelAnimation(progress);
         progress.value = 1;
+        onIntroComplete();
       }
     });
     return () => {
@@ -53,7 +59,7 @@ function DeliveryEstimate({ minutes, light, compact }: { minutes: number; light:
       cancelAnimation(progress);
       progress.value = 1;
     };
-  }, [ready, focused, fits, reducedMotion, progress]);
+  }, [ready, focused, fits, reducedMotion, progress, onIntroComplete]);
 
   const brandClip = useAnimatedStyle(() => ({ width: brandWidth.value * (1 - progress.value) }));
   // Shift the text under its left clipping edge: its leftmost letters leave
@@ -85,12 +91,13 @@ function DeliveryEstimate({ minutes, light, compact }: { minutes: number; light:
           <Animated.Text numberOfLines={1} style={[styles.text, { color, width: sizes.short }, shortOpacity]}>{shortLabel}</Animated.Text>
           <Animated.Text numberOfLines={1} style={[styles.text, styles.overlap, { color, width: sizes.full }, fullOpacity]}>{fullLabel}</Animated.Text>
         </Animated.View>
-      </View> : <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.text, { color }]}>{introPlayed || reducedMotion || compact || (ready && !fits) ? fullLabel : `Gloceries ${shortLabel}`}</Text>}
+      </View> : <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.text, { color }]}>{introPlayed || reducedMotion || (ready && !fits) ? fullLabel : `Gloceries ${shortLabel}`}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // The badge reserves space only after the intro; the full ETA can scale to fit narrow headers.
   heading: { flexDirection: 'row', alignItems: 'center', gap: 7, width: '100%' },
   estimate: { flex: 1, minWidth: 0 },
   container: { width: '100%', minHeight: 28 },
