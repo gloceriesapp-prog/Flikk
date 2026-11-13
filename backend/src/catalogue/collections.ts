@@ -1,5 +1,5 @@
 import { Router, type Request } from 'express';
-import { validateContent, type ContentSelection, type HomeContentKey } from '../../../packages/home-content/index.js';
+import { hasContentSelection, validateContent, type ContentSelection, type HomeContentKey } from '../../../packages/home-content/index.js';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
@@ -47,7 +47,7 @@ collectionRouter.get('/:id/home-preview', async (req, res, next) => {
     const rules: BrowseRule[] = [];
     for (const section of content.sections.filter(s => s.enabled)) {
       if (['products', 'hero', 'stores'].includes(section.kind)) rules.push({ selection: section.selection, limit: section.kind === 'stores' ? 3 : section.limit });
-      for (const item of section.items.filter(i => i.enabled)) rules.push({ selection: item.selection, limit: 1 });
+      for (const item of section.items.filter(i => i.enabled && (section.kind !== 'categories' || hasContentSelection(i.selection)))) rules.push({ selection: item.selection, limit: 1 });
     }
     // Config is bounded by validation. A single RPC selects only requested
     // previews; no application scan over a shop's unbounded product rows.
@@ -65,8 +65,9 @@ collectionRouter.get('/:id/collection-products', async (req, res, next) => {
     const item = section?.items.find(i => i.enabled && i.id === req.query.item);
     if (!section || (req.query.item !== undefined && !item)) throw new AppError(404, 'COLLECTION_UNAVAILABLE', 'This collection is unavailable.');
     const enabledItems = section.items.filter(i => i.enabled);
-    const selections = item ? [item.selection] : enabledItems.length ? enabledItems.map(i => i.selection) : [section.selection];
-    const rules = selections.map(selection => ({ selection, base: section.selection, limit: limit + 1 }));
+    const selections = item ? [item.selection] : enabledItems.length ? enabledItems.map(i => i.selection) : section.kind === 'categories' ? [] : [section.selection];
+    const rules = selections.filter(selection => section.kind !== 'categories' || hasContentSelection(selection))
+      .map(selection => ({ selection, ...(section.kind !== 'categories' ? { base: section.selection } : {}), limit: limit + 1 }));
     res.json(await products(req.params.id!, rules, after, false, limit));
   } catch (error) { next(error); }
 });

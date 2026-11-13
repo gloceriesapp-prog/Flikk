@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { categoryTileProducts } from './categoryTileProducts';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../../components/ScreenStatusBar';
 import { FlashList } from '@shopify/flash-list';
@@ -49,7 +50,7 @@ export function HomeContentCollectionScreen({ route, navigation }: Props) {
       : inventory.visibleProducts;
   const raw =
     section && accessible
-      ? selectContentProducts(collectionProducts, selected?.selection ?? section.selection)
+      ? section.kind === 'categories' ? categoryTileProducts(collectionProducts, selected ? [selected] : items) : selectContentProducts(collectionProducts, selected?.selection ?? section.selection)
       : [];
   const baseProducts = raw.map(mapContentProduct);
   const brands =

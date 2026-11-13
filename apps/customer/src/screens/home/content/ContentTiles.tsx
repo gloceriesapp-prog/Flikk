@@ -3,7 +3,7 @@ import { ShoppingBasket01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage } from '../../../components/AppImage';
 import type { ApiProduct } from '../../../api/products';
-import { selectContentProducts, type HomeContentSection, type HomeContentItem } from './contracts';
+import { hasContentSelection, selectContentProducts, type HomeContentSection, type HomeContentItem } from './contracts';
 import { GroceryCategoryGrid } from '../groceries/shop-by-category/GroceryCategoryGrid';
 
 export function ContentTiles({
@@ -22,9 +22,9 @@ export function ContentTiles({
   const items = section.items.filter((item) => item.enabled).slice(0, section.limit);
   const imageForItem = (item: HomeContentItem) =>
     item.imageUrl ||
-    selectContentProducts(products, item.selection).find((product) => product.image_url)?.image_url || undefined;
+    (section.kind !== 'categories' || hasContentSelection(item.selection) ? selectContentProducts(products, item.selection) : []).find((product) => product.image_url)?.image_url || undefined;
   if (featuredCategories && section.kind === 'categories') {
-    return <GroceryCategoryGrid items={items} imageForItem={imageForItem} onOpen={onOpen} />;
+    return <GroceryCategoryGrid items={items} imageForItem={imageForItem} onOpen={onOpen} columns={section.columns} layout={section.layout} />;
   }
   const tile = (item: HomeContentItem) => {
     const image = imageForItem(item);

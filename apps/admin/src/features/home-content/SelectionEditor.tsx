@@ -1,48 +1,60 @@
 'use client';
 import type { ContentSelection } from '@/lib/homeContent';
+import { categoryTileSelection } from './categoryTileSelection';
 import { CataloguePicker } from './CataloguePicker';
 import { Field, inputClass, Toggle } from './Fields';
 
 export function SelectionEditor({
   value,
   onChange,
+  categoryTile = false,
 }: {
   value: ContentSelection;
+  categoryTile?: boolean;
   onChange: (value: ContentSelection) => void;
 }) {
   const update = (patch: Partial<ContentSelection>) => onChange({ ...value, ...patch });
   return (
     <div className="space-y-4">
       <Field
-        label="Product selection"
+        label={categoryTile ? "Tile contents" : "Product selection"}
         hint="Every selection is limited to stock available near the customer's delivery address."
       >
         <select
           value={value.mode}
-          onChange={(event) => update({ mode: event.target.value as ContentSelection['mode'] })}
+          onChange={(event) => {
+            const mode = event.target.value as ContentSelection['mode'];
+            if (categoryTile) onChange(categoryTileSelection(value, mode === 'manual' ? { products: value.productIds } : { categories: value.categoryIds }));
+            else update({ mode });
+          }}
           className={inputClass}
         >
-          <option value="automatic">Automatic · match catalogue rules</option>
-          <option value="manual">Curated · choose and order products</option>
+          <option value="automatic">{categoryTile ? 'Catalogue categories · show their current products' : 'Automatic · match catalogue rules'}</option>
+          <option value="manual">{categoryTile ? 'Hand-picked products · choose exact items' : 'Curated · choose and order products'}</option>
         </select>
       </Field>
       {value.mode === 'manual' && (
         <CataloguePicker
           kind="products"
           value={value.productIds}
-          onChange={(productIds) => update({ productIds })}
+          onChange={(productIds) => categoryTile ? onChange(categoryTileSelection(value, { products: productIds })) : update({ productIds })}
         />
       )}
+      {categoryTile && value.mode === 'automatic' && <div className="space-y-2">
+        <p className="text-xs text-slate-600">Choose the catalogue subcategories to include, for example Rice and Atta. Your custom tile title is shown in the app; it does not decide which products match.</p>
+        <CataloguePicker kind="categories" value={value.categoryIds} onChange={categoryIds => onChange(categoryTileSelection(value, { categories: categoryIds }))} />
+      </div>}
+      {categoryTile && <p className="text-xs leading-5 text-slate-500">Choosing categories or products replaces old template filters. Optional matching filters below can refine your selection. An unconfigured tile opens an empty collection.</p>}
       <details className="rounded-xl border border-slate-200 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-slate-600">
           Category, shop and matching rules
         </summary>
         <div className="mt-4 space-y-4">
-          <CataloguePicker
+          {(!categoryTile || value.mode === 'manual') && <CataloguePicker
             kind="categories"
             value={value.categoryIds}
             onChange={(categoryIds) => update({ categoryIds })}
-          />
+          />}
           <CataloguePicker
             kind="stores"
             value={value.storeIds}

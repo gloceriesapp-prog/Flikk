@@ -77,3 +77,8 @@ export function referencedIds(content) {
     ]),
   );
 }
+
+export function hasContentSelection(rule) {
+  return rule.mode === 'manual' ? rule.productIds.length > 0
+    : rule.categoryIds.length > 0 || rule.storeIds.length > 0 || rule.includeTerms.length > 0 || rule.excludeTerms.length > 0 || rule.discountedOnly;
+}

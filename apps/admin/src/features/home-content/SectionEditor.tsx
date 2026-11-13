@@ -269,7 +269,7 @@ export function SectionEditor({
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Tile title">
+                  <Field label="Tile title" hint={section.kind === 'categories' ? 'Custom label, for example Rice & Atta. Choose its catalogue contents below.' : undefined}>
                     <input
                       value={item.title}
                       maxLength={120}
@@ -327,6 +327,7 @@ export function SectionEditor({
                   </Field>
                 </div>
                 <SelectionEditor
+                  categoryTile={section.kind === 'categories'}
                   value={item.selection}
                   onChange={(selection) => updateItem(index, { selection })}
                 />
