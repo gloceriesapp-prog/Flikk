@@ -69,7 +69,7 @@ export function PaymentRecoveryScreen({ route, navigation }: Props) {
         }
       }
       if (!stillOwner()) return;
-      if (state === 'paid') navigation.replace('OrderSummary', {
+      if (state === 'paid' || (state === 'cancelled' && Boolean(query.data?.record.provider_payment_id))) navigation.replace('OrderSummary', {
         orderId: 'tripId' in target ? target.tripId : target.orderId,
         isTrip: 'tripId' in target,
       });

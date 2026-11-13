@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import crypto from 'node:crypto';
 import { env } from '../config/env.js';
-import { checkoutReceipt, refundRequestKey, toPaise, verifyCheckoutSignature, verifyWebhookSignature, createProviderOrder, createProviderRefund, getPaymentRefunds, findProviderOrder, createProviderUpiIntent } from './razorpayClient.js';
+import { providerDiagnosticToken, checkoutReceipt, refundRequestKey, toPaise, verifyCheckoutSignature, verifyWebhookSignature, createProviderOrder, createProviderRefund, getPaymentRefunds, findProviderOrder, createProviderUpiIntent } from './razorpayClient.js';
 afterEach(() => { vi.unstubAllGlobals(); env.razorpayEnv = 'test'; env.razorpayUpiEmailOptional = false; });
 it('uses paise, rejects unsafe amounts and derives stable bounded identifiers', () => {
   expect(toPaise('12.34')).toBe(1234); expect(() => toPaise(-1)).toThrow(); expect(() => toPaise(Infinity)).toThrow();
@@ -75,4 +75,10 @@ it('blocks email omission before a provider POST unless optional mode was enable
   expect(() => createProviderUpiIntent({ providerOrderId: 'order_one', amountPaise: 100, contact: '919999999999', notes: {} }))
     .toThrow('Add your email address');
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it('retains bounded provider diagnostic codes but rejects private/free-form values', () => {
+  expect(providerDiagnosticToken('insufficient_balance')).toBe('insufficient_balance');
+  expect(providerDiagnosticToken('BAD_REQUEST_ERROR')).toBe('BAD_REQUEST_ERROR');
+  for (const value of [null, {}, 'contact@example.com', 'payment details here', 'x'.repeat(81)]) expect(providerDiagnosticToken(value)).toBeUndefined();
 });

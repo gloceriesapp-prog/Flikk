@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { BankIcon, CreditCardIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { popularUpiApps } from '../../../payments/popularUpiApps';
 import { WalletOptions } from './WalletOptions';
 import { UpiAppLogo } from '../../../components/payments/UpiAppLogo';
 import { AppIcon } from '../../../components/AppIcon';
@@ -60,7 +61,7 @@ export function orderUpiApps(apps: UpiApp[], method: PaymentMethod | null): UpiA
 
 export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: detectedApps, allowed = { cod: true, online: true }, upiOnly = false }: Props) {
   const selectedUpiAppId = method?.startsWith('upi_app:') ? method.slice('upi_app:'.length) : null;
-  const upiApps = allowed.online ? orderUpiApps(detectedApps, method) : [];
+  const upiApps = allowed.online ? orderUpiApps(popularUpiApps(detectedApps), method) : [];
 
   return (
     <View className="mt-6 gap-6">
@@ -104,7 +105,7 @@ export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: d
         <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">{'Cards & netbanking'}</Text>
         <View className="bg-white p-4" style={{ borderRadius: 12 }}>
           <View className="mb-3 border-b border-dashed border-gray-100 pb-3">
-            <MethodRow icon={CreditCardIcon} title="Credit / Debit Card" subtitle="Pay securely with Razorpay"
+            <MethodRow icon={CreditCardIcon} title="Credit / Debit Card" subtitle="Secure card payment"
               selected={method === 'card'} onPress={() => onSelect('card')} label="Pay with credit or debit card" />
           </View>
           <MethodRow icon={BankIcon} title="Netbanking" subtitle="Choose from available banks"

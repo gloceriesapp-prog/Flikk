@@ -68,3 +68,10 @@ it('does not navigate across an account change', async () => {
   await waitFor(() => expect(readAttempt).toHaveBeenCalled());
   expect(mockReplace).not.toHaveBeenCalled();
 });
+
+it('shows the order and refund state for a cancelled payment with a provider payment ID', async () => {
+  mockQuery.data = { ...data('cancelled'), record: { id: 'order', total: 1, provider_payment_id: 'pay_existing' } };
+  await render(<PaymentRecoveryScreen {...props()} />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('OrderSummary', { orderId: 'order', isTrip: false }));
+  expect(mockClear).not.toHaveBeenCalled();
+});

@@ -9,6 +9,7 @@ import { UPI_APPS, type UpiApp } from './upiApps';
 interface CustomUpiNative {
   getAppsWhichSupportUpi(): void;
   open(options: Record<string, unknown>): void;
+  dismissGloceriesUpi?(): void;
 }
 
 const appIds: Record<string, string> = {
@@ -66,12 +67,13 @@ export async function assertIosUpiConfigured(method: PaymentMethod): Promise<{ s
   if (!availability.online || availability.upi_intent !== true) {
     throw new Error('UPI app payments are not available. Choose another payment method.');
   }
+  if (typeof nativeSdk().native.dismissGloceriesUpi !== 'function') throw new Error('Update Gloceries to continue with UPI app payments.');
   const selected = (await installedIosUpiApps()).find(item => `upi_app:${item.app.id}` === method);
   if (!selected) throw new Error('This UPI app is not available for this payment. Choose another payment method.');
   return { sdkId: selected.sdkId, emailOptional: availability.upi_email_optional === true };
 }
 
-export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMethod): Promise<RazorpayPaymentResult> {
+export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMethod, signal?: AbortSignal): Promise<RazorpayPaymentResult> {
   // Shared validation checks the server order, paise amount, expiry and key
   // environment. Intent itself is live-only; never substitute a sandbox key.
   const epoch = useAuthStore.getState().sessionEpoch;
@@ -86,10 +88,13 @@ export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMe
   razorpayOptions(order, method);
   if (!/^(?:\+91)?[6-9]\d{9}$/.test(customer.contact)) throw new Error('Your account needs a valid mobile number before paying with UPI.');
   if (!emailOptional && !customer.email) throw new Error('Add your payment receipt email before paying with UPI.');
+  if (signal?.aborted) throw new Error('Payment check closed. Review your saved order.');
   const { native, events } = nativeSdk();
   return new Promise((resolve, reject) => {
     const subscriptions: EmitterSubscription[] = [];
-    const clean = () => subscriptions.forEach(subscription => subscription.remove());
+    const clean = () => { subscriptions.forEach(subscription => subscription.remove()); signal?.removeEventListener('abort', abort); };
+    const abort = () => { clean(); native.dismissGloceriesUpi?.(); reject(new Error('Payment check closed. Review your saved order.')); };
+    signal?.addEventListener('abort', abort, { once: true });
     subscriptions.push(events.addListener('Razorpay::PAYMENT_SUCCESS', data => {
       clean();
       try { resolve(razorpayResult(data, order.providerOrderId)); } catch (error) { reject(error); }
@@ -97,6 +102,7 @@ export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMe
     subscriptions.push(events.addListener('Razorpay::PAYMENT_ERROR', () => {
       clean(); reject(new Error('Payment was not completed. Check your saved order before trying again.'));
     }));
+    if (signal?.aborted) { abort(); return; }
     try {
       // Use the native Custom SDK directly. Its JS wrapper logs the entire
       // payment payload and removes unrelated event subscriptions on completion.
@@ -112,4 +118,10 @@ export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMe
       });
     } catch (error) { clean(); reject(error); }
   });
+}
+
+// Dismiss SDK resources after the merchant-owned processing screen exits.
+// This does not cancel/refund a provider payment; backend recovery still owns it.
+export function dismissIosUpiCheckout(): void {
+  if (Platform.OS === 'ios') (NativeModules.RazorpayCustomui as CustomUpiNative | undefined)?.dismissGloceriesUpi?.();
 }

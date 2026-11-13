@@ -34,6 +34,7 @@ beforeEach(() => {
       { appName: { appName: 'Google Pay', appPackageName: 'google_pay', appLogo: 'https://cdn.razorpay.com/app/google_pay.png', appIconBase64: '' } },
       { appName: { appName: 'PhonePe', appPackageName: 'phonepe', appLogo: 'https://cdn.razorpay.com/app/phonepe.png', appIconBase64: '' } },
     ] })),
+    dismissGloceriesUpi: jest.fn(),
     open: jest.fn(() => emit('Razorpay::PAYMENT_SUCCESS', evidence)),
   };
 });
@@ -145,5 +146,17 @@ it('cleans up cancellation listeners for an email-free iOS checkout', async () =
   jest.mocked(fetchPaymentCustomer).mockResolvedValue({ email: null, contact: '+919000000000' });
   NativeModules.RazorpayCustomui.open.mockImplementation(() => emit('Razorpay::PAYMENT_ERROR', {}));
   await expect(openRazorpayCheckout(order(), 'upi_app:gpay')).rejects.toThrow('not completed');
+  expect([...mockListeners.values()].every(listeners => listeners.size === 0)).toBe(true);
+});
+
+it('cleans up the native attempt when its processing screen is closed', async () => {
+  NativeModules.RazorpayCustomui.open.mockImplementation(() => {});
+  const controller = new AbortController();
+  const pending = openRazorpayCheckout(order(), 'upi_app:gpay', undefined, undefined, controller.signal);
+  const checked = expect(pending).rejects.toThrow('Payment check closed');
+  await new Promise(resolve => setImmediate(resolve));
+  controller.abort();
+  await checked;
+  expect(NativeModules.RazorpayCustomui.dismissGloceriesUpi).toHaveBeenCalled();
   expect([...mockListeners.values()].every(listeners => listeners.size === 0)).toBe(true);
 });

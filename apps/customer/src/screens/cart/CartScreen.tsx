@@ -40,7 +40,7 @@ import { useCartPayment } from './payment/useCartPayment';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { useCartAvailability } from './quote/useCartAvailability';
 import { useCheckoutQuote } from './quote/useCheckoutQuote';
-import { quotedCartItems, quoteHasPriceChanges } from './quote/quoteItems';
+import { quotedCartItems, quoteHasPriceChanges, quoteMatchesCart } from './quote/quoteItems';
 import { cartIdentity } from '../../store/cartIdentity';
 import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
 import { ForgotToAddSection } from './components/ForgotToAddSection';
@@ -123,7 +123,7 @@ export function CartScreen({ navigation, route }: Props) {
   const availabilityQuery = useCartAvailability(selectedAddress?.id);
   const storeClosed = availabilityQuery.data?.lines.some(line => line.status === 'STORE_CLOSED') ?? false;
   const quoteQuery = useCheckoutQuote(selectedAddress?.id);
-  const quote = quoteQuery.data;
+  const quote = quoteQuery.data && quoteMatchesCart(items, quoteQuery.data) ? quoteQuery.data : undefined;
   const minimumShortfall = quote?.minimumOrder?.shortfall ?? 0;
   const storeGroups = useMemo(() => {
     const pricedItems = quote ? quotedCartItems(items, quote) : [];

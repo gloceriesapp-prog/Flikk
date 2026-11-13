@@ -127,6 +127,7 @@ module.exports = {
       './plugins/withAndroidReleaseQuality.cjs',
       './plugins/withIosReleaseQuality.cjs',
       './plugins/withIosRazorpayUpi.cjs',
+      './plugins/iosUpiMerchantUi.cjs',
       ['@sentry/react-native/expo', {
         ...(process.env.SENTRY_ORG ? { organization: process.env.SENTRY_ORG } : {}),
         ...(process.env.SENTRY_PROJECT ? { project: process.env.SENTRY_PROJECT } : {}),

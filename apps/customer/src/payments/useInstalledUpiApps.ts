@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
+import { popularUpiApps } from './popularUpiApps';
 import { detectInstalledUpiApps } from './installedUpiApps';
 
 // One shared discovery request, refreshed on entry and app return. Failed
@@ -16,7 +17,7 @@ export function useInstalledUpiApps() {
     const subscription = AppState.addEventListener('change', state => { if (state === 'active') void refetch(); });
     return () => subscription.remove();
   }, [focused, refetch]);
-  return { apps: query.data ?? [], loading: query.isFetching,
+  return { apps: popularUpiApps(query.data ?? []), loading: query.isFetching,
     error: query.error instanceof Error ? query.error.message : query.error ? 'Could not check UPI apps. Please retry.' : '',
     retry: refetch };
 }

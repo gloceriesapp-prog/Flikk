@@ -11,7 +11,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { pollOrderPaid, paymentCheckDeadline } from '../../payments/pollOrderPaid';
 import { colors, minTouchTarget } from '../../theme/tokens';
 import { useCartStore } from '../../store/useCartStore';
-import { rememberPaymentMethod } from '../../api/payments';
+import { rememberPaymentMethod, verifyPayment } from '../../api/payments';
+import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
+import { dismissIosUpiCheckout } from '../../payments/iosUpiCheckout';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PaymentProcessing'>;
@@ -21,12 +23,23 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
   const launched = useRef(false);
   const [launchError, setLaunchError] = useState('');
   useEffect(() => {
-    if (!route.params.upiIntent || launched.current) return;
+    if ((!route.params.upiIntent && !route.params.iosUpiOrder) || launched.current) return;
     launched.current = true;
-    void launchUpiIntent(route.params.upiIntent, paymentMethod).catch(error => {
-      setLaunchError(error instanceof Error ? error.message : 'Could not open your UPI app. Choose another payment method.');
+    let stopped = false;
+    const controller = new AbortController();
+    const epoch = useAuthStore.getState().sessionEpoch;
+    const launch = route.params.iosUpiOrder
+      ? openRazorpayCheckout(route.params.iosUpiOrder, paymentMethod, undefined, undefined, controller.signal).then(async result => {
+          if (!stopped && useAuthStore.getState().sessionEpoch === epoch) await verifyPayment(target, result);
+        })
+      : launchUpiIntent(route.params.upiIntent!, paymentMethod);
+    void launch.catch(() => {
+      // Cancellation and delayed success can race. Keep checking this same
+      // order; an SDK error is never proof of payment failure or permission to pay twice.
+      if (!stopped) setLaunchError('We’re checking your payment status. Please don’t pay again.');
     });
-  }, [route.params.upiIntent, paymentMethod]);
+    return () => { stopped = true; controller.abort(); if (route.params.iosUpiOrder) dismissIosUpiCheckout(); };
+  }, [route.params.upiIntent, route.params.iosUpiOrder, paymentMethod, target]);
   const [deadline] = useState(() => paymentCheckDeadline(expiresAt));
   const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
   useEffect(() => {

@@ -7,9 +7,12 @@ export { paymentsConfigured };
 export function paymentsNotConfigured() { return new AppError(503, 'PAYMENTS_NOT_CONFIGURED', 'Online payment is unavailable. Choose cash on delivery.'); }
 export function requirePaymentsConfigured(_req: Request, _res: Response, next: NextFunction) { next(paymentsConfigured ? undefined : paymentsNotConfigured()); }
 export class RazorpayError extends AppError {
-  constructor(readonly providerStatus: number, readonly providerCode?: string) {
+  constructor(readonly providerStatus: number, readonly providerCode?: string, readonly providerReason?: string) {
     super(502, 'PAYMENT_PROVIDER_ERROR', 'Payment confirmation is unavailable. Please retry shortly.'); this.name = 'RazorpayError';
   }
+}
+export function providerDiagnosticToken(value: unknown): string | undefined {
+  return typeof value === 'string' && /^[A-Za-z0-9_]{1,80}$/.test(value) ? value : undefined;
 }
 export function toPaise(rupees: unknown): number {
   const value = typeof rupees === 'string' ? Number(rupees) : rupees;
@@ -31,8 +34,8 @@ async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, hea
       body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15_000),
     });
   } catch { throw new RazorpayError(0); }
-  const data = await response.json().catch(() => null) as T & { error?: { code?: string } } | null;
-  if (!response.ok || data === null) throw new RazorpayError(response.status, data?.error?.code);
+  const data = await response.json().catch(() => null) as T & { error?: { code?: string; reason?: string } } | null;
+  if (!response.ok || data === null) throw new RazorpayError(response.status, providerDiagnosticToken(data?.error?.code), providerDiagnosticToken(data?.error?.reason));
   return data;
 }
 export function createProviderOrder(input: {receipt: string; amountPaise: number; notes: Record<string,string>}) {

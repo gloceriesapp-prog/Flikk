@@ -162,9 +162,9 @@ it('recovers an unpaid iOS order without an email popup when the merchant permit
   const hook = await renderHook(() => useRecoveredPayment(target, navigation));
   await act(() => hook.result.current.select('upi_app:gpay'));
   expect(mockRequestEmail).not.toHaveBeenCalled();
-  expect(openRazorpayCheckout).toHaveBeenCalledWith(order, 'upi_app:gpay', undefined, undefined);
-  expect(verifyPayment).toHaveBeenCalledWith(target, callback);
-  expect(mockReplace).toHaveBeenCalledWith('PaymentRecovery', { target });
+  expect(openRazorpayCheckout).not.toHaveBeenCalled();
+  expect(verifyPayment).not.toHaveBeenCalled();
+  expect(mockReplace).toHaveBeenCalledWith('PaymentProcessing', expect.objectContaining({ target, iosUpiOrder: order, recovered: true }));
 });
 it('keeps iOS receipt contact collection when the server does not permit omission', async () => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
@@ -173,14 +173,14 @@ it('keeps iOS receipt contact collection when the server does not permit omissio
   await act(() => hook.result.current.select('upi_app:phonepe'));
   expect(mockRequestEmail).toHaveBeenCalledTimes(1);
 });
-it('routes an email-free iOS cancellation back through server reconciliation', async () => {
+it('leaves iOS cancellation and delayed success to the shared processing screen', async () => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
   jest.mocked(assertIosUpiConfigured).mockResolvedValue({ sdkId: 'phonepe', emailOptional: true });
   jest.mocked(openRazorpayCheckout).mockRejectedValue(new Error('Payment was not completed.'));
   const hook = await renderHook(() => useRecoveredPayment(target, navigation));
   await act(() => hook.result.current.select('upi_app:phonepe'));
   expect(mockRequestEmail).not.toHaveBeenCalled();
-  expect(hook.result.current.error).toContain('not completed');
-  expect(mockRefetch).toHaveBeenCalled();
+  expect(openRazorpayCheckout).not.toHaveBeenCalled();
+  expect(mockReplace).toHaveBeenCalledWith('PaymentProcessing', expect.objectContaining({ target, recovered: true }));
   expect(verifyPayment).not.toHaveBeenCalled();
 });

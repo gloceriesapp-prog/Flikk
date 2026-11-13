@@ -102,6 +102,7 @@ export type AppStackParamList = {
     isTrip?: boolean;
     expiresAt?: string;
     upiIntent?: import('../api/payments').RazorpayUpiIntent;
+    iosUpiOrder?: import('../api/payments').RazorpayOrder;
     recovered?: boolean;
   };
   // Shown once checkout succeeds (OrderPlacedScreen), then replaced by

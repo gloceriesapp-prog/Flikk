@@ -56,8 +56,10 @@ export async function processOrderRefund(job: OrderRefundJob): Promise<void> {
       last_error: own?.status === 'failed' ? 'Provider refund failed' : null, release: true, next_attempt_at: new Date(Date.now() + 60000).toISOString() });
   }
   catch (error) {
-    logger.warn({ refundJobId: job.id, providerStatus: error instanceof RazorpayError ? error.providerStatus : undefined }, 'Order refund reconciliation delayed');
-    await save(job, { status: isDefinitiveRejection(error) ? 'failed' : 'processing', last_error: 'Provider reconciliation delayed', release: true,
+    logger.warn({ refundJobId: job.id, providerStatus: error instanceof RazorpayError ? error.providerStatus : undefined,
+      providerCode: error instanceof RazorpayError ? error.providerCode : undefined,
+      providerReason: error instanceof RazorpayError ? error.providerReason : undefined }, 'Order refund reconciliation delayed');
+    await save(job, { status: isDefinitiveRejection(error) ? 'failed' : 'processing', last_error: error instanceof RazorpayError && error.providerReason ? `Provider reconciliation delayed (${error.providerReason})` : 'Provider reconciliation delayed', release: true,
       next_attempt_at: new Date(Date.now() + Math.min(900000, 15000 * 2 ** Math.min(job.attempts, 6))).toISOString() });
   }
 }
