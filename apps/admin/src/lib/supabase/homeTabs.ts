@@ -15,6 +15,10 @@ export interface HomeTabRow {
   sort_order: number;
   is_active: boolean;
   section_id?: string | null;
+  show_in_quick_categories?: boolean | null;
+  quick_sort_order?: number | null;
+  quick_category_id?: string | null;
+  quick_subcategory_id?: string | null;
 }
 
 export interface HomeTabTileRow {
@@ -28,11 +32,11 @@ export interface HomeTabTileRow {
   link_id: string | null;
 }
 
-export const HOME_TAB_SELECT = 'id, name, image_url, sort_order, is_active, section_id';
+export const HOME_TAB_SELECT = 'id, name, image_url, sort_order, is_active, section_id, show_in_quick_categories, quick_sort_order, quick_category_id, quick_subcategory_id';
 export const HOME_TAB_TILE_SELECT = 'id, home_tab_id, name, image_url, sort_order, is_active, link_type, link_id';
 
 export function mapRowToHomeTab(row: HomeTabRow): HomeTab {
-  return { id: row.id, name: row.name, imageUrl: row.image_url ?? undefined, sortOrder: row.sort_order, isActive: row.is_active, sectionId: row.section_id ?? null };
+  return { id: row.id, name: row.name, imageUrl: row.image_url ?? undefined, sortOrder: row.sort_order, isActive: row.is_active, sectionId: row.section_id ?? null, showInQuickCategories: row.show_in_quick_categories ?? null, quickSortOrder: row.quick_sort_order ?? null, quickCategoryId: row.quick_category_id ?? null, quickSubcategoryId: row.quick_subcategory_id ?? null };
 }
 
 export function mapRowToHomeTabTile(row: HomeTabTileRow): HomeTabTile {

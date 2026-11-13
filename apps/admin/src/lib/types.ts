@@ -575,6 +575,11 @@ export type NewCategoryInput = Omit<Category, 'id'>;
 // "Home Categories" page (app/(dashboard)/home-categories) is a
 // completely separate screen from "Categories" for exactly that reason.
 export interface HomeTab {
+  showInQuickCategories?: boolean | null;
+  quickSortOrder?: number | null;
+  quickCategoryId?: string | null;
+  quickSubcategoryId?: string | null;
+
   id: string;
   name: string;
   imageUrl?: string;

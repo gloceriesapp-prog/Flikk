@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { HOME_TAB_SELECT, mapRowToHomeTab, type HomeTabRow } from '@/lib/supabase/homeTabs';
-import { toHomeTabErrorMessage, toHomeTabRow, validateHomeTabInput, type HomeTabWriteInput } from '@/lib/homeTabValidation';
+import { toHomeTabErrorMessage, toQuickCategoryPatch, toHomeTabRow, validateHomeTabInput, type HomeTabWriteInput } from '@/lib/homeTabValidation';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/home-tabs/[id]'>) {
@@ -26,7 +26,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/home-tabs/
     const { image_url, ...rest } = toHomeTabRow(input);
     const { data, error } = await supabaseAdmin
       .from('home_tabs')
-      .update({ ...rest, ...('imageUrl' in input ? { image_url } : {}), ...('sectionId' in input ? { section_id: input.sectionId ?? null } : {}) })
+      .update({ ...rest, ...toQuickCategoryPatch(input), ...('imageUrl' in input ? { image_url } : {}), ...('sectionId' in input ? { section_id: input.sectionId ?? null } : {}) })
       .eq('id', id)
       .select(HOME_TAB_SELECT)
       .single();
