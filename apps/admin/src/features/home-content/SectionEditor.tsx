@@ -127,6 +127,7 @@ export function SectionEditor({
       )}
       {['banner', 'hero', 'festival'].includes(section.kind) && (
         <div className="space-y-4 rounded-2xl bg-slate-50 p-4">
+          {section.kind === 'banner' ? <p className="text-sm leading-6 text-slate-600">This image appears at this section’s position in the tab. Add more image ads with Add content, and use Up / Down to choose where each appears. Visible in app controls this ad independently.</p> : null}
           <ProductImageUpload imageUrl={section.imageUrl} bucket="banners" onChange={(url) => update({ imageUrl: url })} />
           <Field
             label="Image URL"
@@ -216,7 +217,11 @@ export function SectionEditor({
             </p>
           )}
           {section.items.map((item, index) => (
-            <details key={item.id} className="rounded-xl border border-slate-200 p-4">
+            <div key={item.id} className="rounded-xl border border-slate-200 p-4">
+              <div className="mb-3 flex justify-end">
+                <Toggle label="Visible tile" checked={item.enabled} onChange={enabled => updateItem(index, { enabled })} />
+              </div>
+              <details>
               <summary className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-800">
                 {/* The picture the app shows on this card, so a tile with no
                     image stands out without opening it. */}
@@ -235,11 +240,6 @@ export function SectionEditor({
               </summary>
               <div className="mt-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Toggle
-                    label="Visible tile"
-                    checked={item.enabled}
-                    onChange={(enabled) => updateItem(index, { enabled })}
-                  />
                   <div className="flex gap-3 text-xs">
                     <button
                       type="button"
@@ -332,7 +332,8 @@ export function SectionEditor({
                   onChange={(selection) => updateItem(index, { selection })}
                 />
               </div>
-            </details>
+              </details>
+            </div>
           ))}
         </div>
       )}
