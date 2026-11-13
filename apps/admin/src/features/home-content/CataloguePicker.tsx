@@ -25,6 +25,8 @@ export function CataloguePicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const idKey = value.join(',');
+  const [resolvedIdKey, setResolvedIdKey] = useState('');
+  const [missingSelectedIds, setMissingSelectedIds] = useState<string[]>([]);
   useEffect(() => {
     if (!idKey) return;
     const controller = new AbortController();
@@ -34,7 +36,11 @@ export function CataloguePicker({
       .then(async (response) => {
         if (!response.ok) throw new Error('Could not load selected items.');
         const data = await response.json();
-        setSelected(Object.fromEntries(data.items.map((item: CatalogueItem) => [item.id, item])));
+        if (controller.signal.aborted) return;
+        setSelected(old => ({ ...old, ...Object.fromEntries(data.items.map((item: CatalogueItem) => [item.id, item])) }));
+        const found = new Set(data.items.map((item: CatalogueItem) => item.id));
+        setMissingSelectedIds(idKey.split(',').filter(id => !found.has(id)));
+        setResolvedIdKey(idKey);
       })
       .catch((err) => {
         if (!controller.signal.aborted) setError(err.message);
@@ -53,6 +59,7 @@ export function CataloguePicker({
         .then(async (response) => {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error);
+          if (controller.signal.aborted) return;
           setItems((old) => (offset === 0 ? data.items : [...old, ...data.items]));
           setNextOffset(data.nextOffset);
           setSelected((old) => ({
@@ -97,7 +104,8 @@ export function CataloguePicker({
               className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5 text-xs"
             >
               <span className="min-w-0 flex-1 truncate">
-                {selected[id]?.name ?? `Unavailable item (${id.slice(0, 8)})`}
+                {selected[id]?.name ?? (resolvedIdKey === idKey ? `Unavailable item (${id.slice(0, 8)})` : 'Loading selected item…')}
+                {selected[id] && resolvedIdKey === idKey && missingSelectedIds.includes(id) ? ' — unavailable' : ''}
               </span>
               <button
                 type="button"
