@@ -288,9 +288,10 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
               />
             </div>
             <div className="text-xs leading-5 text-slate-400">
-              Version {record.revision}
-              <br />
-              Published {new Date(record.updatedAt).toLocaleString()}
+              {record.revision === 0 ? 'Not published yet' : <>
+                Version {record.revision}<br />
+                Published {new Date(record.updatedAt).toLocaleString()}
+              </>}
             </div>
           </div>
           {tab === 'festivals' && (
@@ -411,7 +412,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
               <p className="text-sm text-slate-500">
                 {dirty
                   ? 'Unpublished changes. Publish or discard before changing tabs.'
-                  : 'All changes are published.'}
+                  : record.revision === 0 ? 'Add your sections and publish when ready.' : 'All changes are published.'}
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
