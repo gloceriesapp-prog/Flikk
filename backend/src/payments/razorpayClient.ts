@@ -14,6 +14,13 @@ export class RazorpayError extends AppError {
 export function providerDiagnosticToken(value: unknown): string | undefined {
   return typeof value === 'string' && /^[A-Za-z0-9_]{1,80}$/.test(value) ? value : undefined;
 }
+// Classify a documented provider response without retaining free-form descriptions.
+// Restrict this to refund creation: other payment APIs have different retry rules.
+export function refundFailureReason(error: { reason?: unknown; description?: unknown } | undefined): string | undefined {
+  const description = typeof error?.description === 'string' ? error.description.trim() : '';
+  if (/^Your account does not have enough balance to carry out the refund operation\.(?: You can add funds to your account from your Razorpay dashboard or capture new payments\.)?$/i.test(description)) return 'insufficient_balance';
+  return providerDiagnosticToken(error?.reason);
+}
 export function toPaise(rupees: unknown): number {
   const value = typeof rupees === 'string' ? Number(rupees) : rupees;
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || !Number.isSafeInteger(Math.round(value * 100))) throw new Error('Invalid rupee amount');
@@ -34,8 +41,8 @@ async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, hea
       body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15_000),
     });
   } catch { throw new RazorpayError(0); }
-  const data = await response.json().catch(() => null) as T & { error?: { code?: string; reason?: string } } | null;
-  if (!response.ok || data === null) throw new RazorpayError(response.status, providerDiagnosticToken(data?.error?.code), providerDiagnosticToken(data?.error?.reason));
+  const data = await response.json().catch(() => null) as T & { error?: { code?: string; reason?: string; description?: unknown } } | null;
+  if (!response.ok || data === null) throw new RazorpayError(response.status, providerDiagnosticToken(data?.error?.code), method === 'POST' && /^\/payments\/pay_[A-Za-z0-9]+\/refund$/.test(path) ? refundFailureReason(data?.error) : providerDiagnosticToken(data?.error?.reason));
   return data;
 }
 export function createProviderOrder(input: {receipt: string; amountPaise: number; notes: Record<string,string>}) {

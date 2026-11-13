@@ -1,3 +1,4 @@
+import { refundPresentation } from '../../features/customer-care/refundPresentation';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
@@ -56,6 +57,13 @@ export function OrderSummaryScreen({ navigation, route }: Props) {
             <>
               <View className="mx-5 h-4 rounded-b-3xl bg-white" />
               <View className="mx-5 mt-4 gap-4">
+                {summary.refunds?.map(refund => <View key={`${refund.kind}:${refund.targetId}`} accessibilityLiveRegion="polite" className="gap-2 rounded-3xl bg-white p-5">
+                  <Text className="text-[16px] font-semibold text-ink">{refundPresentation(refund.status, refund.providerRefundId).title}</Text>
+                  <Text className="text-[13px] leading-5 text-ink/65">{refundPresentation(refund.status, refund.providerRefundId).message}</Text>
+                  <Pressable accessibilityRole="button" onPress={() => navigation.navigate('RefundDetail', { kind: refund.kind, refundId: refund.targetId })} className="min-h-11 justify-center">
+                    <Text className="text-[13px] font-semibold text-[#155DFC]">View refund details</Text>
+                  </Pressable>
+                </View>)}
                 <OrderSummaryBillCard summary={summary} />
                 <OrderSummaryDetailsCard summary={summary} />
                 <DeliveryDetailsSection address={summary.address} />

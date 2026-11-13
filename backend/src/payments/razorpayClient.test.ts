@@ -82,3 +82,12 @@ it('retains bounded provider diagnostic codes but rejects private/free-form valu
   expect(providerDiagnosticToken('BAD_REQUEST_ERROR')).toBe('BAD_REQUEST_ERROR');
   for (const value of [null, {}, 'contact@example.com', 'payment details here', 'x'.repeat(81)]) expect(providerDiagnosticToken(value)).toBeUndefined();
 });
+
+it('classifies the documented low-balance refund response without retaining free-form data',async()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:400,json:async()=>({error:{code:'BAD_REQUEST_ERROR',reason:'NA',description:'Your account does not have enough balance to carry out the refund operation. You can add funds to your account from your Razorpay dashboard or capture new payments.'}})}));
+ await expect(createProviderRefund('pay_one',{requestKey:refundRequestKey('test-job'),amountPaise:100,note:'Cancelled'})).rejects.toMatchObject({providerStatus:400,providerReason:'insufficient_balance'});
+});
+it('does not classify arbitrary or private refund messages as low balance',async()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:400,json:async()=>({error:{code:'BAD_REQUEST_ERROR',description:'Unable to refund customer@example.com: insufficient balance'}})}));
+ await expect(createProviderRefund('pay_one',{requestKey:refundRequestKey('test-job'),amountPaise:100,note:'Cancelled'})).rejects.toMatchObject({providerStatus:400,providerReason:undefined});
+});

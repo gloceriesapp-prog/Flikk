@@ -1,3 +1,4 @@
+import { refundPresentation } from '../../../features/customer-care/refundPresentation';
 
 import { useMemo, useState } from 'react';
 import { formatDeliveryWindow } from '../../../store/preorder';
@@ -117,15 +118,7 @@ export function OrderInfoCard({
 
   const refundLine =
     (isCancelled || isFailed) && order.provider_payment_id
-      ? order.refund_status === 'completed'
-        ? `₹${order.total.toFixed(0)} has been refunded to your original payment method.`
-        : order.refund_status === 'manual_required'
-          ? 'Refund being processed by our team.'
-          : order.refund_status === 'failed'
-            ? 'We could not process your refund automatically — please contact support.'
-            : isFailed && order.refund_status === 'none'
-              ? 'Your refund is being reviewed — contact support if you have questions.'
-              : `Refund of ₹${order.total.toFixed(0)} is on its way — usually settles within a few business days.`
+      ? refundPresentation(order.refund_status, order.provider_refund_id).message
       : isFailed && order.payment_method === 'cod'
         ? 'Cash on Delivery — nothing was charged for this order.'
         : null;

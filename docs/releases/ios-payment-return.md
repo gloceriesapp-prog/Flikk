@@ -27,3 +27,11 @@ The earlier INR 1 checkout was cancelled for store non-response. Its backend ref
 3. Produce a signed build with the new native runtime. Test the exact TestFlight artifact: successful handoff/return, cancellation, background/foreground, network interruption and relaunch recovery. Any new real checkout/payment requires separate authorization.
 4. Confirm a paid order displays confirmation for the full visible interval, then tracking, without Cart errors or the SDK waiting page.
 5. Keep public release blocked until refund and exact-build checks pass. No store upload, OTA, production deployment or refund is performed by this PR.
+
+## Automatic refund follow-up
+
+The refund worker now preserves retryability for Razorpay's specifically documented low-merchant-balance rejection. It keeps the same frozen amount and idempotency key, checks provider history before sending, and does not retry unknown permanent errors. The new customer lifecycle migration adds accepted-provider visibility and one deduplicated inbox/push-outbox message per requested, initiated, completed or attention event. Combined trip notifications are not repeated for each shop.
+
+Local verification: 34 refund/provider tests and 14 customer recovery/presentation/summary tests; a complete 185-migration build in disposable PostgreSQL and lifecycle SQL assertions passed. The test server was stopped. No historical failed jobs, provider funds or production data were changed. Apply the new migration before releasing the new customer UI; verify the live merchant rejection and reconcile the existing failed job using its preserved request identity. The fix cannot supply merchant funds or enable account-level refund permission.
+
+Reference: https://razorpay.com/docs/api/refunds/create-normal/ and https://razorpay.com/docs/api/refunds/normal-refunds-idempotent/.

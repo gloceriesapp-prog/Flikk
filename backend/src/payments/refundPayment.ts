@@ -54,4 +54,9 @@ export async function refundSource(kind: 'order' | 'trip', targetId: string, cap
   return { provider: 'razorpay', paymentId: capturedPaymentId };
 }
 export const LEGACY_REFUND_NOTE = 'Historic or unidentified payment provider: refund manually through the original provider';
-export function isDefinitiveRejection(error: unknown) { return error instanceof RazorpayError && [400, 404, 422].includes(error.providerStatus); }
+// A documented low-balance rejection can recover when merchant funds arrive.
+// Keep the frozen request/idempotency key; never rotate it for a retry.
+export function isDefinitiveRejection(error: unknown) {
+  return error instanceof RazorpayError && [400, 404, 422].includes(error.providerStatus)
+    && !(error.providerStatus === 400 && error.providerReason === 'insufficient_balance');
+}

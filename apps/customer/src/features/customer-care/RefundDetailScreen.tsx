@@ -5,7 +5,7 @@ import type { AppStackParamList } from '../../navigation/types';
 import { getRefund, type RefundUpdate } from './api';
 import { useCareDetail } from './useCareQuery';
 import { CareLayout, CareButton, QueryNotice, displayDate } from './components/CareLayout';
-import { REFUND_LABELS, refundReason } from './refundPresentation';
+import { REFUND_LABELS, refundPresentation, refundReason } from './refundPresentation';
 type Props = NativeStackScreenProps<AppStackParamList, 'RefundDetail'>;
 function RefundDetails({ navigation, route }: Props) {
     const { kind, refundId } = route.params;
@@ -36,7 +36,7 @@ function RefundDetails({ navigation, route }: Props) {
     return <CareLayout title="Refund details" onBack={() => navigation.goBack()}>
   <QueryNotice loading={query.isPending} error={query.error} hasData={!!query.data} retry={() => void query.refetch()}/>
   {refund ? <>
-   <View className="rounded-3xl bg-white p-6"><Text className="text-[32px] font-bold text-black">₹{Number(refund.amount).toFixed(2)}</Text><Text className="mt-2 text-base font-bold text-[#155DFC]">{REFUND_LABELS[refund.status]}</Text><Text className="mt-4 text-sm text-gray-600">{refundReason(refund.reason)}</Text></View>
+   <View className="rounded-3xl bg-white p-6"><Text className="text-[32px] font-bold text-black">₹{Number(refund.amount).toFixed(2)}</Text><Text className="mt-2 text-base font-bold text-[#155DFC]">{refundPresentation(refund.status, refund.provider_refund_id).title}</Text><Text accessibilityLiveRegion="polite" className="mt-3 text-sm text-gray-600">{refundPresentation(refund.status, refund.provider_refund_id).message}</Text><Text className="mt-4 text-sm text-gray-600">{refundReason(refund.reason)}</Text></View>
    <View className="gap-2 rounded-3xl bg-white p-5"><Text className="font-bold text-black">Where your refund goes</Text><Text className="text-sm text-gray-600">{refund.destination}</Text><Text className="mt-2 font-bold text-black">Linked order</Text><Text className="text-sm text-gray-600">{refund.reference}</Text><Text className="text-xs text-gray-500">Placed {displayDate(refund.order_placed_at)}</Text>{refund.updated_at ? <Text className="text-xs text-gray-500">Last recorded update {displayDate(refund.updated_at)}</Text> : null}</View>
    <CareButton label="View order summary" onPress={() => navigation.navigate('OrderSummary', { orderId: refund.target_id, isTrip: refund.kind === 'trip' })}/>
    <Text className="text-lg font-bold text-black">Refund updates</Text>

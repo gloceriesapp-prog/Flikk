@@ -8,6 +8,7 @@ export interface SummaryItem extends ApiOrderItem {
 }
 
 export interface OrderSummary {
+  refunds?: { targetId: string; kind: 'order' | 'trip'; status: string; providerRefundId?: string | null }[];
   arrival: PurchaseOrder;
   items: SummaryItem[];
   address: OrderDeliveryAddress | null;
@@ -33,6 +34,8 @@ export function buildOrderSummary(order?: ApiOrder, trip?: ApiTrip): OrderSummar
   const payment = trip ?? first;
   const items = legs.flatMap((leg) => leg.order_items.map((item) => ({ ...item, storeName: leg.stores?.name ?? 'Store' })));
   return {
+    refunds: trip?.cancellation_refund ? [{ targetId: trip.id, kind: 'trip', status: trip.cancellation_refund.status, providerRefundId: first.provider_refund_id }]
+      : legs.filter(leg => leg.refund_status && leg.refund_status !== 'none').map(leg => ({ targetId: leg.id, kind: 'order', status: leg.refund_status, providerRefundId: leg.provider_refund_id })),
     arrival: mapOrderGroup(legs),
     items,
     address: (trip ? trip.addresses : first.addresses) ?? null,

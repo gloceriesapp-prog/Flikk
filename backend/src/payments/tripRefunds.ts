@@ -1,5 +1,5 @@
 import { supabase } from '../db/supabase.js';
-import { refundRequestKey } from './razorpayClient.js';
+import { RazorpayError, refundRequestKey } from './razorpayClient.js';
 import { createOrAdoptRefund, isDefinitiveRejection, LEGACY_REFUND_NOTE, listRefunds, refundProgress, refundSource } from './refundPayment.js';
 import { logger } from '../lib/logger.js';
 export { refundProgress };
@@ -59,9 +59,10 @@ export async function processTripRefund(job: TripRefundJob): Promise<void> {
             next_attempt_at: new Date(Date.now() + 60000).toISOString() });
     }
     catch (err) {
-        logger.error({ err, tripId: job.trip_id }, '[tripRefunds] retry scheduled');
+        logger.warn({ tripId: job.trip_id, providerStatus: err instanceof RazorpayError ? err.providerStatus : undefined,
+            providerCode: err instanceof RazorpayError ? err.providerCode : undefined, providerReason: err instanceof RazorpayError ? err.providerReason : undefined }, '[tripRefunds] reconciliation delayed');
         const rejected = isDefinitiveRejection(err);
-        await save(job, { status: rejected ? 'manual_required' : job.status, last_error: rejected ? TRIP_REFUND_MANUAL_NOTE : 'Refund confirmation delayed', release: true,
+        await save(job, { status: rejected ? 'manual_required' : 'processing', last_error: rejected ? TRIP_REFUND_MANUAL_NOTE : err instanceof RazorpayError && err.providerReason === 'insufficient_balance' ? 'Refund awaiting merchant balance' : 'Refund confirmation delayed', release: true,
             next_attempt_at: new Date(Date.now() + Math.min(900000, 15000 * 2 ** Math.min(job.attempts, 6))).toISOString() });
     }
 }
