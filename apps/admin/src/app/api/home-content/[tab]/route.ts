@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { TAB_KEYS, referencedIds, validateContent } from '@/lib/homeContent';
+import { removeMissingReferences } from '@/features/home-content/missingReferences';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -114,11 +115,27 @@ export async function PUT(request: Request, context: Context) {
       missingReferences[key].push(...batch.filter(id => !found.has(id)));
     }
   }
-  if (Object.values(missingReferences).some(ids => ids.length)) return NextResponse.json({
+  const hasMissing = Object.values(missingReferences).some(ids => ids.length);
+  if (hasMissing) {
+    const { data: saved, error: savedError } = await supabaseAdmin.from('home_content').select(SELECT).eq('tab_key', auth.tab).maybeSingle();
+    if (savedError || !saved) return NextResponse.json({ error: 'Could not verify saved selections. Please try again.' }, { status: 503 });
+    let savedRefs;
+    try { savedRefs = referencedIds(validateContent(saved.content)); }
+    catch { return NextResponse.json({ error: 'Could not verify saved selections. Please try again.' }, { status: 503 }); }
+    const legacyOnly = (Object.keys(missingReferences) as (keyof typeof missingReferences)[]).every(key => {
+      const oldIds = new Set(savedRefs[key]);
+      return missingReferences[key].every(id => oldIds.has(id));
+    });
+    if (!legacyOnly) return NextResponse.json({
     code: 'CATALOGUE_REFERENCES_MISSING',
     error: 'Some saved selections refer to items removed from the catalogue. Review the affected sections below, remove unavailable selections, then publish again.',
     missingReferences,
-  }, { status: 400 });
+    }, { status: 400 });
+    if (saved.revision !== body.revision) return NextResponse.json({ error: 'Someone published a newer version. Reload the live content before publishing.' }, { status: 409 });
+    // Only stale references already saved in this exact revision are eligible
+    // for automatic repair. New invalid selections remain a validation error.
+    content = removeMissingReferences(content, missingReferences);
+  }
   const { data, error } = await supabaseAdmin
     .from('home_content')
     .update({ content, updated_by: actor.id })
@@ -136,5 +153,5 @@ export async function PUT(request: Request, context: Context) {
       { error: 'Someone published a newer version. Reload the live content before publishing.' },
       { status: 409 },
     );
-  return NextResponse.json(record(data), { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ ...record(data), ...(hasMissing ? { repairedReferences: missingReferences } : {}) }, { headers: { 'Cache-Control': 'no-store' } });
 }

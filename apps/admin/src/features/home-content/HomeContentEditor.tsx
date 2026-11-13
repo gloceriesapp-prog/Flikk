@@ -143,7 +143,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
       setLiveRevision(data.revision);
       setHistory([]);
       setMessage(
-        `Published version ${data.revision}. Customer devices receive the update automatically.`,
+        `Published version ${data.revision}. ${data.repairedReferences ? 'Removed unavailable selections from the previous saved version; valid products were preserved. ' : ''}Customer devices receive the update automatically.`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not publish.');
