@@ -70,6 +70,13 @@ export function ProductFlavoursEditor({ options, variants = [], onChange, onBusy
               <X size={16} />
             </button>
           </div>
+          <label className="text-xs font-semibold text-ink">
+            Stock available (packs)
+            <input type="number" min="0" max="1000000" step="1" value={option.stockQuantity ?? ''}
+              onChange={(e) => update(keyOf(option), () => ({ stockQuantity: e.target.value === '' ? null : Number(e.target.value) }))}
+              placeholder="Use product stock" aria-label={`Flavour ${index + 1} stock available`} className={`${FIELD_CLASS} mt-1`} />
+            <span className="mt-1 block font-normal text-muted">Blank uses product stock. Zero makes this flavour unavailable. A count limits this flavour across all pack sizes; product and pack stock still apply.</span>
+          </label>
           <FlavourPricesEditor prices={option.priceOverrides} variants={variants} onChange={(priceOverrides) => update(keyOf(option), () => ({ priceOverrides }))} />
           <ProductGalleryEditor
             urls={option.extraImageUrls ?? []}

@@ -297,7 +297,9 @@ export function CartScreen({ navigation, route }: Props) {
                     <View key={item.id}>
                       <CartItemRow item={item} availability={availabilityQuery.data?.lines.find((line) => {
                         const identity = cartIdentity(item);
-                        return line.product_id === identity.productId && line.variant_id === (identity.variantId ?? null);
+                        return line.product_id === identity.productId && line.variant_id === (identity.variantId ?? null)
+                          && (line.option_id ?? null) === (identity.optionId ?? null) && (line.cut_size ?? null) === (identity.cutSize ?? null)
+                          && (!identity.serving || line.serving === identity.serving);
                       })} />
                       {index < group.items.length - 1 && <View className="h-px bg-white" />}
                     </View>

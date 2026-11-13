@@ -68,29 +68,14 @@ export async function saveVariantMarkups(productId: string, markups: { unit_type
 
 // Flavours replace the product's list: kept ones (by id) are updated, new
 // ones inserted, missing ones deleted. Past order lines keep the flavour
-// name (option_name_at_order), so deleting one is safe.
+// name in history. Active counted reservations block deletion; the complete
+// flavour-list edit is transactional so conflicts cannot leave partial names.
 export async function saveProductOptions(productId: string,
-  options: { id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; price_overrides?: Record<string, { price: number; original_price?: number }>; is_available: boolean; sort_order: number }[]): Promise<void> {
-  const fail = () => new CatalogueSaveError(500, 'Product saved, but its flavours were not. Try saving again.');
-  const { data: existing, error } = await supabaseAdmin.from('product_options').select('id').eq('product_id', productId);
-  if (error) throw fail();
-  const keep = new Set(options.map((o) => o.id).filter(Boolean));
-  const gone = (existing ?? []).map((row) => row.id as string).filter((id) => !keep.has(id));
-  if (gone.length) {
-    const { error: delError } = await supabaseAdmin.from('product_options').delete().in('id', gone);
-    if (delError) throw fail();
-  }
-  // Two passes so renaming A->B and B->A in one save cannot hit the unique name.
-  for (const o of options.filter((o) => o.id)) {
-    const { error: tmpError } = await supabaseAdmin.from('product_options').update({ name: `~${o.id}` }).eq('id', o.id!).eq('product_id', productId);
-    if (tmpError) throw fail();
-  }
-  for (const o of options) {
-    const row = { product_id: productId, name: o.name, image_url: o.image_url, ...(o.extra_image_urls === undefined ? {} : { extra_image_urls: o.extra_image_urls }), ...(o.price_overrides === undefined ? {} : { price_overrides: o.price_overrides }), is_available: o.is_available, sort_order: o.sort_order };
-    const { error: writeError } = o.id
-      ? await supabaseAdmin.from('product_options').update(row).eq('id', o.id).eq('product_id', productId)
-      : await supabaseAdmin.from('product_options').insert(row);
-    if (writeError) throw fail();
+  options: { stock_quantity?: number | null; id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; price_overrides?: Record<string, { price: number; original_price?: number }>; is_available: boolean; sort_order: number }[]): Promise<void> {
+  const { error } = await supabaseAdmin.rpc('save_product_options', { p_product: productId, p_options: options });
+  if (error) {
+    if (error.code === 'P0409') throw new CatalogueSaveError(409, error.message);
+    throw new CatalogueSaveError(500, 'Product saved, but its flavours were not. Try saving again.');
   }
 }
 

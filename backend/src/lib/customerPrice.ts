@@ -52,7 +52,7 @@ function customerProduct<T extends PricedProduct>(product: T): T {
       const mrp = override?.original_price ?? variant?.original_price ?? product.original_price;
       return [variant?.id ?? 'base', { price: variant ? customerUnitPrice(storePrice, Number(variant.platform_markup ?? 0), mrp) : storePrice, original_price: mrp ?? null }];
     }));
-    return { ...option, customer_prices };
+    return { ...option, ...(option.is_available === undefined ? {} : { is_available: option.is_available !== false && option.stock_quantity !== 0 }), customer_prices };
   });
   delete shown.waive_commission;
   return shown as T;

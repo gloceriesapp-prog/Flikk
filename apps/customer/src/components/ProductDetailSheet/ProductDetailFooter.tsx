@@ -17,6 +17,7 @@ import { CUT_SIZE_LABEL, SERVING_LABEL, cartLineId, type CutSize, type Serving }
 import type { CartPreorder } from '../../store/preorder';
 
 import type { Product, ProductOption } from '../../screens/home/products/types';
+import { canAddFlavourPack } from '../FlavourPicker/flavourStock';
 import { flavourPrice } from '../FlavourPicker/flavourPricing';
 import { discountPercentOf } from './ProductVariantOptions';
 
@@ -32,6 +33,7 @@ interface Props {
     label: string;
     price: number;
     originalPrice?: number;
+    availableQuantity?: number;
   };
   // Chosen chicken cut (ProductCutOptions); a separate cart line per cut.
   cutSize?: CutSize;
@@ -81,6 +83,8 @@ export function ProductDetailFooter({
     (state) =>
       state.items.find((item) => item.id === id)?.quantity ?? 0
   );
+
+  const canAdd = useCartStore(state => canAddFlavourPack(product, option, { id: variantId, availableQuantity: selectedVariant?.availableQuantity ?? product.availableQuantity }, state.items, quantity === 0 ? product.preorder?.minQty ?? 1 : 1));
 
   const incrementItem = useCartStore(
     (state) => state.incrementItem
@@ -152,7 +156,7 @@ export function ProductDetailFooter({
         </View>
       ) : quantity === 0 ? (
         /* ADD TO CART */
-        <Pressable
+        <Pressable disabled={!canAdd}
           onPress={() =>
             addToCart({
               isAvailable: availability.isAvailable,
@@ -247,7 +251,7 @@ export function ProductDetailFooter({
 
           {/* PLUS */}
           <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`}
-            onPress={() => incrementItem(id)}
+            disabled={!canAdd} onPress={() => incrementItem(id)}
             hitSlop={12}
             className="h-8 w-8 items-center justify-center"
           >

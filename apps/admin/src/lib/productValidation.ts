@@ -37,7 +37,7 @@ export interface ProductWriteInput {
   stockStatus: StockStatus;
   imageUrl?: string | null;
   // Flavours (product_options). Absent leaves them unchanged; a list replaces them.
-  options?: { id?: string | null; name: string; imageUrl?: string | null; extraImageUrls?: string[] | null; priceOverrides?: Record<string, { price: number; originalPrice?: number }>; isAvailable?: boolean }[] | null;
+  options?: { stockQuantity?: number | null; id?: string | null; name: string; imageUrl?: string | null; extraImageUrls?: string[] | null; priceOverrides?: Record<string, { price: number; originalPrice?: number }>; isAvailable?: boolean }[] | null;
   // Gallery photos after the cover (products.extra_image_urls). Absent leaves
   // the saved list alone; an array replaces it.
   extraImageUrls?: string[] | null;
@@ -184,7 +184,7 @@ export const MAX_PRODUCT_OPTIONS = 20;
 // trimmed, required, at most 60 characters and unique per product (matches
 // product_options' checks); blank rows from the form are an error, not dropped.
 export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
-  { id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; price_overrides?: Record<string, { price: number; original_price?: number }>; is_available: boolean; sort_order: number }[] | undefined {
+  { stock_quantity?: number | null; id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; price_overrides?: Record<string, { price: number; original_price?: number }>; is_available: boolean; sort_order: number }[] | undefined {
   if (input.options == null) return undefined;
   if (!Array.isArray(input.options)) throw new Error('options must be a list.');
   if (input.options.length > MAX_PRODUCT_OPTIONS) throw new Error(`Up to ${MAX_PRODUCT_OPTIONS} flavours per product.`);
@@ -197,6 +197,7 @@ export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
     seen.add(name.toLowerCase());
     const image = option.imageUrl?.trim() || null;
     if (image && !/^https?:\/\//i.test(image)) throw new Error(`Flavour "${name}": upload the photo again.`);
+    if (option.stockQuantity !== undefined && option.stockQuantity !== null && (!Number.isInteger(option.stockQuantity) || option.stockQuantity < 0 || option.stockQuantity > 1000000)) throw new Error(`Flavour "${name}": stock must be a whole number from 0 to 1000000.`);
     const extras = toExtraImageUrls(option);
     let prices: Record<string, { price: number; original_price?: number }> | undefined;
     if (option.priceOverrides !== undefined) {
@@ -209,7 +210,7 @@ export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
         prices[pack] = { price: value.price, ...(value.originalPrice === undefined ? {} : { original_price: value.originalPrice }) };
       }
     }
-    return { id: option.id ?? null, name, image_url: image, ...(extras === undefined ? {} : { extra_image_urls: extras }), ...(prices === undefined ? {} : { price_overrides: prices }), is_available: option.isAvailable !== false, sort_order: index };
+    return { ...(option.stockQuantity === undefined ? {} : { stock_quantity: option.stockQuantity }), id: option.id ?? null, name, image_url: image, ...(extras === undefined ? {} : { extra_image_urls: extras }), ...(prices === undefined ? {} : { price_overrides: prices }), is_available: option.isAvailable !== false, sort_order: index };
   });
 }
 

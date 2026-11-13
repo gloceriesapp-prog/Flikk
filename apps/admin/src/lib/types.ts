@@ -488,6 +488,7 @@ export const SERVING_LABEL: Record<Serving, string> = { chilled: 'Chilled', room
 
 // One flavour of a product, with optional store-price overrides per pack.
 export interface ProductOption {
+  stockQuantity?: number | null;
   priceOverrides?: Record<string, { price: number; originalPrice?: number }>;
   /** Stable identity for an unsaved editor row; never persisted. */
   editorId?: string;

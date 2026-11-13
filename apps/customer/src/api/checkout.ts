@@ -45,7 +45,7 @@ export function fetchCheckoutQuote(items: CreateOrderItem[], promoCode?: string,
 export interface CartAvailability {
   eligible: boolean;
   issues: { code: string; message: string }[];
-  lines: { product_id: string; variant_id: string | null; quantity: number;
+  lines: { product_id: string; variant_id: string | null; option_id?: string | null; cut_size?: CutSize | null; serving?: Serving | null; quantity: number;
     eligible: boolean; status: string; message: string | null; availableQuantity: number | null }[];
 }
 export function fetchCartAvailability(items: CreateOrderItem[], addressId?: string): Promise<CartAvailability> {

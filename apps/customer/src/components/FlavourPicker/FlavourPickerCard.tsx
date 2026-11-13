@@ -3,6 +3,8 @@ import { AppImage } from '../AppImage';
 import { RupeePrice } from '../RupeePrice';
 import { MAIN_PRODUCT_CHOICE } from '../ProductDetailSheet/flavourSelection';
 import { flavourPacks, flavourPrice } from './flavourPricing';
+import { flavourAvailableQuantity, canAddFlavourPack } from './flavourStock';
+import { stockLabel } from '../stockLabel';
 import { styles } from './FlavourPicker.styles';
 import type { Product, ProductOption } from '../../screens/home/products/types';
 import { cartLineId, type CutSize, type Serving } from '../../store/cartIdentity';
@@ -21,6 +23,9 @@ export function FlavourPickerCard({ product, option, pack, isAvailable, availabi
   const decrement = useCartStore(state => state.decrementItem);
   const { price, originalPrice, unitPriceLabel } = flavourPrice(product, chosen, pack.id ? { ...pack, id: pack.id } : undefined);
   const unavailable = !isAvailable || !option.isAvailable || pack.isAvailable === false;
+  const availableCount = flavourAvailableQuantity(product, chosen, pack);
+  const lowStock = stockLabel(availableCount, !unavailable);
+  const atStockLimit = useCartStore(state => !canAddFlavourPack(product, chosen, pack, state.items, quantity === 0 ? product.preorder?.minQty ?? 1 : 1));
   const needsSlot = !!product.preorder && !preorder;
   function add() {
     addToCart({ id, productId: product.id, variantId: pack.id, optionId: chosen?.id, optionName: chosen?.name,
@@ -35,8 +40,8 @@ export function FlavourPickerCard({ product, option, pack, isAvailable, availabi
         {quantity > 0 ? <View style={styles.stepper}>
           <Pressable onPress={() => decrement(id)} accessibilityRole="button" accessibilityLabel={`Remove ${option.name}, ${pack.label}`} style={styles.step}><Text style={styles.actionText}>−</Text></Pressable>
           <Text style={styles.actionText}>{quantity}</Text>
-          <Pressable onPress={add} disabled={unavailable || needsSlot} accessibilityRole="button" accessibilityLabel={`Add another ${option.name}, ${pack.label}`} style={styles.step}><Text style={styles.actionText}>+</Text></Pressable>
-        </View> : <Pressable onPress={add} disabled={unavailable || needsSlot} accessibilityRole="button"
+          <Pressable onPress={add} disabled={unavailable || needsSlot || atStockLimit} accessibilityRole="button" accessibilityLabel={`Add another ${option.name}, ${pack.label}`} style={styles.step}><Text style={styles.actionText}>+</Text></Pressable>
+        </View> : <Pressable onPress={add} disabled={unavailable || needsSlot || atStockLimit} accessibilityRole="button"
           accessibilityLabel={`Add ${option.name}, ${pack.label} to cart`} style={[styles.addButton, (unavailable || needsSlot) && styles.disabled]}>
           <Text style={styles.actionText}>{unavailable ? 'Unavailable' : needsSlot ? 'Pick a slot' : 'ADD'}</Text>
         </Pressable>}
@@ -44,6 +49,7 @@ export function FlavourPickerCard({ product, option, pack, isAvailable, availabi
     </View>
     <View style={styles.details}>
       <Text style={styles.name} numberOfLines={2}>{option.name}</Text>
+      {lowStock ? <Text style={[styles.hint, { color: '#D92D20' }]}>{lowStock}</Text> : null}
       <Text style={styles.pack}>{pack.label}</Text>
       <View style={styles.priceRow}><RupeePrice amount={price} size={22} />
         {originalPrice != null && originalPrice > price ? <RupeePrice amount={originalPrice} size={14} strike color="#868B95" /> : null}

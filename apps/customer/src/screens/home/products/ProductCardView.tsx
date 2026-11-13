@@ -1,7 +1,8 @@
 import { memo, useState } from 'react';
-import { Add01Icon, FlashIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
+import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
+import { stockLabel } from '../../../components/stockLabel';
 import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
 import { RupeePrice } from '../../../components/RupeePrice';
@@ -9,7 +10,6 @@ import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartId
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
 import { useProductAvailability } from './useProductAvailability';
-import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import type { Product } from './types';
 
 // Categories where a veg/non-veg mark is meaningful — only these show the dot.
@@ -35,12 +35,12 @@ interface Props {
   // placements outside a big grid. Passed as primitives (not the availability
   // object) so React.memo's default shallow compare bails on a tick that
   // didn't actually change this card's availability.
-  estimatedMinutes: number;
+  estimatedMinutes?: number;
   isAvailable: boolean;
   availabilityLabel?: string;
 }
 
-function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscountBadge = false, compact = false, onDark = false, onPress, onAdd, estimatedMinutes, isAvailable, availabilityLabel }: Props) {
+function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscountBadge = false, compact = false, onDark = false, onPress, onAdd, isAvailable, availabilityLabel }: Props) {
   const {
     id,
     name,
@@ -60,6 +60,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize] = useState(chips[0]);
 
+  const remainingStock = stockLabel(product.availableQuantity, product.isAvailable !== false);
   const cutSize = quickAddCut(product);
   const lineId = cartLineId(id, product.defaultVariantId, cutSize);
   const quantity = useCartStore((state) => state.items.find((item) => item.id === lineId)?.quantity ?? 0);
@@ -163,26 +164,13 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
         <Text className={`text-[13px] font-semibold leading-[17px] ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
           {name}
         </Text>
-        {/* A pre-order arrives in its booked slot, not in minutes. */}
+        {remainingStock ? <Text className="text-[11px] font-semibold leading-[15px]" style={{ color: onDark ? '#FFB4AB' : '#D92D20' }}>{remainingStock}</Text> : null}
+        {/* Keep pre-order minimums; delivery estimates belong in the header. */}
         {product.preorder ? (
           <View className={`self-start rounded-md px-1.5 py-0.5 ${onDark ? 'bg-white/15' : 'bg-[#F1EAF4]'}`}>
             <Text className={`text-[10px] font-semibold ${onDark ? 'text-white' : 'text-[#4A2C5A]'}`}>pre-order · min {product.preorder.minQty}</Text>
           </View>
-        ) : (
-          <View className="self-start flex-row items-center gap-0.5 rounded-md bg-[#F3F4F6] border border-gray-100 px-1.5 py-0.5">
-            <AppIcon
-              icon={FlashIcon}
-              size={10}
-              color="#155dfc"
-              fill="#155dfc"
-              strokeWidth={1.5}
-            />
-
-            <Text className="text-[10px] font-semibold text-[#1F2937] uppercase">
-              {estimatedMinutes} mins
-            </Text>
-          </View>
-        )}
+        ) : null}
       </View>
     </Pressable>
   );
@@ -208,14 +196,12 @@ export const ProductCardView = memo(ProductCardViewImpl);
 export function SelfServiceProductCardView(
   props: Omit<Props, 'estimatedMinutes' | 'isAvailable' | 'availabilityLabel'>,
 ) {
-  const estimatedMinutes = useDeliveryEstimateMinutes();
   const availability = useProductAvailability(props.product);
   const [pickerOpen, setPickerOpen] = useState(false);
   return (
     <><ProductCardView
       {...props}
       onAdd={() => setPickerOpen(true)}
-      estimatedMinutes={estimatedMinutes}
       isAvailable={availability.isAvailable}
       availabilityLabel={availability.label}
     /><FlavourPickerSheet product={props.product} visible={pickerOpen} onClose={() => setPickerOpen(false)} isAvailable={availability.isAvailable} availabilityLabel={availability.label} /></>
