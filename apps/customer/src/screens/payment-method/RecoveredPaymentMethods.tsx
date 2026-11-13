@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { NetbankingBank, PaymentTarget } from '../../api/payments';
-import { detectInstalledUpiApps } from '../../payments/installedUpiApps';
-import type { UpiApp } from '../../payments/upiApps';
+import { useInstalledUpiApps } from '../../payments/useInstalledUpiApps';
+import { UpiDiscoveryStatus } from '../../payments/UpiDiscoveryStatus';
 import { usePaymentAvailability } from '../../payments/usePaymentAvailability';
 import type { PaymentMethod } from '../../payments/paymentMethod';
 import type { AppStackParamList } from '../../navigation/types';
@@ -24,14 +24,7 @@ export function RecoveredPaymentMethods({ target, navigation }: Props) {
   const [bankPickerVisible, setBankPickerVisible] = useState(false);
   const recovery = useRecoveredPayment(target, navigation);
   const { allowed, directUpiAvailable, loaded: paymentAvailabilityLoaded } = usePaymentAvailability();
-  const [apps, setApps] = useState<UpiApp[]>([]);
-  const [appsReady, setAppsReady] = useState(false);
-  useEffect(() => {
-    let active = true;
-    detectInstalledUpiApps().then(result => { if (active) setApps(result); }).catch(() => {})
-      .finally(() => { if (active) setAppsReady(true); });
-    return () => { active = false; };
-  }, []);
+  const { apps, loading: appsLoading, error: discoveryError, retry: retryDiscovery } = useInstalledUpiApps();
   const total = Number(recovery.query.data?.record.total);
   const state = recovery.query.data?.state;
   const checking = state === 'pending' || state === 'reconciling';
@@ -58,10 +51,11 @@ export function RecoveredPaymentMethods({ target, navigation }: Props) {
       onPress={() => void recovery.query.refetch()} className="rounded-2xl bg-white px-5 py-4">
       <Text className="text-center font-semibold text-primary">Check payment status</Text>
     </Pressable> : null}
-    {appsReady ? <View pointerEvents={recovery.canPay ? 'auto' : 'none'} accessibilityElementsHidden={!recovery.canPay}
+    {allowed.online && <UpiDiscoveryStatus loading={appsLoading} error={discoveryError} count={apps.length} onRetry={() => void retryDiscovery()} />}
+    <View pointerEvents={recovery.canPay ? 'auto' : 'none'} accessibilityElementsHidden={!recovery.canPay}
       importantForAccessibility={recovery.canPay ? 'auto' : 'no-hide-descendants'} style={{ opacity: recovery.canPay ? 1 : 0.45 }}>
       <PaymentMethodList method={null} upiApps={apps} onSelect={select} onWalletSelect={(method, contact) => void select(method, undefined, contact)} allowed={allowed} upiOnly={recovery.canResumeUpi} />
-    </View> : <Text className="text-sm text-ink/60">Finding your payment apps…</Text>}
+    </View>
     {checking && allowed.cod && <Pressable disabled={recovery.busy} accessibilityRole="button"
       onPress={() => Alert.alert('Pay cash on delivery?', 'We’ll check the online payment first. Any delayed charge will be refunded when required.', [
         { text: 'Not now', style: 'cancel' }, { text: 'Switch to cash', onPress: () => void recovery.select('cod') },

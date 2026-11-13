@@ -2,15 +2,14 @@ import { NetbankingBankPicker } from './components/NetbankingBankPicker';
 import type { NetbankingBank } from '../../api/payments';
 import { RecoveredPaymentMethods } from './RecoveredPaymentMethods';
 import { fetchPaymentPreference, selectPaymentPreference } from '../../api/payments';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { colors } from '../../theme/tokens';
 import { usesDirectUpiIntent } from '../../payments/upiIntent';
-import { detectInstalledUpiApps } from '../../payments/installedUpiApps';
-import type { UpiApp } from '../../payments/upiApps';
+import { useInstalledUpiApps } from '../../payments/useInstalledUpiApps';
+import { UpiDiscoveryStatus } from '../../payments/UpiDiscoveryStatus';
 import type { AppStackParamList } from '../../navigation/types';
 import { PaymentMethodList } from './components/PaymentMethodList';
 import type { PaymentMethod } from '../../payments/paymentMethod';
@@ -28,15 +27,7 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
   const [error, setError] = useState('');
   const customerId = useAuthStore(state => state.customerId);
   const { allowed, directUpiAvailable, loaded: paymentAvailabilityLoaded } = usePaymentAvailability();
-  const [apps, setApps] = useState<UpiApp[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let alive = true;
-    detectInstalledUpiApps().then((result) => { if (alive) setApps(result); })
-      .catch(() => { if (alive) setError('Could not check installed UPI apps. Reopen payment methods to try again.'); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, []);
+  const { apps, loading, error: discoveryError, retry: retryDiscovery } = useInstalledUpiApps();
   const preference = useQuery({ queryKey: ['payment-preference', customerId], queryFn: fetchPaymentPreference, enabled: fromProfile && !!customerId });
   async function select(method: PaymentMethod, bank?: NetbankingBank, contact?: string) {
     if (method === 'netbanking' && !bank) { setBankPickerVisible(true); return; }
@@ -77,8 +68,8 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
         {!!error && <Text className="text-red-600">{error}</Text>}
         {saving && <Text className="text-ink/60">Saving your preference…</Text>}
         <View pointerEvents={saving ? "none" : "auto"}>
-        {loading ? <ActivityIndicator color={colors.limeDeep} /> :
-          <PaymentMethodList method={fromProfile ? preference.data?.method ?? null : route.params.selectedMethod} upiApps={apps} onSelect={select} onWalletSelect={(method, contact) => void select(method, undefined, contact)} allowed={allowed} />}
+        {allowed.online && <UpiDiscoveryStatus loading={loading} error={discoveryError} count={apps.length} onRetry={() => void retryDiscovery()} />}
+          <PaymentMethodList method={fromProfile ? preference.data?.method ?? null : route.params.selectedMethod} upiApps={apps} onSelect={select} onWalletSelect={(method, contact) => void select(method, undefined, contact)} allowed={allowed} />
         </View>
       </KeyboardAwareScrollView>
       <NetbankingBankPicker visible={bankPickerVisible} selectedCode={route.params.selectedNetbankingBank?.code}
