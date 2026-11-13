@@ -12,12 +12,14 @@ export function ContentTiles({
   onOpen,
   featuredCategories = false,
   archedCategories = false,
+  freshCategories = false,
 }: {
   section: HomeContentSection;
   products: ApiProduct[];
   onOpen: (item: HomeContentItem) => void;
   featuredCategories?: boolean;
   archedCategories?: boolean;
+  freshCategories?: boolean;
 }) {
   const items = section.items.filter((item) => item.enabled).slice(0, section.limit);
   const imageForItem = (item: HomeContentItem) =>
@@ -55,7 +57,7 @@ export function ContentTiles({
           )}
         </Pressable>
       );
-    const arched = archedCategories || section.id === 'shop-fresh';
+    const arched = freshCategories || archedCategories || section.id === 'shop-fresh';
     return (
       <Pressable
         accessibilityRole="button"

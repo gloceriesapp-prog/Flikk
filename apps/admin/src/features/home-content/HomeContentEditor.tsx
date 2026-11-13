@@ -3,36 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUp, ArrowDown } from '@/components/icons';
 import {
-  createSection,
   addMissingFestivalSections,
   createFestivalSections,
-  SECTION_KINDS,
   TAB_KEYS,
   validateContent,
   type HomeContentDocument,
   type HomeContentKey,
   type HomeContentRecord,
-  type SectionKind,
 } from '@/lib/homeContent';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { Field, inputClass, Toggle } from './Fields';
 import { SectionEditor } from './SectionEditor';
 import { missingReferenceSummary, parseMissingReferences, removeMissingReferences, type MissingReferences } from './missingReferences';
+import { SectionComposer } from './SectionComposer';
+import { insertContentSection, SECTION_KIND_LABELS } from './sectionInsertion';
 
-const LABELS = { grocery: 'Grocery', fresh: 'Fruit & Veg', regional: 'Regional', festivals: 'Festivals', meat: 'Meat' };
-// Human labels for the section-kind picker + the section list. Unlisted kinds
-// fall back to the raw key, so this never has to stay exhaustive.
-const KIND_LABELS: Record<string, string> = {
-  products: 'Products',
-  categories: 'Category tiles',
-  brands: 'Brands',
-  stores: 'Shops',
-  banner: 'Image banner',
-  hero: 'Hero',
-  festival: 'Festival shelf',
-  footer: 'Footer',
-};
-const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind;
+const LABELS = { grocery: 'Grocery', fresh: 'Fruit & Veg', regional: 'Udupi / Regional', festivals: 'Festivals', meat: 'Meat' };
+const kindLabel = (kind: keyof typeof SECTION_KIND_LABELS) => SECTION_KIND_LABELS[kind];
 type HistoryEntry = { revision: number; changed_at: string; content: HomeContentDocument };
 export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: HomeContentKey }) {
   const [tab, setTab] = useState<HomeContentKey>(initialTab);
@@ -45,7 +32,6 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [liveRevision, setLiveRevision] = useState(0);
-  const [addKind, setAddKind] = useState<SectionKind>('products');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const dirty = Boolean(
     draft && record && JSON.stringify(draft) !== JSON.stringify(record.content),
@@ -324,6 +310,11 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
                   {draft.sections.filter((s) => s.enabled).length} visible
                 </span>
               </div>
+              <SectionComposer sections={draft.sections} selectedId={selectedId} onAdd={(section, placement) => {
+                setDraft({ ...draft, sections: insertContentSection(draft.sections, section, selectedId, placement) });
+                setSelectedId(section.id);
+                setMessage(section.kind === 'banner' ? 'Image ad added to draft. Upload its image, check visibility and publish when ready.' : 'Section added to draft. Choose its content and publish when ready.');
+              }} />
               <div className="space-y-2">
                 {draft.sections.map((section, index) => (
                   <div
@@ -363,19 +354,9 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
                       >
                         <ArrowDown size={14} className="inline-block" /> Down
                       </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDraft({
-                            ...draft,
-                            sections: draft.sections.map((s) =>
-                              s.id === section.id ? { ...s, enabled: !s.enabled } : s,
-                            ),
-                          })
-                        }
-                      >
-                        {section.enabled ? 'Hide' : 'Show'}
-                      </button>
+                      <Toggle label="Visible" checked={section.enabled} onChange={enabled => setDraft({
+                        ...draft, sections: draft.sections.map(item => item.id === section.id ? { ...item, enabled } : item),
+                      })} />
                       <button
                         type="button"
                         onClick={() =>
@@ -391,36 +372,6 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
                     </div>
                   </div>
                 ))}
-              </div>
-              <div className="flex gap-2 border-t border-slate-100 pt-3">
-                <select
-                  aria-label="New section type"
-                  value={addKind}
-                  onChange={(event) => setAddKind(event.target.value as SectionKind)}
-                  className={`${inputClass} min-w-0 flex-1`}
-                >
-                  {SECTION_KINDS.map((kind) => (
-                    <option key={kind} value={kind}>
-                      {kindLabel(kind)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={draft.sections.length >= 40}
-                  onClick={() => {
-                    const section = createSection(
-                      addKind,
-                      `section-${crypto.randomUUID()}`,
-                      'New section',
-                    );
-                    setDraft({ ...draft, sections: [...draft.sections, section] });
-                    setSelectedId(section.id);
-                  }}
-                  className="rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-30"
-                >
-                  Add
-                </button>
               </div>
             </aside>
             <main className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
