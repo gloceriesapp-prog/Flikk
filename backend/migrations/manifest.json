@@ -756,6 +756,10 @@
     {
       "file": "20261114040000_foreign_key_indexes.sql",
       "sha256": "80179f2e8a382882306c0950ad38faa6ea49fc7b26f8fc69d9f8074134e179f2"
+    },
+    {
+      "file": "20261114150000_home_section_products_realtime.sql",
+      "sha256": "2bca8607daa3c8519c2a6d35f772c8c83bedb45efe4cb0e28b840462faad611b"
     }
   ]
 }

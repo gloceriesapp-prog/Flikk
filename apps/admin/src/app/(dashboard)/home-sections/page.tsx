@@ -137,7 +137,9 @@ export default function HomeSectionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sections }),
       });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Save failed.');
+      if (!res.ok) throw new Error(res.status === 401
+        ? 'Your admin session expired. Sign in again in another tab, then retry Save. Your edits are still here.'
+        : (await res.json()).error ?? 'Save failed.');
       for (const section of dirtyPins) {
         const pinRes = await fetch('/api/home-sections/products', {
           method: 'PUT',
@@ -147,7 +149,7 @@ export default function HomeSectionsPage() {
         if (!pinRes.ok) throw new Error(`${labelFor(section)}: ${(await pinRes.json()).error ?? 'could not save the products.'}`);
       }
       await load();
-      toast.success('Home sections saved', 'Customers see the change within a minute.');
+      toast.success('Home sections saved');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
     } finally {
@@ -174,7 +176,7 @@ export default function HomeSectionsPage() {
         setOpenPicker(created.key);
       }
       setNewTitle('');
-      toast.success('Section added', 'Pick its products, switch it on, then save.');
+      toast.success('Section added', 'Pick products and save to show it on Home.');
     } catch (err) {
       toast.error('Could not add the section', err instanceof Error ? err.message : undefined);
     } finally {
@@ -219,7 +221,7 @@ export default function HomeSectionsPage() {
         </form>
       </div>
 
-      {error && <p className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p>}
+      {error && <p role="alert" className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p>}
 
       <div className="flex flex-col gap-3">
         {sections.map((s, i) => {
@@ -243,6 +245,7 @@ export default function HomeSectionsPage() {
                       )}
                     </div>
                     <p className="text-xs text-muted">{s.key}</p>
+                    {s.is_custom && !s.enabled && <p className="mt-1 text-xs text-muted">Hidden from customers. Check Shown and save to publish.</p>}
                   </div>
                 </div>
 

@@ -75,9 +75,9 @@ it('PUT saves layout, schedule and the custom flag; a custom section needs a tit
   expect(backwards.status).toBe(400);
 });
 
-it('POST adds a hidden custom section at the end; DELETE only removes custom ones', async () => {
+it('POST enables a new custom section at the end; DELETE only removes custom ones', async () => {
   expect((await sections.POST(json({ title: 'Monsoon must-haves' }, 'POST'))).status).toBe(201);
-  expect(db.inserted).toMatchObject({ title: 'Monsoon must-haves', enabled: false, is_custom: true, sort_index: 130 });
+  expect(db.inserted).toMatchObject({ title: 'Monsoon must-haves', enabled: true, is_custom: true, sort_index: 130 });
   expect((db.inserted as { key: string }).key).toMatch(/^custom-[a-z0-9]{8}$/);
   expect((await sections.POST(json({ title: '' }, 'POST'))).status).toBe(400);
   expect((await sections.DELETE(new Request('http://admin/api?key=trending', { method: 'DELETE' }))).status).toBe(400);

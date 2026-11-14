@@ -37,8 +37,8 @@ function contentChanged(type: 'content' | 'settings' | 'config') {
   broadcast({ type });
 }
 export const HOME_SECTION_TABLES = ['festival_greeting', 'festival_sections', 'festival_section_products',
-  'seasonal_banner', 'seasonal_tiles', 'home_sections', 'home_tab_banners', 'home_tab_tiles', 'categories', 'category_sections', 'sub_categories'] as const;
-export const HOME_SECTION_CACHE_PATHS = ['/home/festival-greeting', '/home/festival-section', '/home/seasonal-section', '/home/sections'] as const;
+  'seasonal_banner', 'seasonal_tiles', 'home_sections', 'home_section_products', 'home_tab_banners', 'home_tab_tiles', 'categories', 'category_sections', 'sub_categories'] as const;
+export const HOME_SECTION_CACHE_PATHS = ['/home/festival-greeting', '/home/festival-section', '/home/seasonal-section', '/home/sections', '/browse/home-picks'] as const;
 export function homeSectionsChanged() {
   for (const path of HOME_SECTION_CACHE_PATHS) invalidateShortCache(path);
   contentChanged('content');
