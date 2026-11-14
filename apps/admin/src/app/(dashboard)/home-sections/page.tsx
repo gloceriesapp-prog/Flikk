@@ -149,7 +149,7 @@ export default function HomeSectionsPage() {
         if (!pinRes.ok) throw new Error(`${labelFor(section)}: ${(await pinRes.json()).error ?? 'could not save the products.'}`);
       }
       await load();
-      toast.success('Home sections saved', 'Customers see the change within a minute.');
+      toast.success('Home sections saved');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
     } finally {
@@ -176,7 +176,7 @@ export default function HomeSectionsPage() {
         setOpenPicker(created.key);
       }
       setNewTitle('');
-      toast.success('Section added', 'Pick its products, switch it on, then save.');
+      toast.success('Section added', 'Pick products and save to show it on Home.');
     } catch (err) {
       toast.error('Could not add the section', err instanceof Error ? err.message : undefined);
     } finally {
@@ -245,7 +245,7 @@ export default function HomeSectionsPage() {
                       )}
                     </div>
                     <p className="text-xs text-muted">{s.key}</p>
-                    {s.is_custom && !s.enabled && <p className="mt-1 text-xs text-muted">Hidden from customers. Switch on Shown, then Save to publish.</p>}
+                    {s.is_custom && !s.enabled && <p className="mt-1 text-xs text-muted">Hidden from customers. Check Shown and save to publish.</p>}
                   </div>
                 </div>
 

@@ -152,8 +152,8 @@ export async function PUT(request: Request) {
   }
 }
 
-// New founder-made product section, added at the end and hidden until it
-// has products and is switched on.
+// New sections are shown by default. The customer app renders the section
+// once it has an eligible saved product. Admin can still switch it off.
 export async function POST(request: Request) {
   const { denied } = await requireAdmin();
   if (denied) return denied;
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
       .order('sort_index', { ascending: false }).limit(1).maybeSingle();
     if (lastError) throw lastError;
     const { error } = await supabaseAdmin.from('home_sections').insert({
-      key: newCustomSectionKey(), title, enabled: false, is_custom: true, display_layout: layout, sort_index: (last?.sort_index ?? 0) + 10,
+      key: newCustomSectionKey(), title, enabled: true, is_custom: true, display_layout: layout, sort_index: (last?.sort_index ?? 0) + 10,
     });
     if (error) throw error;
     return NextResponse.json(await listSections(), { status: 201 });
