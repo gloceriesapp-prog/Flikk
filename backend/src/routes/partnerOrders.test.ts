@@ -16,6 +16,8 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
   },
   rpc: async (...args: unknown[]) => { db.rpcs.push(args); return { data: db.row, error: db.error }; },
 } }));
+const live = vi.hoisted(() => ({ attach: vi.fn() }));
+vi.mock('../partner/orderStream.js', () => ({ attachPartnerOrderStream: live.attach }));
 import { partnerRouter } from './partner.js';
 async function request(method: string, path: string, query: Record<string, unknown> = {}) {
   const handler = partnerRouter.stack.find(layer => layer.route?.path === path && (layer.route as unknown as { methods: Record<string, boolean> }).methods[method])!.route!.stack.at(-1)!.handle as RequestHandler;
@@ -94,4 +96,10 @@ it('rejects array filters and unsupported view/summary contracts', async () => {
 it('coalesces simultaneous lightweight reads for the same store', async () => {
   await Promise.all([request('get', '/orders/updates'), request('get', '/orders/updates')]);
   expect(db.filters.filter(row => row[0] === 'from' && row[1] === 'orders')).toHaveLength(1);
+});
+
+it('derives live-stream scope from the authenticated store, ignoring requested foreign scopes', async () => {
+  const { res, error } = await request('get', '/orders/events', { store_id: 'foreign-store' });
+  expect(error).toBeUndefined();
+  expect(live.attach).toHaveBeenLastCalledWith(expect.objectContaining({ user: { id: 'owner' } }), res, 'owned-store');
 });
