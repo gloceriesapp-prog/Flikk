@@ -48,7 +48,7 @@ export interface ApiProduct {
   bulk_min_kg?: number | string | null;
   show_unit_price?: boolean | null;
   // Flavours; absent on feeds from before they existed.
-  product_options?: { customer_prices?: Record<string, {price: number; original_price?: number | null}>; id: string; name: string; image_url: string | null; extra_image_urls?: string[] | null; sort_order: number; is_available: boolean }[] | null;
+  product_options?: { stock_quantity?: number | null; customer_prices?: Record<string, {price: number; original_price?: number | null}>; id: string; name: string; image_url: string | null; extra_image_urls?: string[] | null; sort_order: number; is_available: boolean }[] | null;
   // 'chilled' / 'room_temperature'; absent on feeds from before it existed.
   serving_options?: string[] | null;
   // Pre-order only (Home Pre-orders section); absent on older feeds.
@@ -115,6 +115,7 @@ export function mapApiProduct(row: ApiProduct): Product {
 
   return {
     storeOpening: store ? { isActive: store.is_active !== false, openTime: store.open_time, closeTime: store.close_time, availabilityOverride: store.availability_override, availabilityOverrideUntil: store.availability_override_until } : undefined,
+    totalAvailableQuantity: row.stock_tracking_enabled ? row.stock_quantity ?? undefined : undefined,
     availableQuantity: defaultVariant?.stock_quantity ?? (row.stock_tracking_enabled ? row.stock_quantity : undefined) ?? undefined,
     id: row.id,
     name: row.name,
@@ -137,7 +138,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     imageUrls: productImages(row),
     options: row.product_options?.length
       ? [...row.product_options].sort((a, b) => a.sort_order - b.sort_order)
-        .map((o) => ({ id: o.id, name: o.name, imageUrl: o.image_url ?? undefined, imageUrls: productImages(o), isAvailable: o.is_available, prices: o.customer_prices ? Object.fromEntries(Object.entries(o.customer_prices).map(([key, value]) => [key, { price: value.price, originalPrice: value.original_price ?? undefined, unitPriceLabel: unitPrice(variants.find(v => v.id === key) ? { ...variants.find(v => v.id === key)!, price: value.price } : undefined) }])) : undefined }))
+        .map((o) => ({ id: o.id, name: o.name, imageUrl: o.image_url ?? undefined, imageUrls: productImages(o), isAvailable: o.is_available && o.stock_quantity !== 0, availableQuantity: o.stock_quantity ?? undefined, prices: o.customer_prices ? Object.fromEntries(Object.entries(o.customer_prices).map(([key, value]) => [key, { price: value.price, originalPrice: value.original_price ?? undefined, unitPriceLabel: unitPrice(variants.find(v => v.id === key) ? { ...variants.find(v => v.id === key)!, price: value.price } : undefined) }])) : undefined }))
       : undefined,
     servingOptions: SERVINGS.filter((s) => row.serving_options?.includes(s)),
     preorder: row.preorder_enabled ? { minQty: Math.max(1, Number(row.preorder_min_qty ?? 1)), leadDays: Math.max(0, Number(row.preorder_lead_days ?? 0)) } : undefined,
@@ -153,7 +154,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     // Product object identical to how it looked before this field existed.
     variants:
       variants.length > 1
-        ? variants.map((v) => ({ isAvailable: inventoryIssue(row, v) === undefined, unavailableReason: inventoryIssue(row, v), id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined, unitPriceLabel: unitPrice(v) }))
+        ? variants.map((v) => ({ availableQuantity: v.stock_quantity ?? (row.stock_tracking_enabled ? row.stock_quantity ?? undefined : undefined), isAvailable: inventoryIssue(row, v) === undefined, unavailableReason: inventoryIssue(row, v), id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined, unitPriceLabel: unitPrice(v) }))
         : undefined,
     description: row.description ?? undefined,
     categoryLabel: row.category,

@@ -63,7 +63,7 @@ export interface EligibilityAddress {
 }
 export interface AvailabilityIssue { code: string; message: string }
 export interface LineAvailability {
-  product_id: string; variant_id: string | null; quantity: number;
+  product_id: string; variant_id: string | null; option_id?: string | null; cut_size?: CartItem['cut_size']; serving?: CartItem['serving']; quantity: number;
   eligible: boolean; status: string; message: string | null; availableQuantity: number | null;
 }
 export function validPin(lat: unknown, lng: unknown): boolean {
@@ -76,6 +76,8 @@ export function checkoutAvailability(items: CartItem[], products: EligibilityPro
   const storeById = new Map(stores.map((s) => [s.id, s]));
   const requested = new Map<string, number>();
   for (const item of items) requested.set(item.product_id, (requested.get(item.product_id) ?? 0) + item.quantity);
+  const flavourTotals = new Map<string, number>();
+  for (const item of items) if (item.option_id) flavourTotals.set(item.option_id, (flavourTotals.get(item.option_id) ?? 0) + item.quantity);
   const issues: AvailabilityIssue[] = [];
   const hours = rules.hours ?? DEFAULT_ORDERING_HOURS;
   if (!platformIsOpen(date, hours)) issues.push({ code: 'PLATFORM_CLOSED', message: `Ordering is closed. We reopen at ${formatIstMinute(hours.opensMinute)} IST.` });
@@ -87,6 +89,8 @@ export function checkoutAvailability(items: CartItem[], products: EligibilityPro
     const store = p ? storeById.get(p.store_id) : undefined;
     const tracked = p?.stock_tracking_enabled === true;
     const available = tracked && p?.stock_quantity != null ? Number(p.stock_quantity) : null;
+    const option = item.option_id ? p?.product_options?.find(o => o.id === item.option_id) : undefined;
+    const flavourStock = option?.stock_quantity;
     let issue: AvailabilityIssue | null = null;
     if (!p || p.approval_status !== 'approved') issue = { code: 'PRODUCT_UNAVAILABLE', message: 'This product is unavailable.' };
     else if (p.stock_tracking_enabled === false) issue = { code: 'STOCK_UNCONFIRMED', message: 'The shop is updating stock. Try again shortly.' };
@@ -101,6 +105,8 @@ export function checkoutAvailability(items: CartItem[], products: EligibilityPro
       issue = { code: 'OUT_OF_STOCK', message: 'This pack is out of stock or stock is being updated.' };
     else if (item.variant_id && p.product_variants.some(v => v.id === item.variant_id && v.stock_quantity != null && v.stock_quantity < item.quantity))
       issue = { code: 'INSUFFICIENT_STOCK', message: 'Reduce the quantity of this pack.' };
+    else if (item.option_id && (!option || !option.is_available || flavourStock === 0)) issue = { code: 'OUT_OF_STOCK', message: 'This flavour is out of stock.' };
+    else if (item.option_id && flavourStock != null && (flavourTotals.get(item.option_id) ?? 0) > flavourStock) issue = { code: 'INSUFFICIENT_STOCK', message: `Only ${flavourStock} of this flavour available.` };
     else if (!store || !activeZoneIds.has(store.zone_id)) issue = { code: 'STORE_UNAVAILABLE', message: 'This shop is unavailable.' };
     else if (!storeIsOpen(store, date)) issue = { code: 'STORE_CLOSED', message: 'Shop closed' };
     else if (!validPin(store.lat, store.lng)) issue = { code: 'STORE_UNAVAILABLE', message: 'Delivery from this shop is unavailable.' };
@@ -110,8 +116,8 @@ export function checkoutAvailability(items: CartItem[], products: EligibilityPro
         || roadKm({ latitude: address.latitude!, longitude: address.longitude! }, { latitude: store.lat!, longitude: store.lng! }, rules.roadFactor) > radius)
         issue = { code: 'OUT_OF_RANGE', message: 'This shop cannot deliver to your address.' };
     }
-    return { product_id: item.product_id, variant_id: item.variant_id ?? null, quantity: item.quantity,
-      eligible: !issue, status: issue?.code ?? 'AVAILABLE', message: issue?.message ?? null, availableQuantity: available };
+    return { product_id: item.product_id, variant_id: item.variant_id ?? null, option_id: item.option_id ?? null, cut_size: item.cut_size ?? null, serving: item.serving ?? null, quantity: item.quantity,
+      eligible: !issue, status: issue?.code ?? 'AVAILABLE', message: issue?.message ?? null, availableQuantity: flavourStock == null ? available : Math.min(available ?? flavourStock, flavourStock) };
   });
   const spreadKm = storeSpreadKm(products, items, storeById, rules.roadFactor);
   if (rules.maxStoreSpreadKm > 0 && spreadKm > rules.maxStoreSpreadKm) {

@@ -23,6 +23,6 @@ export function initialFlavourChoice(product: Product): string {
 // original product and its full choice list. Cart IDs always use the original.
 export function searchProductDisplay(product: Product): Product {
   const option = product.options?.find((item) => item.id === product.initialOptionId);
-  return option ? { ...product, ...flavourPrice(product, option), name: option.name, imageUrl: option.imageUrl ?? product.imageUrl,
+  return option ? { ...product, ...flavourPrice(product, option), availableQuantity: option.availableQuantity == null ? product.availableQuantity : Math.min(product.availableQuantity ?? option.availableQuantity, option.availableQuantity), name: option.name, imageUrl: option.imageUrl ?? product.imageUrl,
     imageUrls: flavourPhotos(product, option.id) } : product;
 }

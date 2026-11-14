@@ -21,7 +21,7 @@ export interface CheckoutProduct extends CartProduct {
   bulk_min_kg?: number | string | null;
   product_variants: CheckoutVariant[];
   // Flavours; a product with any needs one picked per line.
-  product_options?: { id: string; is_available: boolean; price_overrides?: FlavourPrices }[] | null;
+  product_options?: { stock_quantity?: number | null; id: string; is_available: boolean; price_overrides?: FlavourPrices }[] | null;
   // Chilled / room temperature offered; two = the customer picks one.
   serving_options?: Serving[] | null;
   // Pre-order only (Home Pre-orders section): bulk minimum and notice.
@@ -103,7 +103,7 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
     if (optionId) {
       const option = options.find((o) => o.id === optionId);
       if (!option) throw new AppError(400, 'FLAVOUR_UNAVAILABLE', 'That flavour is no longer offered. Remove it and add it again.');
-      if (!option.is_available) throw new AppError(409, 'FLAVOUR_UNAVAILABLE', 'That flavour is out of stock. Choose another flavour.');
+      if (!option.is_available || option.stock_quantity === 0) throw new AppError(409, 'FLAVOUR_UNAVAILABLE', 'That flavour is out of stock. Choose another flavour.');
     }
     const override = flavourPriceOverride(options.find(option => option.id === optionId)?.price_overrides, variant);
     const storePrice = Number(override?.price ?? variant?.price ?? product.price);
@@ -133,6 +133,12 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
       preorder_lead_days: product.preorder_enabled ? Number(product.preorder_lead_days ?? 1) : null });
   }
   const priced = [...lines.values()];
+  const flavourTotals = new Map<string, number>();
+  for (const line of priced) if (line.option_id) flavourTotals.set(line.option_id, (flavourTotals.get(line.option_id) ?? 0) + line.quantity);
+  for (const [optionId, quantity] of flavourTotals) {
+    const option = products.flatMap(p => p.product_options ?? []).find(o => o.id === optionId);
+    if (option?.stock_quantity != null && quantity > option.stock_quantity) throw new AppError(409, 'STOCK_UNAVAILABLE', `Only ${option.stock_quantity} of this flavour available. Reduce the quantity.`);
+  }
   assertPreorderCart(priced, catalogue);
   // Bulk is per product across its packs and cuts: 3 x 1 kg small + 2 x 1 kg
   // large is 5 kg of that chicken.

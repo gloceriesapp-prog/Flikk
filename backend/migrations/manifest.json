@@ -748,6 +748,10 @@
     {
       "file": "20261114020000_flavour_pack_prices.sql",
       "sha256": "77abadb51a3e0d062f97c57f11c7d4e4416f56528c8bed3a43f111c9205dcc91"
+    },
+    {
+      "file": "20261114030000_flavour_stock_quantities.sql",
+      "sha256": "5d8c3d3f4f3227ef0f02c0b9782c928c39a4b61ab40f9288127ae3eeccdc587d"
     }
   ]
 }

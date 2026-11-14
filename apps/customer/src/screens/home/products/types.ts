@@ -5,6 +5,7 @@
 import type { Serving } from '../../../store/cartIdentity';
 
 export interface ProductOption {
+  availableQuantity?: number;
   prices?: Record<string, { price: number; originalPrice?: number; unitPriceLabel?: string }>;
   imageUrls?: string[];
   id: string;
@@ -23,6 +24,7 @@ export interface Product {
   unavailableReason?: 'out_of_stock' | 'stock_unconfirmed' | 'product_unavailable';
   storeOpening?: import('../../../utils/storeOpening').StoreOpening;
   availableQuantity?: number;
+  totalAvailableQuantity?: number;
   defaultVariantId?: string;
   name: string;
   localName: string;
@@ -118,7 +120,7 @@ export interface Product {
   // specific size as its own cart line (so "250 g" and "1 kg" of the same
   // product can both sit in the cart at their own real prices instead of
   // colliding under one product id).
-  variants?: { id: string; isAvailable?: boolean; unavailableReason?: Product['unavailableReason']; label: string; price: number; originalPrice?: number; unitPriceLabel?: string }[];
+  variants?: { availableQuantity?: number; id: string; isAvailable?: boolean; unavailableReason?: Product['unavailableReason']; label: string; price: number; originalPrice?: number; unitPriceLabel?: string }[];
   // Regulatory/seller info block on ProductDetailSheet (SellerDetailsCard) —
   // FSSAI license display is a real requirement for Indian grocery/food
   // listings, not decorative. Optional since most placeholder data doesn't

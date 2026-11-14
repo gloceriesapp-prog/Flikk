@@ -7,5 +7,5 @@ export function flavourPrice(product: Product, option?: ProductOption, variant?:
 }
 export function flavourPacks(product: Product) {
   return product.variants?.length ? product.variants : [{ id: product.defaultVariantId, label: product.weight,
-    price: product.price, originalPrice: product.originalPrice, unitPriceLabel: product.unitPriceLabel, isAvailable: product.isAvailable }];
+    price: product.price, originalPrice: product.originalPrice, unitPriceLabel: product.unitPriceLabel, availableQuantity: product.availableQuantity, isAvailable: product.isAvailable }];
 }

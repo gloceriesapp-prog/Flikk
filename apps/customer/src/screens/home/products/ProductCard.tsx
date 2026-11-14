@@ -25,7 +25,6 @@ import { useSimilarProducts } from '../../../components/ProductDetailSheet/useSi
 import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductCardView } from './ProductCardView';
 import { useProductAvailability } from './useProductAvailability';
-import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import type { Product } from './types';
 import { searchProductDisplay } from '../../../components/ProductDetailSheet/flavourSelection';
 
@@ -56,7 +55,6 @@ const ProductCardShell = memo(function ProductCardShell({
   showDiscountBadge,
   compact,
   onDark,
-  estimatedMinutes,
   isAvailable,
   availabilityLabel,
 }: {
@@ -65,7 +63,6 @@ const ProductCardShell = memo(function ProductCardShell({
   showDiscountBadge?: boolean;
   compact?: boolean;
   onDark?: boolean;
-  estimatedMinutes: number;
   isAvailable: boolean;
   availabilityLabel?: string;
 }) {
@@ -99,7 +96,6 @@ const ProductCardShell = memo(function ProductCardShell({
         onDark={onDark}
         onPress={onPress}
         onAdd={onAdd}
-        estimatedMinutes={estimatedMinutes}
         isAvailable={isAvailable && matchedOption?.isAvailable !== false}
         availabilityLabel={matchedOption?.isAvailable === false ? 'Out of stock' : availabilityLabel}
       />
@@ -113,7 +109,6 @@ const ProductCardShell = memo(function ProductCardShell({
 // card. Used wherever a section didn't lift them (hook rules forbid calling
 // these conditionally inside ProductCard, hence the separate component).
 function SelfSubscribedProductCard({ product, widthClassName, showDiscountBadge, compact, onDark }: Props) {
-  const estimatedMinutes = useDeliveryEstimateMinutes();
   const availability = useProductAvailability(product);
   return (
     <ProductCardShell
@@ -122,7 +117,6 @@ function SelfSubscribedProductCard({ product, widthClassName, showDiscountBadge,
       showDiscountBadge={showDiscountBadge}
       compact={compact}
       onDark={onDark}
-      estimatedMinutes={estimatedMinutes}
       isAvailable={availability.isAvailable}
       availabilityLabel={availability.label}
     />
@@ -133,7 +127,7 @@ export function ProductCard(props: Props) {
   // Lifted by a parent section → render the shell directly with no per-card
   // subscription. Otherwise self-subscribe. The branch is stable per call site
   // (a section always lifts; a one-off never does), so card state persists.
-  if (props.estimatedMinutes !== undefined && props.isAvailable !== undefined) {
+  if (props.isAvailable !== undefined) {
     return (
       <ProductCardShell
         product={props.product}
@@ -141,7 +135,6 @@ export function ProductCard(props: Props) {
         showDiscountBadge={props.showDiscountBadge}
         compact={props.compact}
         onDark={props.onDark}
-        estimatedMinutes={props.estimatedMinutes}
         isAvailable={props.isAvailable}
         availabilityLabel={props.availabilityLabel}
       />

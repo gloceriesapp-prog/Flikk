@@ -112,7 +112,7 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
         ) : null}
 
         {product.options?.length && onSelectOption ? (
-          <ProductFlavourOptions options={flavourChoices(product)} selectedId={selectedOptionId} onSelect={onSelectOption} />
+          <ProductFlavourOptions options={flavourChoices(product)} availableQuantity={selectedVariant?.availableQuantity ?? product.availableQuantity} selectedId={selectedOptionId} onSelect={onSelectOption} />
         ) : null}
 
         {product.preorder && onSelectPreorder ? (
