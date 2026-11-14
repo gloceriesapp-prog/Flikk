@@ -49,11 +49,11 @@ export const mobileAppSchema = (): Json => ({
   "@context": "https://schema.org",
   "@type": "MobileApplication",
   name: `${SITE.name} — ${SITE.tagline}`,
-  operatingSystem: "ANDROID, IOS",
+  operatingSystem: SITE.iosUrl ? "ANDROID, IOS" : "ANDROID",
   applicationCategory: "ShoppingApplication",
   description: SITE.aiSummary,
   url: SITE.url,
-  downloadUrl: [SITE.androidUrl, SITE.iosUrl],
+  downloadUrl: SITE.iosUrl ? [SITE.androidUrl, SITE.iosUrl] : [SITE.androidUrl],
   offers: { "@type": "Offer", price: "0", priceCurrency: "INR" },
   publisher: { "@id": abs("/#organization") },
 });

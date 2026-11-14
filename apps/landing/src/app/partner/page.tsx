@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 const STATS = [
   { value: "0%", label: "Setup & listing cost" },
-  { value: "~30 min", label: "Avg. delivery to customer" },
+  { value: "Fast", label: "Local delivery to customer" },
   { value: "Weekly", label: "Payouts to your account" },
   { value: "Your", label: "Prices, your stock" },
 ];
@@ -225,12 +225,12 @@ export default function PartnerPage() {
               >
                 Get it on Google Play
               </a>
-              <a
+              {SITE.iosUrl && <a
                 href={SITE.iosUrl}
                 className="inline-flex items-center gap-2 bg-white/10 border border-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-2xl font-semibold text-sm hover:bg-white/15 transition-all duration-200"
               >
                 Download on the App Store
-              </a>
+              </a>}
             </div>
           </div>
         </section>

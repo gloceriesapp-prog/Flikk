@@ -156,7 +156,7 @@ export default async function AreaPage({
                   <span className="text-[15px] font-semibold tracking-tight -mt-0.5">Google Play</span>
                 </div>
               </a>
-              <a
+              {SITE.iosUrl && <a
                 href={SITE.iosUrl}
                 className="w-full sm:w-auto bg-white/10 border border-white/20 backdrop-blur-sm text-white px-5 py-2.5 rounded-2xl hover:bg-white/15 hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2.5 group"
               >
@@ -167,12 +167,12 @@ export default async function AreaPage({
                   <span className="text-[11px] font-medium tracking-tight opacity-70">Download on the</span>
                   <span className="text-[15px] font-semibold tracking-tight -mt-0.5">App Store</span>
                 </div>
-              </a>
+              </a>}
             </div>
 
             {/* Trust chips */}
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-3 text-[13px] text-[#BFD4FF]">
-              <span className="flex items-center gap-1.5">⚡ Delivered in ~30 min</span>
+              <span className="flex items-center gap-1.5">⚡ Fast local delivery</span>
               <span className="hidden sm:inline opacity-30">•</span>
               <span className="flex items-center gap-1.5">🏪 Real local stores</span>
               <span className="hidden sm:inline opacity-30">•</span>

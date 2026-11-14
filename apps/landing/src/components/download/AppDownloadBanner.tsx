@@ -23,7 +23,7 @@ export default function AppDownloadBanner() {
               Everything&apos;s faster in the Gloceries app
             </h2>
             <p className="mt-2 max-w-[520px] text-[15px] font-medium text-[#101C10]/70 sm:text-[17px]">
-              Scan the QR code to download Gloceries and get groceries from stores near you in 30 minutes.
+              Scan the QR code to download Gloceries and get groceries &amp; more from shops near you, delivered to your door.
             </p>
           </div>
 

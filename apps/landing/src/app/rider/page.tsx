@@ -9,7 +9,8 @@ import { SITE } from "@/lib/seo/config";
 // ponytail: rider app store links are separate placeholders from SITE's
 // customer-app links — swap ids when the rider listings exist.
 const RIDER_ANDROID = "https://play.google.com/store/apps/details?id=com.gloceries.rider";
-const RIDER_IOS = "https://apps.apple.com/app/gloceries-rider/id000000000";
+// Null (button hidden) until the rider app is live on the App Store.
+const RIDER_IOS: string | null = process.env.NEXT_PUBLIC_RIDER_IOS_URL?.trim() || null;
 
 export const metadata: Metadata = {
   title: "Become a Delivery Rider — Earn on Your Schedule with Gloceries",
@@ -269,7 +270,7 @@ export default function RiderPage() {
                   <span className="text-[15px] font-medium tracking-tight -mt-0.5">Google Play</span>
                 </div>
               </a>
-              <a
+              {RIDER_IOS && <a
                 href={RIDER_IOS}
                 className="inline-flex items-center gap-2.5 bg-white text-[#0F172A] px-5 py-3 rounded-2xl"
               >
@@ -280,7 +281,7 @@ export default function RiderPage() {
                   <span className="text-[11px] font-medium tracking-tight opacity-70">Download on the</span>
                   <span className="text-[15px] font-medium tracking-tight -mt-0.5">App Store</span>
                 </div>
-              </a>
+              </a>}
             </div>
           </div>
         </section>
