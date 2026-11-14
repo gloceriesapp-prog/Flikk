@@ -5,7 +5,7 @@ vi.mock('../../../apps/customer/src/screens/home/content/realtime', () => ({ sub
   fixture.listeners.add(listener); return () => { fixture.listeners.delete(listener); fixture.stops(); };
 } }));
 vi.mock('../../../apps/customer/src/screens/home/content/inventoryCache', () => ({ invalidateInventory: fixture.inventory }));
-import { subscribePublicContentCache } from '../../../apps/customer/src/screens/home/content/publicContentCache';
+import { invalidatePublicContent, subscribePublicContentCache } from '../../../apps/customer/src/screens/home/content/publicContentCache';
 function client() { return { invalidateQueries: vi.fn() } as unknown as QueryClient; }
 function emit(event: string, inventory?: { refresh?: boolean }) { for (const listener of fixture.listeners) listener(event, inventory); }
 beforeEach(() => { vi.clearAllMocks(); expect(fixture.listeners.size).toBe(0); });
@@ -43,4 +43,13 @@ it('refreshes payment policy and checkout quotes on an admin configuration chang
   expect(predicate?.({ queryKey: ['orders'] } as never)).toBe(false);
   expect(options[1]).toEqual({ cancelRefetch: false });
   stop();
+});
+
+it('invalidates newly published section picks together with layout without touching private orders', async () => {
+  const cache = client();
+  await invalidatePublicContent(cache);
+  const predicate = vi.mocked(cache.invalidateQueries).mock.calls[0][0]?.predicate;
+  expect(predicate?.({ queryKey: ['home', 'sections'] } as never)).toBe(true);
+  expect(predicate?.({ queryKey: ['home', 'picks', 13.2, 74.7] } as never)).toBe(true);
+  expect(predicate?.({ queryKey: ['my-orders', 'customer'] } as never)).toBe(false);
 });
