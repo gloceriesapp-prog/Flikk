@@ -10,9 +10,9 @@ import type { Product } from '../products/types';
 export function useHomePicks() {
   const location = useLocationStore(s => s.location);
   return useQuery({
-    queryKey: ['home', 'picks', location?.latitude, location?.longitude],
+    queryKey: ['home', 'picks', location?.latitude, location?.longitude, 'category-sources'],
     queryFn: async () => {
-      const picks = await apiRequest<Record<string, ApiProduct[]>>('/browse/home-picks', { auth: false });
+      const picks = await apiRequest<Record<string, ApiProduct[]>>('/browse/home-picks?category_sources=1', { auth: false });
       return Object.fromEntries(Object.entries(picks).map(([key, rows]) => [key, rows.map(mapApiProduct)])) as Record<string, Product[]>;
     },
     enabled: !!location,

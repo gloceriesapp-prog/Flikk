@@ -22,3 +22,10 @@ it('drops unsafe artwork and styling without losing valid products', () => {
   expect(supportsHomeBanner('custom-abc12345')).toBe(true);
   expect(supportsHomeBanner('quick-categories')).toBe(false);
 });
+
+it('preserves a catalogue category through restored Home layout data', () => {
+  const sourceCategoryId = 'a0000000-0000-4000-8000-000000000001';
+  const config = parseHomeSections([{ ...row, sourceCategoryId }]);
+  expect(resolveAllTabSections(parseHomeSections(config))[0]?.sourceCategoryId).toBe(sourceCategoryId);
+  expect(parseHomeSections([{ ...row, sourceCategoryId: 'invalid' }])[0]?.sourceCategoryId).toBeUndefined();
+});

@@ -60,6 +60,24 @@ DO $$ DECLARE near uuid[]:=ARRAY['00000000-0000-4000-8000-0000000135f1']::uuid[]
  BEGIN PERFORM admin_set_product_home_sections('00000000-0000-4000-8000-000000013501',ARRAY['top-rated-stores']); RAISE EXCEPTION 'Store rail took a product';
  EXCEPTION WHEN sqlstate 'P0404' THEN NULL; END;
 
+ -- A category source replaces the preview without deleting the saved picks.
+ INSERT INTO categories(id,name) VALUES ('00000000-0000-4000-8000-0000000135c1','Dairy'), ('00000000-0000-4000-8000-0000000135c2','Other');
+ INSERT INTO sub_categories(id,category_id,name) VALUES
+   ('00000000-0000-4000-8000-0000000135b1','00000000-0000-4000-8000-0000000135c1','Milk'),
+   ('00000000-0000-4000-8000-0000000135b2','00000000-0000-4000-8000-0000000135c2','Bread');
+ UPDATE products SET sub_category_id='00000000-0000-4000-8000-0000000135b1',
+   is_in_stock=true, stock_status='in_stock', stock_tracking_enabled=true, stock_quantity=5
+ WHERE id IN ('00000000-0000-4000-8000-000000013501','00000000-0000-4000-8000-000000013503','00000000-0000-4000-8000-000000013504');
+ UPDATE products SET sub_category_id='00000000-0000-4000-8000-0000000135b2' WHERE id='00000000-0000-4000-8000-000000013502';
+ UPDATE home_sections SET source_category_id='00000000-0000-4000-8000-0000000135c1' WHERE key='custom-diwali1';
+ SELECT string_agg(right(id::text,2),',') INTO picks FROM home_section_preview_ids(near) WHERE section_key='custom-diwali1';
+ IF picks IS DISTINCT FROM '01' THEN RAISE EXCEPTION 'Category selection leaked products: %', picks; END IF;
+ IF (SELECT count(*) FROM home_pick_product_ids(near) WHERE section_key='custom-diwali1')<>2 THEN RAISE EXCEPTION 'Legacy clients lost their picks'; END IF;
+ UPDATE sub_categories SET is_active=false WHERE id='00000000-0000-4000-8000-0000000135b1';
+ IF EXISTS(SELECT 1 FROM home_section_preview_ids(near) WHERE section_key='custom-diwali1') THEN RAISE EXCEPTION 'Inactive subcategory leaked'; END IF;
+ UPDATE home_sections SET source_category_id=NULL WHERE key='custom-diwali1';
+ IF (SELECT count(*) FROM home_section_preview_ids(near) WHERE section_key='custom-diwali1')<>2 THEN RAISE EXCEPTION 'Manual picks were lost'; END IF;
+
  -- Hidden or out-of-schedule sections show nothing.
  UPDATE home_sections SET starts_at=now()+interval '1 day' WHERE key='custom-diwali1';
  IF EXISTS(SELECT 1 FROM home_pick_product_ids(near) WHERE section_key='custom-diwali1') THEN RAISE EXCEPTION 'Future section is live'; END IF;

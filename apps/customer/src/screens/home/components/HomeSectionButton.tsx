@@ -75,3 +75,13 @@ export function HomeProductCollectionButton({
 
   return <HomeSectionButton label={label} items={preview} onPress={openCollection} plain={plain} />;
 }
+
+export function HomeCategoryButton({ title, categoryId, preview }: {
+  title: string;
+  categoryId: string;
+  preview: Product[];
+}) {
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  return <HomeSectionButton label={`See all ${title}`} items={preview}
+    onPress={() => navigation.navigate('CategoryDetail', { categoryId, label: title })} />;
+}

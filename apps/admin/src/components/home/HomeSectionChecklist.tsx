@@ -36,10 +36,10 @@ export function useHomeSectionChoice(productId?: string) {
           productId ? fetch(`/api/home-sections/by-product?productId=${encodeURIComponent(productId)}`) : null,
         ]);
         if (!sectionsRes.ok || (mineRes && !mineRes.ok)) throw new Error('Could not load the home sections.');
-        const sections = (await sectionsRes.json()) as { key: string; title: string | null; enabled: boolean; is_custom: boolean; display_layout?: string | null; product_ids: string[] }[];
+        const sections = (await sectionsRes.json()) as { key: string; title: string | null; enabled: boolean; is_custom: boolean; display_layout?: string | null; source_category_id?: string | null; product_ids: string[] }[];
         const mine = mineRes ? ((await mineRes.json()) as { keys: string[] }).keys : [];
         if (cancelled) return;
-        setOptions(sections.filter((s) => acceptsPins(s.key)).map((s) => ({
+        setOptions(sections.filter((s) => acceptsPins(s.key) && !s.source_category_id).map((s) => ({
           key: s.key,
           label: s.is_custom ? (s.title || 'Untitled section') : (s.title || RAIL_LABELS[s.key] || s.key),
           enabled: s.enabled,

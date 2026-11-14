@@ -1,4 +1,5 @@
 import { isHomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
+import { isRealCategoryId } from '../../category-detail/filters/productFilters';
 import type { HomeSectionConfig } from '../useHomeSections';
 
 // Reject an unusable response so React Query retains the last known-good layout.
@@ -22,6 +23,7 @@ export function parseHomeSections(value: unknown): HomeSectionConfig[] {
     }
     return { key: s.key, title: text(s.title), subtitle: text(s.subtitle), enabled: s.enabled,
       sortIndex: s.sortIndex as number, bgColor: typeof s.bgColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.bgColor) ? s.bgColor : null,
+      ...(typeof s.sourceCategoryId === 'string' && isRealCategoryId(s.sourceCategoryId) ? { sourceCategoryId: s.sourceCategoryId } : {}),
       bannerImageUrl, custom: s.custom === true, pinnedOnly: s.pinnedOnly === true,
       ...(s.displayLayout === undefined ? {} : { displayLayout: isHomeProductLayout(s.displayLayout) ? s.displayLayout : null }),
     };
