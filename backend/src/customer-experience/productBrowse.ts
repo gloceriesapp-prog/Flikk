@@ -48,18 +48,26 @@ productBrowseRouter.get('/deals', async (req, res, next) => {
     res.json(await hydrateBrowse(data ?? [], stores, PRODUCT_WITH_VARIANTS_SELECT));
   } catch (error) { next(error); }
 });
-// Hand-picked products per Home section (admin Home Sections / Inventory
-// "Show on home"), only from stores that deliver here, in the admin's order:
-// { "trending": [product, ...], "custom-xxxxxx": [...] }.
+// Home section previews use products from the customer's delivery stores.
+// Older app versions still request their saved manual picks.
 productBrowseRouter.get('/home-picks', async (req, res, next) => {
   try {
     const stores = await deliveryStores(req.query);
-    const { data, error } = stores.length ? await supabase.rpc('home_pick_product_ids', { p_stores: stores }) : { data: [], error: null };
+    const supportsCategories = req.query.category_sources === '1';
+    const { data, error } = stores.length ? await supabase.rpc(
+      supportsCategories ? 'home_section_preview_ids' : 'home_pick_product_ids', { p_stores: stores },
+    ) : { data: [], error: null };
     if (error) throw error;
     const pins = (data ?? []) as { section_key: string; id: string }[];
     const ids = [...new Set(pins.map(pin => pin.id))].map(id => ({ id }));
-    const byId = new Map((await hydrateBrowse(ids, stores, PRODUCT_WITH_VARIANTS_SELECT))
-      .map(row => [(row as unknown as { id: string }).id, row]));
+    // Bound the PostgREST URL when many shelves have their own previews.
+    const products = [];
+    for (let offset = 0; offset < ids.length; offset += 100) {
+      products.push(...await hydrateBrowse(ids.slice(offset, offset + 100), stores, PRODUCT_WITH_VARIANTS_SELECT));
+    }
+    const byId = new Map(products.map(row => [
+      (row as unknown as { id: string }).id, supportsCategories ? applyCustomerPrices(row) : row,
+    ]));
     const picks: Record<string, unknown[]> = {};
     for (const pin of pins) {
       const product = byId.get(pin.id);
@@ -100,7 +108,7 @@ productBrowseRouter.get('/category', async (req, res, next) => {
     ]) : [{ data: [], error: null }, { data: { types: [], brands: [] }, error: null }];
     if (error || facets.error) throw error || facets.error;
     const rows = (data ?? []) as { id: string; score: number }[]; const selected = rows.slice(0, page.limit);
-    res.json({ products: await hydrateBrowse(selected, stores, PRODUCT_WITH_VARIANTS_SELECT), facets: facets.data,
+    res.json({ products: applyCustomerPrices(await hydrateBrowse(selected, stores, PRODUCT_WITH_VARIANTS_SELECT)), facets: facets.data,
       nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null });
   } catch (error) { next(error); }
 });

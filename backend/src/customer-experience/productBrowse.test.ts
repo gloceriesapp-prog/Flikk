@@ -49,6 +49,13 @@ it('home picks group pinned products by section in pin order, only from delivery
   expect(mocks.rpc).not.toHaveBeenCalled(); expect(empty.res.json).toHaveBeenCalledWith({});
 });
 
+it('uses category-aware previews when the client supports category navigation', async () => {
+  mocks.rpc.mockResolvedValueOnce({ data: [{ section_key: 'trending', id: 'p1' }], error: null });
+  const { res } = await request('/home-picks', { ...pin, category_sources: '1' });
+  expect(mocks.rpc).toHaveBeenCalledWith('home_section_preview_ids', { p_stores: ['s1'] });
+  expect(res.json).toHaveBeenCalledWith({ trending: [{ id: 'p1' }] });
+});
+
 it('pages only the chosen brand at delivery stores and applies customer prices', async () => {
   const brandId = '00000000-0000-4000-8000-000000000101';
   const brand = { id: brandId, name: 'Brand', popular_banner_url: 'https://example.test/banner.png', popular_image_url: null, logo_url: 'https://example.test/logo.png' };

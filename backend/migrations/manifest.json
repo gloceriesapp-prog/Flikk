@@ -760,6 +760,10 @@
     {
       "file": "20261114150000_home_section_products_realtime.sql",
       "sha256": "2bca8607daa3c8519c2a6d35f772c8c83bedb45efe4cb0e28b840462faad611b"
+    },
+    {
+      "file": "20261114160000_home_section_category_source.sql",
+      "sha256": "2389dbc9b51a0935e10b906d0cc5ceb0c2d8417f42be06bfb8bf1fd2f73f6167"
     }
   ]
 }

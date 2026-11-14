@@ -9,6 +9,7 @@ const db = vi.hoisted(() => ({
   inserted: null as unknown,
   deleted: null as unknown,
   sections: [{ key: 'trending', title: null, enabled: true, sort_index: 0, is_custom: false, display_layout: 'horizontal' }] as Record<string, unknown>[],
+  categories: [] as { id: string }[],
   pins: [{ section_key: 'trending', product_id: 'b0000000-0000-4000-8000-000000000002', position: 0 }] as Record<string, unknown>[],
 }));
 vi.mock('@/lib/supabase/client', () => ({ supabase: {} }));
@@ -18,7 +19,7 @@ vi.mock('@/lib/auth/requireAdmin', () => ({ requireAdmin: async () => db.authori
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: {
   rpc: async (name: string, args: unknown) => { db.rpc = { name, args }; return db.rpcResult; },
   from: (table: string) => {
-    const rows = table === 'home_sections' ? db.sections : db.pins;
+    const rows = table === 'home_sections' ? db.sections : table === 'categories' ? db.categories : db.pins;
     const chain: Record<string, unknown> = {
       select: () => chain, order: () => chain, limit: () => chain, eq: () => chain, in: () => chain,
       maybeSingle: async () => ({ data: { sort_index: 120 }, error: null }),
@@ -163,4 +164,27 @@ it('saves HTTPS product-shelf banners and preserves artwork omitted by older edi
   for (const banner_image_url of ['http://unsafe.test/image.png', 'https://user:password@example.com/img', 42]) {
     expect((await sections.PUT(json({ sections: [{ key: 'trending', banner_image_url }] }))).status).toBe(400);
   }
+});
+
+it('saves an existing category as a product source, preserves omitted sources and supports switching back', async () => {
+  db.categories = [{ id: A }];
+  db.sections = [{ key: 'custom-abc12345', source_category_id: A }];
+  const saved = await sections.PUT(json({ sections: [
+    { key: 'trending', source_category_id: A },
+    { key: 'custom-abc12345', title: 'Example' },
+  ] }));
+  expect(saved.status).toBe(200);
+  expect(db.upserted).toEqual([
+    expect.objectContaining({ key: 'trending', source_category_id: A }),
+    expect.objectContaining({ key: 'custom-abc12345', source_category_id: A }),
+  ]);
+  expect((await sections.PUT(json({ sections: [{ key: 'trending', source_category_id: null }] }))).status).toBe(200);
+  expect(db.upserted).toEqual([expect.objectContaining({ source_category_id: null })]);
+
+  db.upserted = null;
+  expect((await sections.PUT(json({ sections: [{ key: 'nearby-stores', source_category_id: A }] }))).status).toBe(400);
+  expect((await sections.PUT(json({ sections: [{ key: 'trending', source_category_id: 'invalid' }] }))).status).toBe(400);
+  db.categories = [];
+  expect((await sections.PUT(json({ sections: [{ key: 'trending', source_category_id: B }] }))).status).toBe(400);
+  expect(db.upserted).toBeNull();
 });

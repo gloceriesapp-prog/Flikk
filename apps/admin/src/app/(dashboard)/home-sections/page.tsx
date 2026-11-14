@@ -16,7 +16,8 @@ import { ProductPinPicker } from '@/components/home/ProductPinPicker';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 import { confirmAction, toast } from '@/components/ui/Toast';
 import { acceptsPins, isoToScheduleInput, pinCapacity } from '@/lib/homeSectionPins';
-import type { Product } from '@/lib/types';
+import { fetchCategories } from '@/lib/supabase/categories';
+import type { Category, Product } from '@/lib/types';
 import { DEFAULT_PREORDER_BANNER, supportsHomeBanner, homeProductLayout, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 interface HomeSection {
@@ -33,6 +34,7 @@ interface HomeSection {
   starts_at: string | null;
   ends_at: string | null;
   product_ids: string[];
+  source_category_id?: string | null;
 }
 
 // Friendly names + the component's own default heading (shown as the input
@@ -80,6 +82,7 @@ export default function HomeSectionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sections, setSections] = useState<HomeSection[]>([]);
   const [savedPins, setSavedPins] = useState<Record<string, string[]>>({});
+  const [categories, setCategories] = useState<Category[] | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [openPicker, setOpenPicker] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
@@ -107,6 +110,7 @@ export default function HomeSectionsPage() {
 
   useEffect(() => {
     Promise.resolve().then(load);
+    void fetchCategories().then(setCategories, () => setCategories(null));
   }, [load]);
 
   const dirtyPins = useMemo(
@@ -176,7 +180,7 @@ export default function HomeSectionsPage() {
         setOpenPicker(created.key);
       }
       setNewTitle('');
-      toast.success('Section added', 'Pick products and save to show it on Home.');
+      toast.success('Section added', 'Pick products or a category, then save to show it on Home.');
     } catch (err) {
       toast.error('Could not add the section', err instanceof Error ? err.message : undefined);
     } finally {
@@ -240,7 +244,7 @@ export default function HomeSectionsPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-ink">{labelFor(s)}</p>
                       {s.is_custom && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-ink-soft">Your section</span>}
-                      {pinnable && s.product_ids.length > 0 && (
+                      {pinnable && !s.source_category_id && s.product_ids.length > 0 && (
                         <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">{s.product_ids.length} picked</span>
                       )}
                     </div>
@@ -329,34 +333,62 @@ export default function HomeSectionsPage() {
 
               {pinnable && (
                 <div className="mt-4 border-t border-border pt-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-ink">Picked products</p>
-                      <p className="text-xs text-muted">
-                        {s.is_custom
-                          ? `Shows up to ${capacity} in-stock picks here. See all opens the full collection.`
-                          : s.pinned_only
-                            ? `Shows only your picks — the first ${capacity} in stock, in this order.`
-                            : `Your picks fill the first of ${capacity} cards; the rest stay automatic.`}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {!s.is_custom && (
-                        <label className="flex items-center gap-2 text-sm text-ink">
-                          <input type="checkbox" checked={s.pinned_only} onChange={(e) => patch(s.key, { pinned_only: e.target.checked })} className="h-4 w-4 rounded border-border" />
-                          Only show my picks
-                        </label>
+                  <label className="block max-w-sm text-xs font-medium text-muted">
+                    Product source
+                    <select className={clsx(inputClass, 'mt-1.5')} value={s.source_category_id ?? ''}
+                      onChange={(e) => patch(s.key, { source_category_id: e.target.value || null })}>
+                      <option value="">Manual product selection</option>
+                      {s.source_category_id && !categories?.some((category) => category.isActive && category.id === s.source_category_id) && (
+                        <option value={s.source_category_id}>{categories?.find((category) => category.id === s.source_category_id)?.name ?? 'Current category'} (unavailable)</option>
                       )}
-                      <button type="button" className="btn btn-secondary" onClick={() => setOpenPicker(openPicker === s.key ? null : s.key)}>
-                        {openPicker === s.key ? 'Done' : s.product_ids.length ? 'Edit products' : 'Pick products'}
-                      </button>
-                    </div>
-                  </div>
-                  {openPicker === s.key && (
-                    <div className="mt-3">
-                      <ProductPinPicker productIds={s.product_ids} products={products} capacity={capacity}
-                        onChange={(ids) => patch(s.key, { product_ids: ids })} />
-                    </div>
+                      <optgroup label="Catalogue categories">
+                        {categories?.filter((category) => category.isActive).map((category) => (
+                          <option key={category.id} value={category.id}>{category.name}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </label>
+                  {categories === null && (
+                    <button type="button" className="mt-2 text-xs text-brand" onClick={() => void fetchCategories().then(setCategories, () => toast.error('Could not load categories'))}>
+                      Load catalogue categories
+                    </button>
+                  )}
+                  {s.source_category_id ? (
+                    <p className="mt-3 text-xs text-muted">
+                      Shows up to {capacity} in-stock products from this category. See all opens the full category.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-ink">Picked products</p>
+                          <p className="text-xs text-muted">
+                            {s.is_custom
+                              ? `Shows up to ${capacity} in-stock picks here. See all opens the full collection.`
+                              : s.pinned_only
+                                ? `Shows only your picks — the first ${capacity} in stock, in this order.`
+                                : `Your picks fill the first of ${capacity} cards; the rest stay automatic.`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {!s.is_custom && (
+                            <label className="flex items-center gap-2 text-sm text-ink">
+                              <input type="checkbox" checked={s.pinned_only} onChange={(e) => patch(s.key, { pinned_only: e.target.checked })} className="h-4 w-4 rounded border-border" />
+                              Only show my picks
+                            </label>
+                          )}
+                          <button type="button" className="btn btn-secondary" onClick={() => setOpenPicker(openPicker === s.key ? null : s.key)}>
+                            {openPicker === s.key ? 'Done' : s.product_ids.length ? 'Edit products' : 'Pick products'}
+                          </button>
+                        </div>
+                      </div>
+                      {openPicker === s.key && (
+                        <div className="mt-3">
+                          <ProductPinPicker productIds={s.product_ids} products={products} capacity={capacity}
+                            onChange={(ids) => patch(s.key, { product_ids: ids })} />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

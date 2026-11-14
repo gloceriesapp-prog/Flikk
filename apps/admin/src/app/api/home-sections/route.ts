@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
-import { isCustomSection, newCustomSectionKey, scheduleToIso } from '@/lib/homeSectionPins';
+import { acceptsPins, isCustomSection, newCustomSectionKey, parseSourceCategoryId, scheduleToIso } from '@/lib/homeSectionPins';
 import { defaultHomeProductLayout, supportsHomeBanner, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 interface HomeSectionRow {
@@ -25,12 +25,13 @@ interface HomeSectionRow {
   banner_image_url?: string | null;
   display_layout?: HomeProductLayout | null;
   is_custom?: boolean;
+  source_category_id?: string | null;
   pinned_only: boolean;
   starts_at: string | null;
   ends_at: string | null;
 }
 
-const SELECT = 'key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at, display_layout, banner_image_url';
+const SELECT = 'key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at, display_layout, banner_image_url, source_category_id';
 
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -98,6 +99,12 @@ export async function PUT(request: Request) {
         const key = String(r.key);
         const title = clean(r.title);
         if (isCustomSection(key) && !title) throw new Error('Give every new section a title.');
+        let sourceCategoryId: string | null | undefined;
+        if (r.source_category_id !== undefined && acceptsPins(key)) {
+          sourceCategoryId = parseSourceCategoryId(r.source_category_id);
+        } else if (r.source_category_id != null) {
+          throw new Error('Only product sections can use a category.');
+        }
         return {
           key,
           title,
@@ -111,6 +118,7 @@ export async function PUT(request: Request) {
           // Sent so the upsert's insert half satisfies home_sections_custom_key_check.
           is_custom: isCustomSection(key),
           pinned_only: Boolean(r.pinned_only),
+          ...(sourceCategoryId === undefined ? {} : { source_category_id: sourceCategoryId }),
           starts_at: scheduleToIso(r.starts_at),
           ends_at: scheduleToIso(r.ends_at),
         };
@@ -141,6 +149,23 @@ export async function PUT(request: Request) {
       if (error) throw error;
       const savedLayouts = new Map((data ?? []).map((row) => [row.key, row.display_layout]));
       for (const row of omitted) row.display_layout = savedLayouts.get(row.key) ?? null;
+    }
+
+    if (rows.some((row) => row.source_category_id !== undefined)) {
+      const ids = [...new Set(rows.flatMap((row) => row.source_category_id ? [row.source_category_id] : []))];
+      if (ids.length) {
+        const { data, error } = await supabaseAdmin.from('categories').select('id').in('id', ids);
+        if (error) throw error;
+        if (data?.length !== ids.length) throw new Error('One of the selected categories no longer exists. Choose another category.');
+      }
+      const omittedSources = rows.filter((row) => row.source_category_id === undefined);
+      if (omittedSources.length) {
+        const { data, error } = await supabaseAdmin.from('home_sections')
+          .select('key, source_category_id').in('key', omittedSources.map((row) => row.key));
+        if (error) throw error;
+        const savedSources = new Map((data ?? []).map((row) => [row.key, row.source_category_id]));
+        for (const row of omittedSources) row.source_category_id = savedSources.get(row.key) ?? null;
+      }
     }
 
     const { error } = await supabaseAdmin.from('home_sections').upsert(rows, { onConflict: 'key' });

@@ -10,6 +10,7 @@ describe('Scoped customer inventory cache', () => {
   it('extracts real stores, not product or variant IDs', () => {
     expect(queryScope(['search', 'products'], [{ id: b, storeId: a, variants: [{ id: b }] }]).storeIds).toEqual([a]);
     expect(queryScope(['home', 'groceries', 'store-inventory', a], []).storeIds).toEqual([a]);
+    expect(queryScope(['home', 'picks'], { trending: [{ id: b, storeId: a }] }).storeIds).toEqual([a]);
   });
   it('invalidates affected inventory without unrelated stores, discovery or private orders', () => {
     const client = new QueryClient();

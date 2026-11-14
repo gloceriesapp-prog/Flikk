@@ -20,6 +20,7 @@ export interface HomeSectionConfig {
   bgColor: string | null;
   bannerImageUrl?: string | null;
   displayLayout?: HomeProductLayout | null;
+  sourceCategoryId?: string;
   // Founder-made product section (key custom-xxxxxx) and rails that show only
   // their hand-picked products — see sections/useHomePicks.ts.
   custom?: boolean;

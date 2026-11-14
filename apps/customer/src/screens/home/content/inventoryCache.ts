@@ -33,7 +33,9 @@ export function queryScope(key: readonly unknown[], data: unknown) {
     if ((key[1] === 'nearest-store' || key[1] === 'featured-store') && depth === 0) add(stores, row.id);
     for (const field of ['pages', 'products', 'store', 'stores', 'items']) visit(row[field], depth + 1);
   };
-  visit(data, 0);
+  if (key[0] === 'home' && key[1] === 'picks' && data && typeof data === 'object') {
+    for (const products of Object.values(data)) visit(products, 0);
+  } else visit(data, 0);
   return { storeIds: [...stores].sort(), zoneIds: [...zones].sort() };
 }
 // A stock event must not replay every page previously visited by a customer.

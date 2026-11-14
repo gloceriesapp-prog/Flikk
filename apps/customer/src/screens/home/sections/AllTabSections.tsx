@@ -30,7 +30,7 @@ import type { Product } from '../products/types';
 import { SectionSkeleton } from '../loading/SectionSkeleton';
 import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
 import { SeasonalSection } from '../seasonal/SeasonalSection';
-import { HomeProductCollectionButton } from '../components/HomeSectionButton';
+import { HomeCategoryButton, HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { HomeSectionBanner } from '../components/HomeSectionBanner';
 import { PreorderSection } from '../preorders/PreorderSection';
 import { homePreviewLimit, homeProductLayout, supportsHomeBanner, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
@@ -76,15 +76,17 @@ function layoutFor(config: HomeSectionConfig): HomeProductLayout {
 }
 const copyPrefix = (key: string) => `home.${key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())}`;
 
-const renderCustomSection: RenderSection = (ctx, copy, config) => {
+const renderPickedSection: RenderSection = (ctx, copy, config) => {
   const products = (ctx.picks[config.key] ?? []).filter((product) => product.isAvailable !== false);
   if (!products.length) return null;
-  const layout = layoutFor(config);
-  const preview = products.slice(0, homePreviewLimit(layout));
+  const layout = config.key === 'price-drops' ? 'horizontal' : layoutFor(config);
+  const preview = products.slice(0, config.key === 'price-drops' ? 4 : homePreviewLimit(layout));
   return (
     <>
       <ProductSection title={copy.title} subtitle={copy.subtitle} products={preview} layout={layout} />
-      <HomeProductCollectionButton label={`See all ${copy.title}`} title={copy.title} products={products} preview={preview} />
+      {config.sourceCategoryId
+        ? <HomeCategoryButton title={copy.title} categoryId={config.sourceCategoryId} preview={preview} />
+        : <HomeProductCollectionButton label={`See all ${copy.title}`} title={copy.title} products={products} preview={preview} />}
     </>
   );
 };
@@ -155,7 +157,7 @@ const HomeSection = memo(function HomeSection({
 }) {
   const sectionKey = config.key;
   const node = renderSection(ctx, copy, config);
-  const collectionLabel = COLLECTION_LABELS[sectionKey];
+  const collectionLabel = !config.sourceCategoryId && COLLECTION_LABELS[sectionKey];
   if (!node) {
     // Section rendered nothing. If its own feed is still loading, hold a
     // fixed-height skeleton so the layout doesn't jump when data lands; if it's
@@ -205,7 +207,7 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   // Only visible sections can claim products from a shared feed.
   const { rows, collections } = useMemo(() => {
     const configured = new Map(sections.map((section) => [section.key, section]));
-    const priority = ROW_PRIORITY.filter((key) => configured.has(key));
+    const priority = ROW_PRIORITY.filter((key) => configured.has(key) && !configured.get(key)?.sourceCategoryId);
     const pinnedOnly = new Set(sections.filter((section) => section.pinnedOnly).map((section) => section.key));
     const feeds: Record<ProductRowKey, Product[]> = {
       'price-drops': dealsQuery.data ?? EMPTY_PRODUCTS,
@@ -277,7 +279,8 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
       ),
     }];
     for (const cfg of sections) {
-      const render = cfg.custom ? renderCustomSection : SECTION_REGISTRY[cfg.key];
+      const usesPicks = cfg.custom || !!cfg.sourceCategoryId;
+      const render = usesPicks ? renderPickedSection : SECTION_REGISTRY[cfg.key];
       if (!render) continue; // config key with no code section yet
       items.push({
         key: cfg.key,
@@ -287,7 +290,7 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
             config={cfg}
             ctx={ctx}
             copy={copyByKey[cfg.key]}
-            loading={cfg.custom ? picksQuery.isPending : !!loadingByKey[cfg.key]}
+            loading={usesPicks ? picksQuery.isPending : !!loadingByKey[cfg.key]}
             bgColor={cfg.bgColor}
             isQuickLeading={cfg.key === 'quick-categories' && quickCategoriesLeading}
             shortcutsBackground={shortcutsBackground}

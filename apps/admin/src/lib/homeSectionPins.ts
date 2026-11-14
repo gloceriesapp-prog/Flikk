@@ -16,6 +16,11 @@ export function newCustomSectionKey(random: () => number = Math.random) {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function parseSourceCategoryId(value: unknown): string | null {
+  if (value === null) return null;
+  if (typeof value !== 'string' || !UUID.test(value)) throw new Error('Choose a valid category.');
+  return value.toLowerCase();
+}
 export function parseProductIds(value: unknown): string[] {
   if (!Array.isArray(value) || value.some((id) => typeof id !== 'string' || !UUID.test(id))) throw new Error('Choose valid products.');
   if (new Set(value).size !== value.length) throw new Error('A product can be pinned only once per section.');
