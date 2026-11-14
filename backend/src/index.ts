@@ -1,3 +1,4 @@
+import { stopPartnerOrderStreams } from './partner/orderStream.js';
 import { promotionsRouter } from './promotions/router.js';
 import { privacyRouter } from './customer-experience/privacy.js';
 import { publicDeliveryRouter } from './media/publicDelivery.js';
@@ -281,7 +282,7 @@ try {
       runtime.server.closeAllConnections();
       process.exit(1);
     }, 15000);
-    void Promise.all([runtime.stop(),stopMonitoring()]).then(closeDatabaseConnections).catch(err => {
+    void Promise.all([stopPartnerOrderStreams(),runtime.stop(),stopMonitoring()]).then(closeDatabaseConnections).catch(err => {
       logger.error({ err }, 'Backend shutdown failed');
       process.exitCode = 1;
     }).finally(() => clearTimeout(deadline));

@@ -1,28 +1,22 @@
-// Pure baseline/diff logic lifted out of useOrdersStore.loadOrders so the
-// "which orders genuinely just arrived / just delivered since the last poll"
-// decision is testable without zustand or the network (orderBaseline.selfcheck.ts).
-// This is the money path: a false negative here means a store owner never gets
-// alerted to a real order (auto-reject), a false positive re-interrupts them for
-// an order they already saw. See useOrdersStore's own header note on why the
-// first poll of a session seeds silently (baselineEstablished).
+// Queue snapshots recover pending, unaccepted orders on launch and reconnect.
 export interface BaselineRow {
   id: string;
   status: string;
+  acceptedAtTimestamp?: number;
+  acceptanceDeadlineTimestamp?: number;
 }
 
-// Genuinely-new = a 'placed' order present now that was NOT in the previous
-// poll. Empty until baseline is established (the first fetch seeds the queue
-// without alerting). A dropped poll throws before this runs, so `previous`
-// always reflects the last SUCCESSFUL poll — an order that persisted across an
-// outage stays in `previous` and is therefore not re-alerted.
+// First load includes actionable pending orders; later reads alert only for new IDs.
 export function computeNewlyArrivedIds(
   previous: readonly BaselineRow[],
   incoming: readonly BaselineRow[],
   baselineEstablished: boolean,
+  now = Date.now(),
 ): string[] {
-  if (!baselineEstablished) return [];
   const previousIds = new Set(previous.map((o) => o.id));
-  return incoming.filter((o) => o.status === 'placed' && !previousIds.has(o.id)).map((o) => o.id);
+  return incoming.filter((o) => o.status === 'placed' && o.acceptedAtTimestamp == null
+    && (o.acceptanceDeadlineTimestamp == null || o.acceptanceDeadlineTimestamp > now)
+    && (!baselineEstablished || !previousIds.has(o.id))).map((o) => o.id);
 }
 
 // Just-delivered = an order that was present before with a real, DIFFERENT

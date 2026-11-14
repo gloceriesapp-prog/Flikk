@@ -1,31 +1,54 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useOrdersStore } from '../../store/useOrdersStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { API_BASE_URL } from '../../api/baseUrl';
 import { orderPollDelay } from './orderPollDelay';
+import { openOrderStream } from './orderStream';
 
-// One app-wide foreground loop. A lightweight digest triggers full details only
-// when the active queue changes; failures back off and background work stops.
+// Live signals are hints; only authenticated queue reads change displayed orders.
+// One foreground stream, one serialized refresh loop, bounded fallback/reconnect.
 export function useOrderPolling(): void {
   const refresh = useOrdersStore(state => state.refreshUpdates);
+  const accessToken = useAuthStore(state => state.accessToken);
   useEffect(() => {
-    let stopped = false;
-    let running = false;
-    let failures = 0;
+    if (!accessToken) return;
+    let stopped = false, running = false, pending = false, live = false, failures = 0, reconnects = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const schedule = () => {
-      if (!stopped && AppState.currentState === 'active') timer = setTimeout(() => void tick(), orderPollDelay(failures));
-    };
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let closeStream: (() => void) | undefined;
+    const active = () => !stopped && (AppState.currentState == null || AppState.currentState === 'active');
     const tick = async () => {
-      if (stopped || running || AppState.currentState !== 'active') return;
-      running = true;
-      try { await refresh(); failures = 0; } catch { failures += 1; }
-      finally { running = false; schedule(); }
+      if (!active()) return;
+      if (running) { pending = true; return; }
+      clearTimeout(timer); running = true;
+      try {
+        do { pending = false; await refresh(); failures = 0; } while (pending && active());
+      } catch { failures += 1; }
+      finally {
+        running = false;
+        if (active()) timer = setTimeout(() => void tick(), live && failures === 0 ? 30000 : orderPollDelay(failures));
+      }
     };
-    void tick();
+    const connect = () => {
+      if (!active()) return;
+      closeStream?.();
+      closeStream = openOrderStream({ url: `${API_BASE_URL}/partner/orders/events`, accessToken,
+        createTransport: () => new XMLHttpRequest(),
+        onChange: () => { void tick(); },
+        onHealth: healthy => { live = healthy; if (healthy) reconnects = 0; },
+        onEnd: () => {
+          live = false;
+          void tick();
+          if (active()) retry = setTimeout(connect, Math.min(60000, 1000 * 2 ** Math.min(reconnects++, 6)) * (0.85 + Math.random() * 0.3));
+        },
+      });
+    };
+    void tick(); connect();
     const listener = AppState.addEventListener('change', state => {
-      clearTimeout(timer);
-      if (state === 'active') void tick();
+      clearTimeout(timer); clearTimeout(retry); closeStream?.(); closeStream = undefined; live = false;
+      if (state === 'active') { void tick(); connect(); }
     });
-    return () => { stopped = true; clearTimeout(timer); listener.remove(); };
-  }, [refresh]);
+    return () => { stopped = true; clearTimeout(timer); clearTimeout(retry); closeStream?.(); listener.remove(); };
+  }, [refresh, accessToken]);
 }

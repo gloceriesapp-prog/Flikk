@@ -1,3 +1,4 @@
+import { attachPartnerOrderStream } from '../partner/orderStream.js';
 import { cataloguePage, readCatalogue } from '../partner/catalogReads.js';
 import { storeItemTotal, toStoreOrder, withoutMarkup } from '../lib/customerPrice.js';
 import { PARTNER_ORDER_SELECT, ACTIVE_PARTNER_FILTER, readPartnerQueueDigest, actionablePartnerOrders, partnerOrderError } from '../partner/orders.js';
@@ -483,6 +484,12 @@ partnerRouter.get('/stats/today', async (req: AuthedRequest, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// Auth and active-store middleware above run before opening any private stream.
+partnerRouter.get('/orders/events', async (req: AuthedRequest, res, next) => {
+  try { attachPartnerOrderStream(req, res, await ownStoreId(req.user!.id)); }
+  catch (error) { next(error); }
 });
 
 partnerRouter.get('/orders/updates', async (req: AuthedRequest, res, next) => {

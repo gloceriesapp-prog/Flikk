@@ -7,12 +7,11 @@ const r = (id: string, status: string): BaselineRow => ({ id, status });
 
 // --- computeNewlyArrivedIds ---
 
-// First poll of a session (baseline not established) seeds silently — 3 orders
-// already sitting there must NOT alert.
+// A fresh session recovers unaccepted placed orders instead of missing them.
 assert.deepEqual(
   computeNewlyArrivedIds([], [r('a', 'placed'), r('b', 'placed'), r('c', 'placed')], false),
-  [],
-  'first poll must seed without alerting',
+  ['a', 'b', 'c'],
+  'first poll must recover pending orders',
 );
 
 // An order present in the prior poll does NOT re-alert.
