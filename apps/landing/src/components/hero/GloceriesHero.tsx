@@ -12,7 +12,7 @@ const CARDS = [
   {
     image: "https://images.gloceries.com/gloceries-landing/gloceries-hero.png",
     eyebrow: "From stores near you",
-    title: "Groceries at your door in 30 minutes",
+    title: "Groceries & more, delivered",
     alt: "A Gloceries rider handing a bag of fresh groceries to a customer at her door",
     imageClass: "object-cover object-top",
   },
@@ -25,7 +25,7 @@ const CARDS = [
 
 const PERKS = [
   { icon: DeliveryTruck01Icon, text: "Free delivery on your first order" },
-  { icon: FlashIcon, text: "At your door in 30 minutes" },
+  { icon: FlashIcon, text: "Fast delivery by local riders" },
   { icon: Store01Icon, text: "Real local stores, no dark stores" },
   { icon: Wallet01Icon, text: "Pay by UPI or cash on delivery" },
 ];
@@ -50,7 +50,7 @@ export default function GloceriesHero() {
         <div className="flex snap-x snap-mandatory gap-4 sm:gap-5 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {/* Feature card: cut-out shoppers on brand blue, text at the bottom like the other cards. */}
           <a href={APP_DOWNLOAD_HREF} className={`${CARD_BASE} isolate aspect-square bg-[linear-gradient(180deg,#0B3FB8_0%,#155DFC_55%,#5B8CFF_100%)]`}>
-            <h1 className="sr-only">Gloceries — groceries from your trusted local store, at your door in 30 minutes</h1>
+            <h1 className="sr-only">Gloceries — local shops at home: groceries &amp; more from trusted stores near you, delivered</h1>
             <div className="absolute inset-x-0 bottom-0 h-[92%]">
               <Image
                 src="https://images.gloceries.com/appsui/gloceries-web.png"

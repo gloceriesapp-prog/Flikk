@@ -1,6 +1,6 @@
 # Gloceries — Full Reference
 
-> Gloceries is a hyperlocal grocery-delivery app that connects customers to real local kirana and grocery stores near them, delivered by local riders. It is an asset-light marketplace — no owned inventory, no dark stores — built for coastal Karnataka and every zone it expands into. Honest pricing, no hidden fees, fast local delivery.
+> Gloceries — Local Shops at Home. Groceries & more, delivered. Gloceries is a hyperlocal delivery app that connects customers to real local kirana and grocery stores near them, delivered by local riders. It is an asset-light marketplace — no owned inventory, no dark stores — built for coastal Karnataka and every zone it expands into. Honest pricing, no hidden fees, fast local delivery.
 
 Website: https://gloceries.com
 Region: Coastal Karnataka, India
@@ -9,7 +9,7 @@ Languages: English (Kannada planned)
 ## What Gloceries is
 Gloceries is a grocery-delivery marketplace connecting shoppers to the grocery stores, kirana shops, supermarkets and bakeries already operating in their neighbourhood. Unlike instant-delivery apps that run "dark stores" (hidden warehouses stocking their own inventory), Gloceries delivers from real local shops. A local rider picks up your order and brings it to your door. This keeps prices honest, delivery fast, and money in the local economy.
 
-The customer app is available on Android and iOS. Store owners and delivery riders have their own apps.
+The customer app is available on Android (iOS coming soon). Store owners and delivery riders have their own apps.
 
 ## Who it serves
 - Shoppers who want groceries delivered from trusted local stores rather than a faceless warehouse.
@@ -17,8 +17,8 @@ The customer app is available on Android and iOS. Store owners and delivery ride
 - Delivery riders who want flexible local work with weekly payouts.
 
 ## Areas served
-Live now: Mangalore.
-Launching across coastal Karnataka: Udupi, Manipal, Surathkal, Kaup, Kundapura, Mulki, Bantwal, Puttur, Karkala and more. Customers in a not-yet-live area can request their city inside the app; Gloceries prioritises expansion by demand.
+Live now: Kaup (Udupi district).
+Coming next across coastal Karnataka: Mangalore, Udupi, Manipal, Surathkal, Kundapura, Mulki, Bantwal, Puttur, Karkala and more. Customers in a not-yet-live area can request their city inside the app; Gloceries prioritises expansion by demand.
 
 ## How it works
 1. Open the Gloceries app and set your delivery location.
@@ -35,7 +35,7 @@ Kirana shops, supermarkets and bakeries can list their store on Gloceries, manag
 
 ## Get the app
 - Android (Google Play): https://play.google.com/store/apps/details?id=com.gloceries.customer
-- iOS (App Store): https://apps.apple.com/app/gloceries/id000000000
+- iOS (App Store): coming soon
 
 ## Frequently asked questions
 
@@ -49,7 +49,7 @@ Q: What can I order on Gloceries?
 A: Fresh produce, kirana staples, dairy, bakery and sweets, ice cream, snacks, cold drinks and household essentials — sourced from local stores near you.
 
 Q: Which areas does Gloceries deliver to?
-A: Gloceries is live in Mangalore and launching across coastal Karnataka including Udupi, Manipal, Surathkal and Kaup. If your city isn't live yet, request it in the app and we'll prioritise by demand.
+A: Gloceries is live in Kaup (Udupi district) and coming next to Mangalore, Udupi, Manipal, Surathkal and more of coastal Karnataka. If your city isn't live yet, request it in the app and we'll prioritise by demand.
 
 Q: How fast is delivery?
 A: Because orders come from stores already near you and are delivered by local riders, delivery is fast — typically a short local drop rather than a cross-town warehouse trip.

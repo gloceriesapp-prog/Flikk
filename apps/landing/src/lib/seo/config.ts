@@ -9,12 +9,12 @@ export const SITE = {
   url: "https://gloceries.com",
   domain: "gloceries.com",
   // Used as the metadata title template default + OG site name.
-  tagline: "Groceries & Essentials Delivered in 30 Min",
+  tagline: "Local Shops at Home",
   description:
-    "Gloceries delivers groceries, fresh produce, dairy, meat, medicines and daily essentials to your doorstep from local kirana stores near you — fast, honestly priced, no dark stores.",
+    "Groceries & more, delivered. Gloceries brings fresh produce, dairy, staples, snacks and daily essentials from trusted local shops near you to your door. Honest prices, no dark stores.",
   // AEO/GEO: a plain-language, factual one-liner AI answer engines quote.
   aiSummary:
-    "Gloceries is a hyperlocal grocery delivery app that connects you to real local kirana and grocery stores near you, delivering fresh produce, groceries, dairy, meat and daily essentials to your door in minutes.",
+    "Gloceries is a hyperlocal delivery app for coastal Karnataka that brings groceries and daily essentials from real local kirana and grocery shops near you to your door, delivered by local riders.",
   locale: "en_IN",
   twitter: "@gloceries",
   // Public support number for schema (Organization contactPoint +
@@ -28,10 +28,11 @@ export const SITE = {
   // its public CDN URL so crawlers receive an absolute brand-image URL.
   logoPath: "/gloceries-main.png",
   logo: "https://images.gloceries.com/appsui/gloceries-main.png",
-  // App store links — placeholders until store listings exist. Kept in one
-  // place so every "download" surface + schema updates at once.
+  // App store links, kept in one place so every "download" surface + schema
+  // updates at once. iOS stays null (its buttons hidden) until the App Store
+  // listing is live: set NEXT_PUBLIC_IOS_URL to the real listing URL.
   androidUrl: "https://play.google.com/store/apps/details?id=com.gloceries.customer",
-  iosUrl: "https://apps.apple.com/app/gloceries/id000000000",
+  iosUrl: process.env.NEXT_PUBLIC_IOS_URL?.trim() || null,
   socials: [
     "https://instagram.com/gloceries",
     "https://facebook.com/gloceries",
