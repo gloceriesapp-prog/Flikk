@@ -10,13 +10,17 @@ import { useHomeTabs } from '../data/useHomeTabs';
 import { HomeCategoryContent, homeCategoryKind } from './HomeCategoryContent';
 import { useHomeBrowseScroll } from './useHomeBrowseScroll';
 import { HomeCategoryBanner } from './components/HomeCategoryBanner';
-import { MeatCategoryBanner } from './components/MeatCategoryBanner';
 import { storageUrl } from '../../../utils/storageUrl';
 import { useCopyImage } from '../../../api/appConfig';
 import { IconlyArrowLeft } from '../../../components/icons/iconly';
 
 const GROCERY_HEADER_IMAGE_URI =
   storageUrl('Images/Royal%20Blue%20Tote%20of%20Indian%20Groceries.png');
+const CATEGORY_BANNER_ARTWORK: Partial<Record<string, number>> = {
+  festival: require('../../../../assets/illustrations/diwali-section.png'),
+  regional: require('../../../../assets/illustrations/Village-section.png'),
+  meat: require('../../../../assets/illustrations/meat-section-banner.png'),
+};
 
 export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps<AppStackParamList, 'HomeCategory'>) {
   const isFocused = useIsFocused();
@@ -26,6 +30,8 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
   const categoryKind = tab ? homeCategoryKind(tab) : undefined;
   const isFestival = categoryKind === 'festival';
   const isMeat = categoryKind === 'meat' || categoryKind === 'meat-fish';
+  const usesScallopedEdge = isMeat || categoryKind === 'fresh' || categoryKind === 'regional';
+  const imageAsset = CATEGORY_BANNER_ARTWORK[isMeat ? 'meat' : categoryKind ?? ''];
   const { scrollHandler } = useHomeBrowseScroll();
   // Admin App content: home.groceries.headerImageUrl.
   const groceryHeaderImage = useCopyImage('home.groceries.headerImageUrl', GROCERY_HEADER_IMAGE_URI);
@@ -34,15 +40,15 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
     <View className="flex-1 bg-white">
       {isFocused && <StatusBar style="dark" />}
       <Animated.ScrollView className="flex-1" contentContainerClassName="pb-28" contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} onScroll={scrollHandler} scrollEventThrottle={16} bounces={false} overScrollMode="never">
-        {isMeat ? <MeatCategoryBanner imageUri={tab?.headerImageUrl} /> : <HomeCategoryBanner
-          imageAsset={isFestival ? require('../../../../assets/illustrations/diwali-section.png') : categoryKind === 'regional' ? require('../../../../assets/illustrations/Village-section.png') : undefined}
+        <HomeCategoryBanner
+          imageAsset={imageAsset}
           imageUri={tab?.headerImageUrl || (isFestival ? tab?.festival?.headerImageUri ?? undefined : categoryKind === 'groceries' ? groceryHeaderImage : undefined)}
           fallbackImageUri={categoryKind === 'groceries' ? groceryHeaderImage : undefined}
           backgroundColor={isFestival ? tab?.festival?.backgroundColor : undefined}
           imageFit={isFestival ? 'contain' : 'cover'}
           seamless={isFestival}
-          bottomEdge={isFestival ? 'festival' : categoryKind === 'regional' ? 'regional' : undefined}
-        />}
+          bottomEdge={isFestival ? 'festival' : usesScallopedEdge ? 'regional' : undefined}
+        />
         {tab ? (
           <HomeCategoryContent key={tab.id} tab={tab} />
         ) : (
