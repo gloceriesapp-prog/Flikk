@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
@@ -58,7 +59,7 @@ export function CategoryProductPane({
           onRefresh={previewOnly ? undefined : onRetry}
           ListEmptyComponent={
             <View className="items-center gap-3 px-4 py-12">
-              {isLoading ? <ActivityIndicator accessibilityLabel="Loading products" color="#155DFC" /> : <>
+              {isLoading ? <ScreenSkeleton columns={2} label="Loading products" /> : <>
                 <Text className="text-center text-[14px] leading-5 text-ink/60">{isError ? 'We couldn’t load these products.' : products.length > 0 ? 'No products match your filters.' : 'No products available in this category yet.'}</Text>
                 {isError ? <Pressable accessibilityRole="button" onPress={onRetry} className="min-h-11 justify-center rounded-xl bg-primary px-4"><Text className="font-semibold text-white">Try again</Text></Pressable> : activeFilterCount(filters) > 0 && <Pressable accessibilityRole="button" onPress={() => changeFilters({ ...DEFAULT_FILTERS })} className="min-h-11 justify-center px-4"><Text className="font-semibold text-[#155DFC]">Clear filters</Text></Pressable>}
               </>}

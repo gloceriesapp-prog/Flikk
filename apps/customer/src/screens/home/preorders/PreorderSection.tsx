@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ScrollView, View } from 'react-native';
 import { DEFAULT_PREORDER_BANNER } from '../../../../../../packages/home-content/sectionLayout.js';
 import { AppImage } from '../../../components/AppImage';
@@ -11,7 +10,7 @@ import { usePreorders } from './usePreorders';
 const PREVIEW_LIMIT = 4;
 const CARD_WIDTH = 'w-32';
 const CARD_SNAP_INTERVAL = 128 + 12;
-const WARM_BEIGE = '#F1E3D8';
+const PREORDER_BACKGROUND = '#E7F2FC';
 
 export function PreorderSection({ title, bannerImageUrl }: { title: string; bannerImageUrl?: string | null }) {
   const { data } = usePreorders();
@@ -29,26 +28,19 @@ export function PreorderSection({ title, bannerImageUrl }: { title: string; bann
   const preview = products.slice(0, PREVIEW_LIMIT);
 
   return (
-    <View className="mx-4 mt-7 overflow-hidden rounded-[22px] pb-3" style={{ backgroundColor: WARM_BEIGE }}>
-      <View className="relative">
-        <AppImage
-          source={{ uri: banner }}
-          style={{ width: '100%', aspectRatio: 4 }}
-          resizeMode="cover"
-          accessibilityLabel={title || 'Pre-order now'}
-          onError={() => { if (banner !== DEFAULT_PREORDER_BANNER) setFailedBanner(banner); }}
-        />
-        <LinearGradient
-          pointerEvents="none"
-          colors={[WARM_BEIGE + '00', WARM_BEIGE]}
-          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 16 }}
-        />
-      </View>
+    <View className="mx-4 mt-7 overflow-hidden rounded-3xl pb-4" style={{ backgroundColor: PREORDER_BACKGROUND }}>
+      <AppImage
+        source={{ uri: banner }}
+        style={{ width: '100%', aspectRatio: 3.4 }}
+        resizeMode="cover"
+        accessibilityLabel={title || 'Pre-order now'}
+        onError={() => { if (banner !== DEFAULT_PREORDER_BANNER) setFailedBanner(banner); }}
+      />
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="items-start gap-3 px-5 pt-3"
+        contentContainerClassName="items-start gap-3 px-4 pt-4"
         snapToInterval={CARD_SNAP_INTERVAL}
         snapToAlignment="start"
         decelerationRate="fast"

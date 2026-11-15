@@ -6,7 +6,8 @@
 // Full-width white section. A single content inset gives the three-column
 // grid more image space without changing shared product-card interactions.
 
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { SectionTitle } from '../../home/components/SectionTitle';
 import { ProductCard } from '../../home/products/ProductCard';
 import { useEverydayEssentials } from '../../home/everyday-essentials/useEverydayEssentials';
 
@@ -26,12 +27,10 @@ export function PurchaseRecommendations() {
   }
 
   return (
-    <View className="bg-white px-4 pb-2 pt-5">
-      <Text accessibilityRole="header" className="text-[17px] font-bold text-ink">
-        Picked Just For You
-      </Text>
+    <View className="bg-white pb-2 pt-5">
+      <SectionTitle>Picked Just For You</SectionTitle>
 
-      <View className="mt-4 flex-row flex-wrap justify-between">
+      <View className="flex-row flex-wrap justify-between px-4">
         {visibleProducts.map((product) => (
           <ProductCard
             key={product.id}

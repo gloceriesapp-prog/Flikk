@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 // Store-only browsing: category names in the sidebar, matching subcategory
 // tiles above a paged product grid. Search and recommendations keep store scope.
 
@@ -129,7 +130,7 @@ function StoreDetailContent({ navigation, route }: Props) {
                     <>
                       <StoreCategoryGrid categories={subcategories} title={selectedCategory?.label ?? 'Subcategories'}
                         selectedId={subcategory} onSelect={setSubcategory} />
-                      {catalog.subcategoriesQuery.isPending && <Text className="px-1 py-3 text-sm text-ink/50">Loading subcategories…</Text>}
+                      {catalog.subcategoriesQuery.isPending && <ScreenSkeleton layout="categories" rows={1} label="Loading subcategories" />}
                       {catalog.subcategoriesQuery.isError && <Pressable accessibilityRole="button" onPress={() => void catalog.subcategoriesQuery.refetch()} className="px-1 py-3">
                         <Text className="text-sm text-[#155DFC]">Couldn’t load subcategories. Tap to retry.</Text>
                       </Pressable>}
@@ -146,7 +147,7 @@ function StoreDetailContent({ navigation, route }: Props) {
               }
               ListEmptyComponent={
                 <View className="w-full items-center py-16">
-                  <Text className="text-sm text-ink/50">{catalog.isPending ? 'Loading products…' : catalog.isError ? 'Couldn’t load products.' : emptyText}</Text>
+                  <>{catalog.isPending ? <ScreenSkeleton columns={2} label="Loading store products" /> : <Text className="text-sm text-ink/50">{catalog.isError ? 'Couldn’t load products.' : emptyText}</Text>}</>
                 </View>
               }
               renderItem={({ item }: { item: Product }) => (

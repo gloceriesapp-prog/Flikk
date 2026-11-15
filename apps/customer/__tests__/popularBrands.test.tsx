@@ -20,6 +20,23 @@ beforeEach(() => {
 });
 afterEach(() => client.clear());
 
+it('keeps the requested sample non-interactive and excludes it from release builds', async () => {
+  jest.mocked(fetchPopularBrands).mockResolvedValue(brands.slice(0, 2));
+  const select = jest.fn();
+  const { rerender } = await render(<PopularBrands showPreviewBrand onSelect={select} onSeeAll={jest.fn()} />, { wrapper: Wrapper });
+  await screen.findByLabelText('Brand 1');
+  await waitFor(() => expect(screen.getAllByLabelText(/^Sample Brand /)).toHaveLength(8));
+  const sample = screen.getByLabelText('Sample Brand 1');
+  expect(sample.props.accessibilityState.disabled).toBe(true);
+  await fireEvent.press(sample);
+  expect(select).not.toHaveBeenCalled();
+  const dev = jest.replaceProperty(globalThis as typeof globalThis & { __DEV__: boolean }, '__DEV__', false);
+  try {
+    await rerender(<PopularBrands showPreviewBrand onSelect={select} onSeeAll={jest.fn()} />);
+    expect(screen.queryAllByLabelText(/^Sample Brand /)).toHaveLength(0);
+  } finally { dev.restore(); }
+});
+
 it('shows one five-brand Store row with See all even when fewer brands exist', async () => {
   const select = jest.fn(); const seeAll = jest.fn();
   const { rerender } = await render(<PopularBrands previewLimit={5} alwaysShowSeeAll onSelect={select} onSeeAll={seeAll} />, { wrapper: Wrapper });

@@ -30,10 +30,7 @@ export function PayoutOrdersLink({ payout, variant = 'light' }: Props) {
         navigation.navigate('PayoutOrderHistory', {
           payoutId: payout.id,
           weekLabel: payout.weekLabel,
-          isSample: payout.isSample,
-          sampleTotals: payout.isSample
-            ? { orderCount: payout.orderCount, grossAmount: payout.grossAmount, commissionAmount: payout.commissionAmount }
-            : undefined,
+
         })
       }
       className={`flex-row items-center justify-between ${isDark ? 'border-t border-white/10 pt-4' : 'border-t border-black/5 pt-3'}`}

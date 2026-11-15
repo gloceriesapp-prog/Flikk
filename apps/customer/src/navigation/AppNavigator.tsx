@@ -105,13 +105,13 @@ export function AppNavigator() {
       <Stack.Screen name="Home" component={HomeScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="HomeCategory" component={HomeCategoryScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="BrandProducts" component={BrandProductsScreen} />
+      <Stack.Screen name="AllBrands" component={AllBrandsScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Store" component={StoreListScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Purchase" component={PurchaseScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       {__DEV__ && <Stack.Screen name="OrderRating" component={OrderRatingScreen} />}
-      <Stack.Screen name="AllBrands" component={AllBrandsScreen} />
-      <Stack.Screen name="BrandProducts" component={BrandProductsScreen} />
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       <Stack.Screen name="BreakfastEssentials" component={BreakfastEssentialsScreen} />
       <Stack.Screen name="KitchenEssentials" component={KitchenEssentialsScreen} />

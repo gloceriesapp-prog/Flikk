@@ -15,7 +15,7 @@
 // rather than a filter option that could never match a real row.
 
 import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 
@@ -60,7 +60,7 @@ function SectionLabel({ children }: { children: string }) {
 
 function OptionRow({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className="flex-row items-center gap-3.5 px-5 py-3.5">
+    <Pressable onPress={onPress} accessibilityRole="radio" accessibilityState={{ checked: selected }} className="flex-row items-center gap-3.5 px-5 py-3.5">
       <Text className="flex-1 text-[15px] font-medium text-ink">{label}</Text>
       {selected && <AppIcon icon={CheckmarkCircle02Icon} size={20} color={colors.ink} strokeWidth={1.8} />}
     </Pressable>
@@ -72,12 +72,13 @@ export function OrderFilterSheet({ visible, statusValue, timeValue, accountCreat
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable className="flex-1 justify-end bg-black/40" onPress={onClose}>
-        <Pressable className="rounded-t-3xl bg-white pb-safe" onPress={(e) => e.stopPropagation()} style={{ maxHeight: '80%' }}>
+      <View className="flex-1 justify-end bg-black/40">
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessible={false} />
+        <View className="rounded-t-3xl bg-white pb-safe" style={{ maxHeight: '80%' }} accessibilityViewIsModal>
           <View className="items-center pt-3">
             <View className="h-1.5 w-12 rounded-full bg-gray-200" />
           </View>
-          <Text className="px-5 pt-3 text-lg font-semibold text-ink">Filter orders</Text>
+          <Text accessibilityRole="header" className="px-5 pt-3 text-lg font-semibold text-ink">Filter orders</Text>
 
           <ScrollView showsVerticalScrollIndicator={false}>
             <SectionLabel>Order status</SectionLabel>
@@ -100,6 +101,7 @@ export function OrderFilterSheet({ visible, statusValue, timeValue, accountCreat
 
           <View className="flex-row gap-3 px-5 pb-3 pt-4">
             <Pressable
+              accessibilityRole="button"
               onPress={() => {
                 onSelectStatus('all');
                 onSelectTime('all');
@@ -108,12 +110,12 @@ export function OrderFilterSheet({ visible, statusValue, timeValue, accountCreat
             >
               <Text className="text-[15px] font-semibold text-ink">Clear all</Text>
             </Pressable>
-            <Pressable onPress={onClose} className="flex-1 items-center rounded-2xl py-3.5" style={{ backgroundColor: colors.ink }}>
+            <Pressable onPress={onClose} accessibilityRole="button" className="flex-1 items-center rounded-2xl py-3.5" style={{ backgroundColor: colors.ink }}>
               <Text className="text-[15px] font-semibold text-white">Done</Text>
             </Pressable>
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

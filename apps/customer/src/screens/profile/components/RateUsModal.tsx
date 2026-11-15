@@ -112,8 +112,8 @@ function RateUsContent({ onClose }: Omit<Props, 'visible'>) {
         <View className="items-center rounded-t-[32px] bg-white px-6 pb-safe pt-7">
           {!hasSubmitted ? (
             <>
-              <Text className="text-[19px] font-bold text-ink">Enjoying Gloceries?</Text>
-              <Text className="mt-1 text-center text-[13px] font-normal text-ink/50">Tap a star to rate your experience</Text>
+              <Text className="text-[20px] font-bold leading-6 text-ink">Enjoying Gloceries?</Text>
+              <Text className="mt-2 text-center text-[15px] leading-[22px] text-ink/70">Tap a star to rate your experience</Text>
 
               {!!error && <Text className="mt-2 text-center text-red-600">{error}</Text>}
               <View className="mt-6 flex-row gap-2 pb-2">
@@ -124,19 +124,29 @@ function RateUsContent({ onClose }: Omit<Props, 'visible'>) {
             </>
           ) : (
             <View className="items-center py-4">
-              <Text className="text-[19px] font-bold text-ink">
+              <Text className="text-[20px] font-bold leading-6 text-ink">
                 {rating >= 4 ? 'Thank you! 🎉' : 'Thanks for the feedback'}
               </Text>
-              <Text className="mt-1 text-center text-[13px] font-normal text-ink/50">
+              <Text className="mt-2 text-center text-[15px] leading-[22px] text-ink/70">
                 {rating >= 4 ? "We're so glad you're loving Gloceries." : "We'll use this to keep improving."}
               </Text>
             </View>
           )}
 
-          {hasSubmitted && <><Pressable className="mt-3" onPress={() => void handleStoreReview()}><Text className="text-sm font-semibold text-blue-600">Review us on the app store</Text></Pressable><Pressable className="py-4" onPress={handleDismiss}><Text>Done</Text></Pressable>{!!error && <Text className="text-red-600">{error}</Text>}</>}
+          {hasSubmitted && (
+            <>
+              <Pressable accessibilityRole="button" className="mt-3" onPress={() => void handleStoreReview()}>
+                <Text className="text-[15px] font-semibold text-primary">Review us on the app store</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" className="py-4" onPress={handleDismiss}>
+                <Text className="text-[15px] font-semibold text-ink">Done</Text>
+              </Pressable>
+              {!!error && <Text accessibilityRole="alert" className="text-sm text-danger">{error}</Text>}
+            </>
+          )}
           {!hasSubmitted && (
-            <Pressable onPress={handleDismiss} hitSlop={8} className="mt-5 pb-2">
-              <Text className="text-[14px] font-normal text-ink/40">Maybe later</Text>
+            <Pressable accessibilityRole="button" onPress={handleDismiss} hitSlop={8} className="mt-5 pb-2">
+              <Text className="text-[15px] font-semibold text-ink/65">Maybe later</Text>
             </Pressable>
           )}
         </View>

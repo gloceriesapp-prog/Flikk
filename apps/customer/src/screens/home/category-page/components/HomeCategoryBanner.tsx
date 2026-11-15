@@ -8,11 +8,16 @@ import { storageUrl } from '../../../../utils/storageUrl';
 const DEFAULT_BANNER_URI =
   storageUrl('Images/store-image1.jpeg');
 
-// Small folded-paper cuts for Festival, broad flowing layers for Regional.
-// These are decorative separators, not interactive icons.
+// Festival has folded-paper cuts. Coastal/Udupi has downward-pointing scallops.
 const festivalEdge = `M0 2 ${Array.from({ length: 40 }, (_, index) =>
   `L${index * 10 + 5} 7 L${(index + 1) * 10} 2`).join(' ')} L400 16 L0 16 Z`;
-const regionalEdge = 'M0 9 C65 0 105 0 170 7 S285 15 340 7 S380 3 400 5 L400 24 L0 24 Z';
+const regionalScallopWidth = 36;
+const regionalScallopCount = 11;
+const regionalEdgeWidth = regionalScallopWidth * regionalScallopCount;
+const regionalEdge = `M0 3 ${Array.from({ length: regionalScallopCount }, (_, index) => {
+  const x = index * regionalScallopWidth;
+  return `C${x + 4} 15 ${x + 14} 10 ${x + 18} 21 C${x + 22} 10 ${x + 32} 15 ${x + 36} 3`;
+}).join(' ')} L${regionalEdgeWidth} 24 H0 Z`;
 export function HomeCategoryBanner({
   imageUri,
   fallbackImageUri = DEFAULT_BANNER_URI,
@@ -52,17 +57,10 @@ export function HomeCategoryBanner({
         accessible={false}
       />
       {bottomEdge ? (
-        <Svg pointerEvents="none" width="100%" height={bottomEdge === 'festival' ? 10 : 16}
-          viewBox={bottomEdge === 'festival' ? '0 0 400 16' : '0 0 400 24'}
+        <Svg pointerEvents="none" width="100%" height={bottomEdge === 'festival' ? 10 : 20}
+          viewBox={bottomEdge === 'festival' ? '0 0 400 16' : `0 0 ${regionalEdgeWidth} 24`}
           preserveAspectRatio="none" style={styles.edge} accessible={false}>
-          {bottomEdge === 'festival' ? (
-            <Path d={festivalEdge} fill="#FFFFFF" />
-          ) : (
-            <>
-              <Path d="M0 5 C70 15 110 -3 185 3 S300 17 400 2 L400 24 L0 24 Z" fill="#FFFFFF" opacity={0.38} />
-              <Path d={regionalEdge} fill="#FFFFFF" />
-            </>
-          )}
+          <Path d={bottomEdge === 'festival' ? festivalEdge : regionalEdge} fill="#FFFFFF" />
         </Svg>
       ) : null}
     </View>

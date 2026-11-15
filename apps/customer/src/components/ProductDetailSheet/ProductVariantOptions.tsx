@@ -9,6 +9,9 @@
 // and price down to ProductDetailFooter, so each size is its own cart line.
 
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { StockBorderLabel } from '../StockBorderLabel';
+import { stockLabel } from '../stockLabel';
+import { priceComparison, discountPercentLabel } from '../priceComparison';
 import { RupeePrice } from '../RupeePrice';
 import { GILROY } from '../../theme/fonts';
 import type { Product } from '../../screens/home/products/types';
@@ -29,16 +32,16 @@ const PRICE_SIZE = 15;
 const OFF_TEXT = '#2563EB';
 
 export function discountPercentOf(price: number, originalPrice?: number): number | null {
-  return originalPrice && originalPrice > price ? Math.round((1 - price / originalPrice) * 100) : null;
+  return priceComparison(price, originalPrice).discount ?? null;
 }
 
 function UnitCard({ variant, selected, onSelect }: { variant: ProductVariant; selected: boolean; onSelect: () => void }) {
   const outOfStock = variant.isAvailable === false;
-  const percent = discountPercentOf(variant.price, variant.originalPrice);
-  // MRP whenever it is above the price (same as the bottom bar), even when the
-  // saving rounds to 0%; "% OFF" only from 1%.
+  const percent = discountPercentLabel(variant.price, variant.originalPrice);
+  // Every genuine saving gets a label, including savings below one percent.
   const showMrp = variant.originalPrice != null && variant.originalPrice > variant.price;
   return (
+    <View style={{ width: CARD_WIDTH, paddingBottom: 8 }}>
     <Pressable
       disabled={outOfStock}
       onPress={onSelect}
@@ -72,6 +75,8 @@ function UnitCard({ variant, selected, onSelect }: { variant: ProductVariant; se
         <Text className="mt-0.5 text-[12.5px] text-ink/50" style={{ fontFamily: GILROY.medium }}>{variant.unitPriceLabel}</Text>
       ) : null}
     </Pressable>
+    <StockBorderLabel label={stockLabel(variant.availableQuantity, !outOfStock)} />
+    </View>
   );
 }
 

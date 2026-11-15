@@ -1,3 +1,5 @@
+import { locationFromAddress, savedMapAddress, mapAddressLabel } from '../../features/delivery-address/mapAddress';
+import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 import { useCallback } from 'react';
 import {
   Add01Icon,
@@ -8,7 +10,6 @@ import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -22,7 +23,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { fetchAddresses, setDefaultAddress, type ApiAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
 import type { AppStackParamList } from '../../navigation/types';
-import { IconlyArrowLeft } from '../../components/icons/iconly';
+import { AccountPageHeader } from '../../components/AccountPageHeader';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AddressList'>;
 
@@ -49,9 +50,9 @@ export function AddressListScreen({ navigation }: Props) {
     try {
       await setDefaultAddress(id);
       const chosen = addresses?.find(address => address.id === id);
-      if (chosen?.latitude != null && chosen.longitude != null) {
-        await useLocationStore.getState().setLocation({ latitude: chosen.latitude, longitude: chosen.longitude,
-          addressLabel: chosen.map_address || chosen.line1, city: '' }).catch(() => {
+      const selectedPin = chosen ? await locationFromAddress(chosen) : null;
+      if (selectedPin) {
+        await useLocationStore.getState().setLocation(selectedPin).catch(() => {
             console.warn('[AddressList] Could not persist the selected delivery pin.');
           });
       }
@@ -73,32 +74,19 @@ export function AddressListScreen({ navigation }: Props) {
     navigation.navigate('AddressForm', {
       latitude: address.latitude,
       longitude: address.longitude,
-      addressLabel: address.line1,
-      city: address.label,
+      addressLabel: savedMapAddress(address),
+      city: '',
       address,
     });
   }
 
   return (
     <View className="flex-1 bg-[#F4F4F6] pt-safe">
-      {/* Header */}
-      <View className="relative flex-row items-center px-5 pb-4 pt-3">
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back"
-          onPress={() => navigation.goBack()}
-          hitSlop={12}
-          className="z-10 h-10 w-10 items-center justify-center rounded-full bg-white"
-        >
-          <IconlyArrowLeft size={20} color="#1D1D23" />
-        </Pressable>
-
-        <Text className="absolute left-0 right-0 text-center text-[19px] font-semibold text-ink">
-          Delivery addresses
-        </Text>
-      </View>
+      <AccountPageHeader title="Delivery addresses" onBack={() => navigation.goBack()} />
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#1D1D23" />
+          <ScreenSkeleton layout="list" label="Loading addresses" />
         </View>
       ) : (
         <ScrollView
@@ -155,7 +143,7 @@ export function AddressListScreen({ navigation }: Props) {
                         className="mt-1 text-[13px] font-medium leading-[18px] text-[#77777E]"
                         numberOfLines={2}
                       >
-                        {address.recipient_name} · {address.line1}
+                        {address.recipient_name} · {mapAddressLabel(address)}
                       </Text>
 
                       {address.landmark ? (

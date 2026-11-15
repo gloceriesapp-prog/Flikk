@@ -1,3 +1,4 @@
+import { savedMapAddress, mapAddressLabel } from '../../features/delivery-address/mapAddress';
 import { useAuthStore } from '../../store/useAuthStore';
 // Reached from Home's own "Delivering to" header tap — per an explicit
 // ask/reference, that tap used to skip straight to LocationSearchScreen's
@@ -14,14 +15,13 @@ import {
   Add01Icon,
   Clock01Icon,
   GpsSignal01Icon,
-  Location01Icon,
-  Search01Icon,
 } from '@hugeicons/core-free-icons';
 import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { HomeIcon } from '../../components/icons/HomeIcon';
 import { fetchAddresses } from '../../api/addresses';
 import {
   distanceKm,
@@ -34,7 +34,8 @@ import {
 import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
 import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
-import { IconlyArrowLeft } from '../../components/icons/iconly';
+import { LocationSearchField } from './components/LocationSearchField';
+import { IconlyArrowLeft, IconlySearch } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'SelectLocation'>;
 
@@ -184,19 +185,7 @@ export function SelectLocationScreen({ navigation }: Props) {
       </View>
 
       <View className="px-5 pb-4 pt-1">
-        <View className="h-[52px] flex-row items-center rounded-[12px] bg-white px-4">
-          <AppIcon icon={Search01Icon} size={18} color={`${colors.ink}66`} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={handleSearchSubmit}
-            returnKeyType="search"
-            placeholder="Search an area or address"
-            placeholderTextColor="#9AA5A3"
-            className="ml-2.5 h-full flex-1 py-0 text-[15px] text-ink font-medium"
-          />
-          {searching || suggestLoading ? <ActivityIndicator size="small" color={colors.ink} /> : null}
-        </View>
+        <LocationSearchField value={query} onChangeText={setQuery} onSubmit={handleSearchSubmit} loading={searching || suggestLoading} />
       </View>
 
       {isSearchingMode ? (
@@ -215,7 +204,7 @@ export function SelectLocationScreen({ navigation }: Props) {
                   className={`flex-row items-center gap-3 p-4 ${i < suggestions.length - 1 ? 'border-b border-gray-100' : ''}`}
                 >
                   <View className="h-11 w-11 items-center justify-center rounded-2xl bg-gray-100">
-                    <AppIcon icon={Search01Icon} size={16} color={colors.ink} />
+                    <IconlySearch size={18} color={colors.ink} />
                   </View>
                   <Text className="flex-1 text-[15px] font-semibold text-ink" numberOfLines={2}>
                     {label}
@@ -281,13 +270,13 @@ export function SelectLocationScreen({ navigation }: Props) {
                     onPress={() =>
                       navigation.navigate('LocationSearch', {
                         ...(coords ?? {}),
-                        addressLabel: address.line1,
+                        addressLabel: savedMapAddress(address) || undefined,
                       })
                     }
                     className={`flex-row items-start gap-3 p-4 ${i < addresses.length - 1 ? 'border-b border-gray-100' : ''}`}
                   >
                     <View className="h-11 w-11 items-center justify-center rounded-2xl bg-gray-100">
-                      <AppIcon icon={Location01Icon} size={18} color={colors.ink} />
+                      <HomeIcon size={24} />
                     </View>
                     <View className="flex-1">
                       <View className="flex-row items-center justify-between gap-2">
@@ -297,7 +286,7 @@ export function SelectLocationScreen({ navigation }: Props) {
                         {distance ? <Text className="text-[12px] font-medium text-ink/40">{distance}</Text> : null}
                       </View>
                       <Text className="mt-0.5 text-[13px] leading-[18px] text-ink/50" numberOfLines={2}>
-                        {address.line1}
+                        {mapAddressLabel(address)}
                       </Text>
                     </View>
                   </Pressable>

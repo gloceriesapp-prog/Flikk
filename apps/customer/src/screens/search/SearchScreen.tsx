@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 // Item-only search: live products and their admin-added flavours, with
 // product suggestions while typing and a paged results grid on submission.
 import { useMemo, useState } from 'react';
@@ -109,7 +110,7 @@ export function SearchScreen({ navigation, route }: Props) {
                 <Pressable accessibilityRole="button" onPress={() => void search.refetch()} className="rounded-xl bg-primary px-5 py-3"><Text className="font-bold text-white">Retry search</Text></Pressable>
               </View>
             ) : isLoadingProducts || search.isDebouncing ? (
-              <ActivityIndicator className="py-12" color="#155DFC" />
+              <ScreenSkeleton columns={2} label="Loading search results" />
             ) : hasNoResults ? (
               <View className="items-center px-6 pt-16">
                 <Text className="text-center text-[15px] font-medium text-ink/50">No results for &quot;{trimmedQuery}&quot;</Text>

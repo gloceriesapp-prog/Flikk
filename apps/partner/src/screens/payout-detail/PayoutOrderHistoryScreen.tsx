@@ -15,13 +15,6 @@ import { usePrivateQueryScope } from '../../network/usePrivateQueryScope';
 // screen is pure read-only display, nothing here is ever mutated the way
 // orders/products are, so react-query alone (no zustand store) is enough.
 //
-// isSample (route params) is the one exception — screens/payouts/data.ts's
-// own sample fallback for a brand-new store with zero real payouts yet
-// passes a fake "sample-*" id that GET /partner/payouts/:id/orders would
-// 404 on, so this screen builds its breakdown from buildSamplePayoutOrders
-// instead of fetching, using the same isSample gate every other payout
-// surface already checks before treating numbers as real money.
-
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,7 +23,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { fetchPayoutOrderPage } from '../../api/payouts';
-import { buildSamplePayoutOrders } from '../payouts/data';
 import type { AppStackParamList } from '../../navigation/types';
 import { PayoutOrderHistoryRow } from './components/PayoutOrderHistoryRow';
 
@@ -38,25 +30,17 @@ type Props = NativeStackScreenProps<AppStackParamList, 'PayoutOrderHistory'>;
 
 export function PayoutOrderHistoryScreen({ route, navigation }: Props) {
   const queryScope = usePrivateQueryScope();
-  const { payoutId, weekLabel, isSample, sampleTotals } = route.params;
+  const { payoutId, weekLabel } = route.params;
   const query = useInfiniteQuery({
     queryKey: ['payout-orders', queryScope, payoutId],
     initialPageParam: '',
     queryFn: ({ pageParam }) => fetchPayoutOrderPage(payoutId, pageParam || undefined),
     getNextPageParam: page => page.nextCursor ?? undefined,
-    enabled: !isSample,
   });
-  const fetchedOrders = query.data?.pages.flatMap(page => page.items);
-  const isFetchLoading = query.isLoading;
-  const orders = isSample && sampleTotals ? buildSamplePayoutOrders(sampleTotals) : fetchedOrders;
-  // enabled: false leaves react-query's own isLoading permanently true
-  // (the query never actually runs) — the sample path has its data ready
-  // synchronously above, so it's never actually loading regardless of
-  // what that flag says.
-  const isLoading = !isSample && isFetchLoading;
-
-  const netTotal = isSample ? (orders ?? []).reduce((sum, o) => sum + o.netAmount, 0) : query.data?.pages[0]?.summary.netTotal ?? 0;
-  const orderCount = isSample ? orders?.length ?? 0 : query.data?.pages[0]?.summary.orderCount ?? 0;
+  const orders = query.data?.pages.flatMap(page => page.items);
+  const isLoading = query.isLoading;
+  const netTotal = query.data?.pages[0]?.summary.netTotal ?? 0;
+  const orderCount = query.data?.pages[0]?.summary.orderCount ?? 0;
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>

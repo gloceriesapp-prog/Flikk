@@ -18,6 +18,7 @@
 // overflow: hidden is required — without it the fading text would still
 // occupy layout space at height 0's midpoint and visibly clip weirdly.
 
+import { useState } from 'react';
 import { View } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { DeliveryModeSwitcher } from './DeliveryModeSwitcher';
@@ -62,10 +63,11 @@ interface Props {
 }
 
 export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = false, light = false }: Props) {
+  const [contentHeight, setContentHeight] = useState(MAX_HEIGHT);
   const animatedStyle = useAnimatedStyle(() => {
     const progress = interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [0, 1], Extrapolation.CLAMP);
     return {
-      height: (1 - progress) * MAX_HEIGHT,
+      height: (1 - progress) * contentHeight,
       opacity: 1 - progress,
       paddingTop: MAX_TOP_PADDING - progress * (MAX_TOP_PADDING - MIN_TOP_PADDING),
     };
@@ -74,7 +76,10 @@ export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = fal
   return (
     <Animated.View style={animatedStyle} className="gap-1 overflow-hidden">
       {/* <EtaBadge minutes={PLACEHOLDER_ETA_MINUTES} /> */}
-      <View className="flex-row items-center justify-between">
+      <View className="flex-row items-center justify-between" onLayout={event => {
+        const height = Math.max(MAX_HEIGHT, Math.ceil(event.nativeEvent.layout.height + MAX_TOP_PADDING));
+        setContentHeight(previous => previous === height ? previous : height);
+      }}>
         <View className="min-w-0 flex-1 pr-3">
           <LocationSelector onPress={onChangeLocation} isClosed={isClosed} light={light} />
         </View>

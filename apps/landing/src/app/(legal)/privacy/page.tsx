@@ -84,7 +84,7 @@ export default function PrivacyPage() {
             "The assigned rider receives your exact delivery address, map pin, recipient name and phone number while delivering your order. Riders considering a delivery offer see only an approximate delivery area. Finished-order rider history hides the exact delivery address and phone number.",
             "Customers see the assigned rider's name, phone number and delivery count while an order is in progress.",
             "Service providers that run the platform for us under contract: cloud database and authentication hosting, image storage and delivery, payment processing (Razorpay), SMS and push-notification delivery, maps and address lookup, and crash reporting.",
-            "Google Maps and our address-lookup providers process map and geocoding requests. Google Maps also collects SDK diagnostics and identifiers under Google’s privacy terms; map data is not limited to sharing with a rider.",
+            "Google Maps receives the store and delivery coordinates to calculate the route shown in order tracking. Google Maps and our address-lookup providers also process map and geocoding requests. Google Maps also collects SDK diagnostics and identifiers under Google’s privacy terms; map data is not limited to sharing with a rider.",
             "Government authorities or law enforcement when required by law or a valid legal request.",
           ]}
         />

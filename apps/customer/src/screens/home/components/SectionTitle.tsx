@@ -13,11 +13,11 @@ import { Text, View } from 'react-native';
 // mb-4 gap; when unset it renders exactly as before (single title line).
 export function SectionTitle({ children, subtitle }: { children: React.ReactNode; subtitle?: string | null }) {
   if (!subtitle) {
-    return <Text className="mb-4 px-5 text-[18px] font-bold tracking-tight text-ink/90">{children}</Text>;
+    return <Text accessibilityRole="header" className="mb-4 px-5 text-[18px] font-bold tracking-tight text-ink/90">{children}</Text>;
   }
   return (
     <View className="mb-4 px-5">
-      <Text className="text-[18px] font-bold tracking-tight text-ink/90">{children}</Text>
+      <Text accessibilityRole="header" className="text-[18px] font-bold tracking-tight text-ink/90">{children}</Text>
       <Text className="mt-0.5 text-[13px] font-medium text-ink/50">{subtitle}</Text>
     </View>
   );

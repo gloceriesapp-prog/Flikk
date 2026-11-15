@@ -1,5 +1,6 @@
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { PopularBanksGrid } from './PopularBanksGrid';
@@ -41,7 +42,7 @@ export function NetbankingBankPicker({ visible, selectedCode, onClose, onSelect 
           <TextInput accessibilityLabel="Search banks" placeholder="Search bank name" value={search} onChangeText={setSearch}
             autoCorrect={false} autoCapitalize="none" placeholderTextColor="#8C8C93"
             className="mb-4 min-h-[48px] rounded-xl border border-[#E5E7EB] bg-white px-4 text-[15px] text-[#171717]" />
-          {query.isFetching ? <ActivityIndicator accessibilityLabel="Loading banks" color="#171717" className="mt-6" />
+          {query.isPending ? <ScreenSkeleton layout="list" label="Loading banks" />
             : query.isError ? <View className="gap-3 rounded-2xl bg-white p-4">
               <Text className="text-[14px] text-[#525252]">Couldn’t load available banks. Please try again.</Text>
               <Pressable accessibilityRole="button" onPress={() => void query.refetch()} className="min-h-11 justify-center">

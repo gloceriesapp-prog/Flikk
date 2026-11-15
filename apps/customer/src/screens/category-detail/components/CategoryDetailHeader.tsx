@@ -1,8 +1,6 @@
-import { Search01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
-import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import { IconlyArrowLeft } from '../../../components/icons/iconly';
+import { IconlyArrowLeft, IconlySearch } from '../../../components/icons/iconly';
 
 interface Props {
   title: string;
@@ -10,21 +8,23 @@ interface Props {
   onSearch: () => void;
 }
 
+const buttonClass = 'h-11 w-11 shrink-0 items-center justify-center active:opacity-70';
+
 export function CategoryDetailHeader({ title, onBack, onSearch }: Props) {
   return (
-    <View className="flex-row items-center gap-3 px-5 pb-3 pt-2">
-      <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center">
-        <IconlyArrowLeft size={22} color={colors.ink} />
+    <View className="min-h-16 flex-row items-center gap-3 px-5 py-2.5">
+      <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} className={`${buttonClass} rounded-full border border-[#E1E5EA] bg-[#F6F7F9]`}>
+        <IconlyArrowLeft size={24} color={colors.ink} />
       </Pressable>
 
-      <View className="flex-1">
+      <View className="min-w-0 flex-1">
         <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
           {title}
         </Text>
       </View>
 
-      <Pressable accessibilityRole="button" accessibilityLabel="Search products" onPress={onSearch} hitSlop={12} className="h-11 w-11 items-center justify-center">
-        <AppIcon icon={Search01Icon} size={20} color={colors.ink} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Search products" onPress={onSearch} className={buttonClass}>
+        <IconlySearch size={24} color={colors.ink} />
       </Pressable>
     </View>
   );

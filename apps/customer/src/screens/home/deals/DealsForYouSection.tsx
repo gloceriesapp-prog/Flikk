@@ -18,7 +18,7 @@ export function DealsForYouSection({ products, collectionProducts, title, subtit
   if (products.length === 0) return null;
 
   return (
-    <HomeScallopedPanel title={title} subtitle={subtitle} backgroundColor="#EEF3FF">
+    <HomeScallopedPanel title={title} subtitle={subtitle} backgroundColor="#F8EFDF" headerTextColor="#171717">
       <ProductSection products={products} layout={layout} showDiscountBadge />
 
       <HomeProductCollectionButton

@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
+import { Pressable, Text, View } from 'react-native';
 import type { TrackingState } from '../state/trackingState';
 export function TrackingFeedback({ state, retry, busy, updatedAt = 0 }: {
     state: TrackingState;
@@ -7,7 +8,7 @@ export function TrackingFeedback({ state, retry, busy, updatedAt = 0 }: {
     updatedAt?: number;
 }) {
     if (state === 'loading')
-        return <View className="flex-1 items-center justify-center"><ActivityIndicator /><Text className="mt-3 text-sm text-gray-500 font-medium">Bringing up your order…</Text></View>;
+        return <View className="flex-1 px-5"><ScreenSkeleton layout="tracking" label="Loading order tracking" /></View>;
     const stale = state === 'stale';
     const unavailable = state === 'unavailable';
     return <View className={stale ? 'mx-5 mt-3 rounded-2xl bg-white p-4' : 'flex-1 items-center justify-center px-8'} accessibilityLiveRegion="polite">

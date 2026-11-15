@@ -8,6 +8,7 @@ import { useCartStore, selectCartTotalQuantity } from '../../store/useCartStore'
 import { showStandaloneCart, STANDALONE_CART_CLEARANCE, usesFloatingCollectionCart } from './cartBarVisibility';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { ActiveOrderBar } from '../../features/active-order-tracker';
+import { DeliveryRatingPrompt } from '../../features/order-rating/DeliveryRatingPrompt';
 import { useNearestStore } from '../../screens/home/useNearestStore';
 import { useHomeLocationRefresh } from '../../location/useHomeLocationRefresh';
 import type { AppStackParamList } from '../types';
@@ -33,6 +34,8 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
   const showBar = isServiceable && (route.name === 'Home' || route.name === 'HomeCategory');
   const showCart = showStandaloneCart(route.name, showBar, cartQuantity);
   const reserveCartSpace = showCart && !usesFloatingCollectionCart(route.name);
+  const canPromptForRating = route.name === 'Home' || route.name === 'HomeCategory' ||
+    route.name === 'Purchase' || route.name === 'Categories' || route.name === 'Store';
   return (
     <HomeNavigationProgressContext.Provider value={hidden}>
       <View className="flex-1">
@@ -46,6 +49,7 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
             </NavigationRouteContext.Provider>
           </NavigationContext.Provider>
         )}
+        <DeliveryRatingPrompt enabled={canPromptForRating} />
         <View pointerEvents={showBar ? 'box-none' : 'none'} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, display: showBar ? 'flex' : 'none' }}>
           <NavigationContext.Provider value={navigation}>
             <NavigationRouteContext.Provider value={route}>

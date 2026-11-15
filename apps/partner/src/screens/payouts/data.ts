@@ -6,7 +6,7 @@
 // it never invents or re-derives a payout figure itself.
 
 import { colors } from '../../theme/tokens';
-import type { ApiPayout, ApiPayoutOrder, PayoutStatus } from '../../api/payouts';
+import type { ApiPayout, PayoutStatus } from '../../api/payouts';
 
 export type { PayoutStatus };
 
@@ -23,13 +23,7 @@ export interface WeeklyPayout {
   // null until paid. Shown with a copy button to match a bank statement.
   utr: string | null;
   paymentNote?: string | null;
-  // True only for SAMPLE_PAYOUTS below — never set on anything built from
-  // a real GET /partner/payouts row. Every consumer that renders a
-  // WeeklyPayout checks this before treating its numbers as real money,
-  // so a brand-new store (zero delivered orders, zero real payouts yet)
-  // still has something to look at instead of a blank screen, without
-  // ever being mistakable for an actual balance.
-  isSample?: boolean;
+
 }
 
 // "YYYY-MM-DD" (a plain Postgres `date`, no time/timezone component) is
@@ -61,103 +55,6 @@ export function toWeeklyPayout(row: ApiPayout): WeeklyPayout {
     utr: row.utr ?? null,
     paymentNote: row.payment_note ?? null,
   };
-}
-
-// Sample data — shown only while a store has zero real payouts yet
-// (PayoutsScreen's own fallback, gated on the real GET /partner/payouts
-// response actually being empty). Dates are computed relative to `now`
-// (real weeks-ago math), never hardcoded strings
-// like "11–17 Aug" that go stale and eventually read as a real-but-wrong
-// date — the whole reason the original placeholder version of this file
-// was a problem. The money figures themselves ARE made up (there are no
-// real orders yet to sum), which is exactly what `isSample: true` on
-// every row exists to flag to the UI.
-function sampleWeekLabel(weeksAgo: number, now: Date): string {
-  const end = new Date(now);
-  end.setUTCDate(end.getUTCDate() - weeksAgo * 7);
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 6);
-  const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  return `${fmt(start)} – ${fmt(end)}`;
-}
-
-export function buildSamplePayouts(now: Date = new Date()): WeeklyPayout[] {
-  return [
-    {
-      id: 'sample-current',
-      weekLabel: sampleWeekLabel(0, now),
-      orderCount: 18,
-      grossAmount: 2432,
-      commissionAmount: 292,
-      netAmount: 2140,
-      status: 'pending',
-      paidAt: null,
-      utr: null,
-      isSample: true,
-    },
-    {
-      id: 'sample-1',
-      weekLabel: sampleWeekLabel(1, now),
-      orderCount: 24,
-      grossAmount: 3500,
-      commissionAmount: 420,
-      netAmount: 3080,
-      status: 'paid',
-      paidAt: null,
-      utr: null,
-      isSample: true,
-    },
-    {
-      id: 'sample-2',
-      weekLabel: sampleWeekLabel(2, now),
-      orderCount: 21,
-      grossAmount: 2972,
-      commissionAmount: 357,
-      netAmount: 2615,
-      status: 'paid',
-      paidAt: null,
-      utr: null,
-      isSample: true,
-    },
-    {
-      id: 'sample-3',
-      weekLabel: sampleWeekLabel(3, now),
-      orderCount: 16,
-      grossAmount: 2182,
-      commissionAmount: 262,
-      netAmount: 1920,
-      status: 'paid',
-      paidAt: null,
-      utr: null,
-      isSample: true,
-    },
-  ];
-}
-
-// Sample order-by-order breakdown for a SAMPLE payout only (id starting
-// "sample-") — PayoutOrderHistoryScreen checks that prefix and renders
-// this instead of calling the real GET /partner/payouts/:id/orders, which
-// would 404 on a fake id. Splits evenly across a fake order count, same
-// spirit as the original placeholder version's own buildOrderLines, kept
-// ONLY for this sample path now rather than as the real data source.
-export function buildSamplePayoutOrders(totals: { orderCount: number; grossAmount: number; commissionAmount: number }): ApiPayoutOrder[] {
-  const { orderCount: count, grossAmount, commissionAmount } = totals;
-  const baseGross = Math.floor(grossAmount / count);
-  const baseCommission = Math.floor(commissionAmount / count);
-  const today = new Date();
-  return Array.from({ length: count }, (_, i) => {
-    const deliveredAt = new Date(today);
-    deliveredAt.setUTCDate(deliveredAt.getUTCDate() - (i % 7));
-    const gross = baseGross + (i < grossAmount % count ? 1 : 0);
-    const commission = baseCommission + (i < commissionAmount % count ? 1 : 0);
-    return {
-      orderNumber: `SAMPLE-${1000 + i}`,
-      deliveredAt: deliveredAt.toISOString(),
-      grossAmount: gross,
-      commissionAmount: commission,
-      netAmount: gross - commission,
-    };
-  });
 }
 
 export interface PayoutStatusPresentation {

@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 import { PromotionalPreferencesCard } from './PromotionalPreferencesCard';
 import { useCallback, useState } from 'react';
 import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native';
@@ -11,17 +12,17 @@ import { ApiError } from '../../api/client';
 import { fetchNotifications, markNotificationRead, type CustomerNotification } from './api';
 import { notificationPermission, registerNotifications, openNotificationSettings } from './native';
 import { queueOrderNotification } from './navigation';
-import { IconlyArrowLeft } from '../../components/icons/iconly';
+import { AccountPageHeader } from '../../components/AccountPageHeader';
 
 function NotificationRow({ item, onPress }: { item: CustomerNotification; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className="mb-3 rounded-2xl bg-white p-4" accessibilityRole="button">
+    <Pressable onPress={onPress} className="mb-3 rounded-[24px] border border-[#E6E8EC] bg-white p-5" accessibilityRole="button">
       <View className="flex-row items-center gap-2">
         {!item.read_at && <View className="h-2 w-2 rounded-full bg-[#155DFC]" />}
-        <Text className={`flex-1 text-base ${item.read_at ? 'font-semibold' : 'font-bold'}`}>{item.title}</Text>
+        <Text className={`flex-1 text-[16px] text-ink ${item.read_at ? 'font-semibold' : 'font-bold'}`}>{item.title}</Text>
       </View>
-      <Text className="mt-2 text-sm text-gray-600">{item.body}</Text>
-      <Text className="mt-3 text-xs text-gray-500">{new Date(item.created_at).toLocaleString()}</Text>
+      <Text className="mt-2 text-[15px] leading-[22px] text-ink/70">{item.body}</Text>
+      <Text className="mt-3 text-[13px] leading-5 text-ink/65">{new Date(item.created_at).toLocaleString()}</Text>
     </Pressable>
   );
 }
@@ -73,37 +74,34 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
   return (
     <View className="flex-1 bg-[#F5F6F8] pt-safe">
       <StatusBar style="dark" />
-      <View className="flex-row items-center px-5 py-4">
-        <Pressable accessibilityLabel="Go back" onPress={() => navigation.goBack()} className="p-2">
-          <IconlyArrowLeft size={22} color="#111111" />
-        </Pressable>
-        <Text className="flex-1 text-center text-lg font-bold">Notifications</Text>
-        <View className="w-8" />
-      </View>
+      <AccountPageHeader title="Notifications" onBack={() => navigation.goBack()} />
+
       <FlatList
-        ListHeaderComponent={<>
-      <View className="mx-5 mb-4 rounded-2xl bg-white p-4">
-        <Text className="font-semibold">Order updates</Text>
-        <Text className="mt-1 text-sm text-gray-600">{permissionCopy}</Text>
-        {permission !== 'unsupported' && (
-          <Pressable disabled={enabling} onPress={() => {
-            if (permission === 'granted') void openNotificationSettings().catch(() => setMessage('Could not open device settings.'));
-            else void enable();
-          }} className="mt-3">
-            <Text className="font-semibold text-[#155DFC]">
-              {enabling ? 'Enabling…' : permission === 'granted' ? 'Notification settings' : 'Enable notifications'}
-            </Text>
-          </Pressable>
-        )}
-        {!!message && <Text className="mt-2 text-red-600">{message}</Text>}
-      </View>
-      {query.isError && (
-        <Pressable onPress={() => void refetch()} className="mx-5 mb-3 rounded-xl bg-white p-4">
-          <Text>{unavailable ? 'Notifications unavailable.' : 'Could not refresh updates.'} Tap to retry.</Text>
-        </Pressable>
-      )}
-          <PromotionalPreferencesCard />
-        </>}
+        ListHeaderComponent={
+          <>
+            <View className="mx-5 mb-4 rounded-[24px] border border-[#E6E8EC] bg-white p-5">
+              <Text accessibilityRole="header" className="text-[17px] font-bold text-ink">Order updates</Text>
+              <Text className="mt-2 text-[15px] leading-[22px] text-ink/70">{permissionCopy}</Text>
+              {permission !== 'unsupported' && (
+                <Pressable accessibilityRole="button" disabled={enabling} onPress={() => {
+                  if (permission === 'granted') void openNotificationSettings().catch(() => setMessage('Could not open device settings.'));
+                  else void enable();
+                }} className="mt-3">
+                  <Text className="text-[15px] font-semibold text-primary">
+                    {enabling ? 'Enabling…' : permission === 'granted' ? 'Notification settings' : 'Enable notifications'}
+                  </Text>
+                </Pressable>
+              )}
+              {!!message && <Text className="mt-2 text-red-600">{message}</Text>}
+            </View>
+            {query.isError && (
+              <Pressable onPress={() => void refetch()} className="mx-5 mb-3 rounded-xl bg-white p-4">
+                <Text>{unavailable ? 'Notifications unavailable.' : 'Could not refresh updates.'} Tap to retry.</Text>
+              </Pressable>
+            )}
+            <PromotionalPreferencesCard />
+          </>
+        }
         data={items}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingBottom: 32 }}
@@ -113,7 +111,7 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
           if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
         }}
         onEndReachedThreshold={0.3}
-        ListEmptyComponent={query.isPending ? <ActivityIndicator /> : (
+        ListEmptyComponent={query.isPending ? <ScreenSkeleton layout="list" label="Loading notifications" /> : (
           <Text className="p-8 text-center text-gray-500">Your order updates will appear here.</Text>
         )}
         ListFooterComponent={query.isFetchingNextPage ? <ActivityIndicator /> : null}

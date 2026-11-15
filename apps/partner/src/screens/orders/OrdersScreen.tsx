@@ -17,7 +17,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { DevSimulateOrderButton } from '../../features/incoming-order-alert/DevSimulateOrderButton';
 import { fetchTodayStats } from '../../api/stats';
 import { useChangeStoreLocation } from '../../hooks/useChangeStoreLocation';
 import { useOrdersStore } from '../../store/useOrdersStore';
@@ -214,13 +213,6 @@ export function OrdersScreen({ navigation }: Props) {
         />
       </View>
 
-      {orders.length > 0 && orders[0].isSample && (
-        <View className="mx-5 mt-2 flex-row items-center gap-2 rounded-2xl bg-gold/15 px-4 py-3">
-          <Text className="flex-1 text-xs font-semibold text-ink/70">
-            Sample data — these disappear the moment a real order comes in.
-          </Text>
-        </View>
-      )}
 
       <View className="mx-5 mt-3 flex-row items-center justify-between">
         <Text className="text-[13px] text-ink/60 font-medium">{lastUpdatedAt ? `Updated ${new Date(lastUpdatedAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}` : 'Checking your orders…'}</Text>
@@ -247,7 +239,6 @@ export function OrdersScreen({ navigation }: Props) {
         />
       </View>
 
-      <DevSimulateOrderButton />
 
       {orders.length === 0 ? (
         <View className="flex-1 items-center justify-center px-16 py-6" style={{ minHeight: 160 }}>

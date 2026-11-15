@@ -12,14 +12,16 @@ const COLLAPSE_MS = 420;
 
 export function DeliveryHeading({ minutes, light, highDemand = false }: { minutes: number; light: boolean; highDemand?: boolean }) {
   const [introComplete, setIntroComplete] = useState(introPlayed);
+  const [estimateWidth, setEstimateWidth] = useState(0);
+  const measureEstimate = useCallback((width: number) => setEstimateWidth(Math.ceil(width)), []);
   const finishIntro = useCallback(() => setIntroComplete(true), []);
   return <View style={styles.heading}>
-    <View style={styles.estimate}><DeliveryEstimate minutes={minutes} light={light} onIntroComplete={finishIntro} /></View>
-    {highDemand && introComplete && <HighDemandBadge />}
+    <View style={[styles.estimate, { width: introComplete && estimateWidth > 0 ? estimateWidth : '100%' }]}><DeliveryEstimate minutes={minutes} light={light} onIntroComplete={finishIntro} onFullWidth={measureEstimate} /></View>
+    {highDemand && introComplete && estimateWidth > 0 && <HighDemandBadge />}
   </View>;
 }
 
-function DeliveryEstimate({ minutes, light, onIntroComplete }: { minutes: number; light: boolean; onIntroComplete: () => void }) {
+function DeliveryEstimate({ minutes, light, onIntroComplete, onFullWidth }: { minutes: number; light: boolean; onIntroComplete: () => void; onFullWidth: (width: number) => void }) {
   const focused = useIsFocused();
   const reducedMotion = useReducedMotion();
   const progress = useSharedValue(introPlayed || reducedMotion ? 1 : 0);
@@ -71,7 +73,7 @@ function DeliveryEstimate({ minutes, light, onIntroComplete }: { minutes: number
   const measure = (key: 'brand' | 'short' | 'full' | 'available', width: number) => {
     if (key === 'brand') brandWidth.value = width;
     if (key === 'short') shortWidth.value = width;
-    if (key === 'full') fullWidth.value = width;
+    if (key === 'full') { fullWidth.value = width; onFullWidth(width); }
     setSizes(previous => Math.abs(previous[key] - width) < 0.5 ? previous : { ...previous, [key]: width });
   };
 
@@ -91,15 +93,15 @@ function DeliveryEstimate({ minutes, light, onIntroComplete }: { minutes: number
           <Animated.Text numberOfLines={1} style={[styles.text, { color, width: sizes.short }, shortOpacity]}>{shortLabel}</Animated.Text>
           <Animated.Text numberOfLines={1} style={[styles.text, styles.overlap, { color, width: sizes.full }, fullOpacity]}>{fullLabel}</Animated.Text>
         </Animated.View>
-      </View> : <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.text, { color }]}>{introPlayed || reducedMotion || (ready && !fits) ? fullLabel : `Gloceries ${shortLabel}`}</Text>}
+      </View> : <Text numberOfLines={1} style={[styles.text, { color }]}>{introPlayed || reducedMotion || (ready && !fits) ? fullLabel : `Gloceries ${shortLabel}`}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // The badge reserves space only after the intro; the full ETA can scale to fit narrow headers.
-  heading: { flexDirection: 'row', alignItems: 'center', gap: 7, width: '100%' },
-  estimate: { flex: 1, minWidth: 0 },
+  // Keep ETA typography stable; only the badge wraps when the row is too narrow.
+  heading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 7, rowGap: 4, width: '100%' },
+  estimate: { flexShrink: 0, maxWidth: '100%' },
   container: { width: '100%', minHeight: 28 },
   text: { fontFamily: GILROY.extrabold, fontSize: 22, lineHeight: 28, includeFontPadding: false },
   measurements: { position: 'absolute', opacity: 0, alignItems: 'flex-start' },

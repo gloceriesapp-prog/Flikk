@@ -293,7 +293,7 @@ it('offers a fresh native map instance when loading stalls', async () => {
   const view = await render(screen({ latitude: 13.2, longitude: 74.7 }));
   await act(async () => { jest.advanceTimersByTime(10000); });
   await fireEvent.press(view.getByLabelText('Retry loading map'));
-  expect(view.getByText('Loading map…')).toBeTruthy();
+  expect(view.getByLabelText('Loading map')).toBeTruthy();
   expect(view.queryByLabelText('Retry loading map')).toBeNull();
   expect(mockNavigate).not.toHaveBeenCalled();
   expect(mockSetLocation).not.toHaveBeenCalled();

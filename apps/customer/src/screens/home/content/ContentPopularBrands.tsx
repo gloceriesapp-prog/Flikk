@@ -29,7 +29,7 @@ export function ContentPopularBrands({ section, tabKey }: {
   if (!brands.length) return null;
 
   return (
-    <View className={isUdupi ? 'bg-gray-50 pt-8' : 'pt-8'}
+    <View className={isUdupi ? 'bg-white pt-8' : 'pt-8'}
       style={isUdupi ? undefined : { backgroundColor: section.backgroundColor || undefined }}>
       <SectionTitle subtitle={section.subtitle}>{section.title || 'Popular Brands'}</SectionTitle>
       <PopularBrandTiles brands={brands} columns={isUdupi ? 4 : 5}

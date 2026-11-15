@@ -7,6 +7,7 @@ export const colors = {
   limeDeep: '#7CB518',
   limeSoft: '#EEF7DC',
   ink: '#101C10',
+  divider: '#E6E8EC',
   coral: '#FF6B4A',
   primary: '#155DFC',
   gold: '#FFD700',

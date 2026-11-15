@@ -1,6 +1,6 @@
 // Reached from BottomNavBar's "Store" tab. Header (StoreHeader) is now the
 // same shell as Home's own header — location row + search bar on a
-// premium dark gradient — not the old photo banner with its own back
+// pale green background — not the old photo banner with its own back
 // arrow; BottomNavBar is rendered here now (same as Home) since this
 // header no longer carries the only way back. Body: AllStoresSection (the
 // full vertical list), directly below StoreFilterBar — the
@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { View } from 'react-native';
-import { Easing, runOnJS, useAnimatedReaction, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { PopularBrands } from '../../components/PopularBrands/PopularBrands';
@@ -93,18 +93,6 @@ export function StoreListScreen({ navigation }: Props) {
   const navHidden = useSharedValue(0);
   const SCROLL_HIDE_THRESHOLD = 6;
 
-  // Status bar flips light→dark as the header scrolls from its green gradient
-  // onto the white frosted state (StoreHeader), so the clock/battery stay
-  // legible on both. 40px matches the header's own collapse window.
-  const [statusBarStyle, setStatusBarStyle] = useState<'light' | 'dark'>('light');
-  useAnimatedReaction(
-    () => scrollY.value > 40,
-    (scrolled, prev) => {
-      if (scrolled !== prev) runOnJS(setStatusBarStyle)(scrolled ? 'dark' : 'light');
-    },
-    [],
-  );
-
   const scrollHandler = useAnimatedScrollHandler((event) => {
     const y = event.contentOffset.y;
     scrollY.value = y;
@@ -122,17 +110,13 @@ export function StoreListScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-[#F6F6F6]">
-      {/* Status-bar icons flip with scroll: light over the green header at the
-          top, dark once it collapses to the white frosted search bar — driven
-          by the useAnimatedReaction above. */}
-      <StatusBar style={statusBarStyle} />
+      <StatusBar style="dark" />
 
       {/* StoreHeader stays pinned above the one virtualized list. It was a
           sticky index-0 child of an Animated.ScrollView; FlashList v2 has no
           stickyHeaderIndices, so the same always-at-top behaviour is a pinned
           sibling here (bounces are off, so there's no overscroll difference).
-          Its collapse and the status-bar flip are still driven by scrollY from
-          the list's own scroll handler. */}
+          Its collapse is driven by the list's own scroll handler. */}
       <StoreHeader
         onChangeLocation={() => navigation.navigate('SelectLocation')}
         onOpenSearch={() => navigation.navigate('Search')}
@@ -161,7 +145,7 @@ export function StoreListScreen({ navigation }: Props) {
               onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
               onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
             />
-            <PopularBrands previewLimit={5} alwaysShowSeeAll
+            <PopularBrands previewLimit={5} cardBackground="white" alwaysShowSeeAll showPreviewBrand={__DEV__}
               onSelect={brand => navigation.navigate('BrandProducts', { brand })}
               onSeeAll={() => navigation.navigate('AllBrands')} />
             <NearestToYouSection />

@@ -9,8 +9,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { ApiError } from '../../api/client';
-import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
 import { fetchOrderDetail } from '../../api/orders';
 import { mapApiOrder } from '../orders/data';
@@ -56,19 +55,12 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   const markPacked = useOrdersStore(state => state.markPacked);
   const epoch = useAuthStore(state => state.sessionEpoch);
   const focused = useIsFocused();
-  const sample = route.params.orderId.startsWith('sample-') && __DEV__;
-  const queryClient = useQueryClient();
   const options = orderDetailQueryOptions({
     epoch, orderId: route.params.orderId, cached,
     read: async () => { const row = await fetchOrderDetail(route.params.orderId); return mapApiOrder(row, [row]); },
-    enabled: !sample && focused,
+    enabled: focused,
   });
   const query = useQuery(options);
-  useEffect(() => {
-    // Simulated orders have no server detail endpoint. Reflect local actions
-    // while preserving their snapshot when a real queue refresh drops them.
-    if (sample && cached) queryClient.setQueryData(['partner-order-detail', epoch, route.params.orderId], cached);
-  }, [sample, cached, queryClient, epoch, route.params.orderId]);
   const order = query.data;
   const unavailable = query.error instanceof ApiError && [403, 404].includes(query.error.status);
   if (!order || unavailable) {

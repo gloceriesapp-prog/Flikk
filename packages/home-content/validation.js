@@ -80,8 +80,11 @@ export function validateContent(raw) {
   const sections = unique(
     list(doc.sections, 'sections', 40).map((rawSection, index) => {
       const path = `sections[${index}]`,
-        s = object(rawSection, path, Object.keys(createSection('products', 'new')));
+        s = object(rawSection, path, [...Object.keys(createSection('products', 'new')), 'categoryCardStyle']);
       if (!SECTION_KINDS.includes(s.kind)) fail(path + '.kind', 'invalid section type');
+      if (s.categoryCardStyle !== undefined &&
+        (s.kind !== 'categories' || !['standard', 'photo'].includes(s.categoryCardStyle)))
+        fail(path + '.categoryCardStyle', 'choose a valid style for category tiles');
       if (!['horizontal', 'grid'].includes(s.layout) || ![2, 3, 4].includes(s.columns))
         fail(path, 'invalid layout');
       if (!Number.isInteger(s.limit) || s.limit < 1 || s.limit > 24)
@@ -100,6 +103,7 @@ export function validateContent(raw) {
         subtitle: text(s.subtitle, path + '.subtitle', 300),
         enabled: boolean(s.enabled, path + '.enabled'),
         layout: s.layout,
+        ...(s.categoryCardStyle === undefined ? {} : { categoryCardStyle: s.categoryCardStyle }),
         columns: s.columns,
         limit: s.limit,
         backgroundColor: color(s.backgroundColor, path),

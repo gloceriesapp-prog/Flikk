@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -27,7 +28,7 @@ export function WalletOptions({ method, onSelect }: {
   return <View>
     <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Wallets</Text>
     <View className="rounded-xl bg-white p-4">
-      {query.isPending ? <Text className="text-[13px] text-ink/60">Loading wallets…</Text>
+      {query.isPending ? <ScreenSkeleton layout="list" rows={1} label="Loading wallets" />
         : query.isError ? <View>
           <Text className="text-[13px] text-ink/60">Couldn’t load wallets. Please try again.</Text>
           <Pressable onPress={() => void query.refetch()} accessibilityRole="button" style={{ minHeight: minTouchTarget, justifyContent: 'center' }}>

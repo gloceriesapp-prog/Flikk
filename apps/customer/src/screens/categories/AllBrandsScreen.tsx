@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
@@ -38,7 +39,7 @@ export function AllBrandsScreen({ navigation }: Props) {
         onEndReached={loadMore} onEndReachedThreshold={0.4}
         onRefresh={() => void query.refetch()} refreshing={query.isRefetching}
         ListEmptyComponent={<View className="items-center gap-3 py-10">
-          {query.isPending ? <ActivityIndicator accessibilityLabel="Loading brands" color={colors.ink} />
+          {query.isPending ? <ScreenSkeleton layout="categories" label="Loading brands" />
             : query.isError ? <Pressable accessibilityRole="button" onPress={() => void query.refetch()} className="min-h-11 justify-center">
               <Text className="font-semibold text-primary">Couldn’t load brands. Try again</Text>
             </Pressable> : <Text className="text-sm text-ink/60">Brands will appear here soon.</Text>}

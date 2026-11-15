@@ -15,14 +15,13 @@ export function OrderProductPreview({ items }: { items: OrderItemSummary[] }) {
   return (
     <View className="mt-3 flex-row gap-2" accessible accessibilityLabel={`${visible.map((item) => item.name).join(', ')}${hiddenCount > 0 ? `, plus ${hiddenCount} more products` : ''}`}>
       {visible.map((item, index) => (
-        <View key={`${item.productId}-${index}`} className="overflow-hidden rounded-xl bg-[#F6F7F9] p-1" style={{ flex: 1, minWidth: 0, aspectRatio: 1 }}>
-          <AppImage source={{ uri: item.imageUri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" accessible={false} />
+        <View key={`${item.productId}-${index}`} className="overflow-hidden rounded-xl border border-[#E9EBEF] bg-[#F7F8FA] p-1.5" style={{ flex: 1, minWidth: 0, aspectRatio: 1 }}>
+          <AppImage source={{ uri: item.imageUri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" transition={0} accessible={false} />
         </View>
       ))}
       {hiddenCount > 0 && (
-        <View className="items-center justify-center rounded-xl bg-[#EEF1F5]" style={{ flex: 1, minWidth: 0, aspectRatio: 1 }}>
+        <View className="items-center justify-center rounded-xl border border-[#E2E6ED] bg-[#EEF0F4]" style={{ flex: 1, minWidth: 0, aspectRatio: 1 }}>
           <Text className="text-[16px] font-bold text-ink">+{hiddenCount}</Text>
-          <Text className="text-[11px] font-medium text-ink/55">more</Text>
         </View>
       )}
       {Array.from({ length: MAX_SLOTS - usedSlots }, (_, index) => <View key={`empty-${index}`} style={{ flex: 1 }} />)}

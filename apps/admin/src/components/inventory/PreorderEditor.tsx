@@ -1,13 +1,19 @@
 'use client';
 
-import type { Product } from '@/lib/types';
+import type { Product, ProductVariant } from '@/lib/types';
+import { UNIT_TYPE_OPTIONS, type UnitType } from '@/lib/product-options';
 
 type Preorder = Pick<Product, 'preorderEnabled' | 'preorderMinQty' | 'preorderLeadDays'>;
 
 // Pre-order only (idli, dosa batter, chicken in bulk): the product leaves
 // every other customer feed and shows in Home → Pre-orders, where the
 // customer picks a day and slot. The store accepts it like any order.
-export function PreorderEditor({ value, onChange }: { value: Preorder; onChange: (next: Preorder) => void }) {
+export function PreorderEditor({ value, onChange, variants, onVariantsChange }: {
+  value: Preorder; onChange: (next: Preorder) => void;
+  variants: ProductVariant[]; onVariantsChange: (next: ProductVariant[]) => void;
+}) {
+  const first = variants[0];
+  const updateSize = (patch: Partial<ProductVariant>) => onVariantsChange(variants.map((v, i) => i === 0 ? { ...v, ...patch } : v));
   const whole = (raw: string, max: number) => Math.min(max, Math.max(1, Math.floor(Number(raw) || 1)));
   return (
     <div className="rounded-xl border border-border p-3">
@@ -20,8 +26,28 @@ export function PreorderEditor({ value, onChange }: { value: Preorder; onChange:
       </p>
       {value.preorderEnabled && (
         <div className="mt-3 grid grid-cols-2 gap-3">
+          {first && <>
+            <label className="text-xs font-medium text-muted">
+              Order unit
+              <select aria-label="Pre-order unit" value={first.unitType}
+                onChange={(e) => updateSize({ unitType: e.target.value as UnitType, quantity: 1 })}
+                className="mt-1.5 h-9 w-full rounded-lg border border-border bg-card px-3 text-sm text-ink">
+                {UNIT_TYPE_OPTIONS.map((unit) => <option key={unit.value} value={unit.value}>{unit.label}</option>)}
+              </select>
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Amount per order unit
+              <input aria-label="Pre-order amount per unit" type="number" min="0.001" step="any" value={first.quantity || ''}
+                onChange={(e) => updateSize({ quantity: Number(e.target.value) })}
+                className="mt-1.5 h-9 w-full rounded-lg border border-border bg-card px-3 text-sm text-ink" />
+            </label>
+            <p className="col-span-2 text-xs text-muted">
+              Chicken: choose kg and 1 (or 0.5). Idli: choose pieces and 1. Customers choose how many units they need.
+              Set the price, stock and any extra sizes in Sizes, pricing &amp; stock above. Changing the unit does not change its price.
+            </p>
+          </>}
           <label className="text-xs font-medium text-muted">
-            Minimum quantity (packs)
+            Minimum order units
             <input type="number" min={1} max={999} value={value.preorderMinQty ?? 1}
               onChange={(e) => onChange({ ...value, preorderMinQty: whole(e.target.value, 999) })}
               className="mt-1.5 h-9 w-full rounded-lg border border-border bg-card px-3 text-sm text-ink" />

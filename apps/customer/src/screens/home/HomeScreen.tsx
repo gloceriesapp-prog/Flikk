@@ -124,7 +124,7 @@ export function HomeScreen({ navigation }: Props) {
   if (!isServiceable) {
     return <UnavailableZoneScreen />;
   }
-  // First open: the loader stays until the first screen is ready (useHomeReady).
+  // Only coverage gates Home; each feed owns its initial skeleton.
   if (!homeReady) return <HomeLoader />;
 
   return (

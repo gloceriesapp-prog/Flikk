@@ -1,5 +1,6 @@
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export function MapLoadingState({ onRetry }: { onRetry: () => void }) {
   const [slow, setSlow] = useState(false);
@@ -8,9 +9,9 @@ export function MapLoadingState({ onRetry }: { onRetry: () => void }) {
     return () => clearTimeout(timer);
   }, []);
   return <View testID="map-loading-cover" style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', paddingBottom: 180 }]}>
-    <View className="max-w-[280px] items-center gap-3 rounded-2xl bg-[#F4F5F7] px-5 py-4">
-      {!slow && <ActivityIndicator color="#155DFC" />}
-      <Text accessibilityLiveRegion="polite" className="text-center text-[14px] font-medium text-[#373737]">{slow ? 'The map is taking longer to load' : 'Loading map…'}</Text>
+    <View className="w-[280px] items-center gap-3 rounded-2xl bg-[#F4F5F7] px-5 py-4">
+      {!slow && <ScreenSkeleton layout="map" label="Loading map" />}
+      {slow && <Text accessibilityLiveRegion="polite" className="text-center text-[14px] font-medium text-[#373737]">The map is taking longer to load</Text>}
       {slow && <>
         <Text className="text-center text-[12px] leading-[18px] text-[#737373]">Check your internet connection and try again.</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Retry loading map" onPress={onRetry}

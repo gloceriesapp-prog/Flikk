@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../loading/ScreenSkeleton';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,7 +33,7 @@ export function SimilarProductsRow({ product, onSelect }: Props) {
           </View>
         ))}
       </View>
-      {query.isFetching && !products.length ? <ActivityIndicator accessibilityLabel="Loading similar products" /> : null}
+      {query.isFetching && !products.length ? <ScreenSkeleton rows={1} label="Loading similar products" /> : null}
       {query.isError && !products.length ? (
         <Pressable accessibilityRole="button" onPress={() => { void query.refetch(); }} className="py-3">
           <Text className="text-center text-[13px] text-ink/60">Couldn’t load recommendations. Tap to retry.</Text>

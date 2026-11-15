@@ -1,12 +1,9 @@
 import Svg, { Path } from 'react-native-svg';
 
-// Artwork supplied for the delivery-location card.
-export function LocationCardIcon() {
-  return (
-    <Svg width={34} height={34} viewBox="0 0 24 24" fill="none" accessible={false}>
-      <Path opacity={0.4} fillRule="evenodd" clipRule="evenodd"
-        d="M17.6814 4.25767C16.2004 2.72967 14.2714 1.88867 12.2494 1.88867C10.2274 1.88867 8.29744 2.73067 6.81544 4.25967C5.31144 5.81067 4.48544 7.89467 4.55044 9.97667C4.65444 13.3207 6.91644 15.7617 8.91244 17.9147C10.4354 19.5567 11.7494 20.9747 11.7494 22.3887H12.7494C12.7494 20.9307 14.0664 19.5307 15.5904 17.9087C17.5844 15.7877 19.8454 13.3837 19.9494 9.97667C20.0134 7.89367 19.1864 5.80867 17.6814 4.25767Z" fill="#000000" />
-      <Path d="M9.60059 9.98887C9.60059 11.4499 10.7896 12.6389 12.2506 12.6389C13.7116 12.6389 14.9006 11.4499 14.9006 9.98887C14.9006 8.52787 13.7116 7.33887 12.2506 7.33887C10.7896 7.33887 9.60059 8.52787 9.60059 9.98887Z" fill="#000000" />
-    </Svg>
-  );
+// Exact outline artwork supplied for the delivery-location card.
+export function LocationCardIcon({ size = 28, color = '#101C10' }: { size?: number; color?: string }) {
+  return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" accessible={false}>
+    <Path fillRule="evenodd" clipRule="evenodd" d="M14.7366 10.8064C14.7366 9.43255 13.6234 8.31934 12.2505 8.31934C10.8767 8.31934 9.76349 9.43255 9.76349 10.8064C9.76349 12.1792 10.8767 13.2924 12.2505 13.2924C13.6234 13.2924 14.7366 12.1792 14.7366 10.8064Z" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    <Path fillRule="evenodd" clipRule="evenodd" d="M12.2496 21.25C12.2496 21.25 4.97373 16.5108 4.7904 10.5973C4.66167 6.4451 8.12944 2.75008 12.2496 2.75008C16.3697 2.75008 19.8366 6.44504 19.7097 10.5973C19.5253 16.632 12.2496 21.25 12.2496 21.25Z" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+  </Svg>;
 }

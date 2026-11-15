@@ -1,3 +1,5 @@
+import { mapAddressLabel } from '../../../features/delivery-address/mapAddress';
+import { useLocationStore } from '../../../store/useLocationStore';
 // Cart footer keeps delivery-address controls above payment and order actions.
 import type { ReactNode } from 'react';
 import { ChevronRightIcon, Location01Icon } from '@hugeicons/core-free-icons';
@@ -16,6 +18,7 @@ interface Props {
 }
 
 export function CartCheckoutFooter({ addressesLoading, selectedAddress, onAddAddress, onChangeAddress, paymentBar }: Props) {
+  const location = useLocationStore(state => state.location);
   if (!addressesLoading && !selectedAddress) {
     return (
       <View className="border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
@@ -39,7 +42,7 @@ export function CartCheckoutFooter({ addressesLoading, selectedAddress, onAddAdd
               Delivering to <Text className="font-semibold text-ink">{selectedAddress.label}</Text>
             </Text>
             <Text numberOfLines={1} className="text-[12.5px] font-medium text-ink/50">
-              {selectedAddress.line1}
+              {mapAddressLabel(selectedAddress, location)}
             </Text>
           </View>
           <View className="flex-row items-center gap-0.5">

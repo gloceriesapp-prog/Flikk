@@ -1,4 +1,9 @@
 export const TAB_KEYS = ['grocery', 'fresh', 'regional', 'festivals', 'meat'];
+
+export function categoryCardStyle(section, tabKey) {
+  return section.categoryCardStyle ?? (tabKey === 'regional' ? 'photo' : 'standard');
+}
+
 export const SECTION_KINDS = [
   'products',
   'categories',

@@ -15,14 +15,13 @@ interface Props {
 export function FreshSectionState({ hasLocation, isLoading, isError, retry, emptyMessage }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const action = !hasLocation ? () => navigation.navigate('SelectLocation') : isError ? retry : undefined;
+  if (hasLocation && isLoading) return <BrowseLoadingText message={BROWSE_LOADING_COPY.fresh} />;
   return (
     <View className="mx-5 items-center gap-3 rounded-2xl border border-ink/10 px-5 py-6">
-      {hasLocation && isLoading ? <BrowseLoadingText message={BROWSE_LOADING_COPY.fresh} /> : (
-        <>
+      <>
           <Text className="text-center text-sm text-ink/60">{!hasLocation ? 'Choose your delivery address to discover fresh produce nearby.' : isError ? 'We couldn’t load these listings. Please try again.' : emptyMessage}</Text>
           {action && <Pressable accessibilityRole="button" onPress={action} className="min-h-11 justify-center rounded-full bg-primary px-5"><Text className="font-semibold text-white">{!hasLocation ? 'Choose location' : 'Try again'}</Text></Pressable>}
-        </>
-      )}
+      </>
     </View>
   );
 }

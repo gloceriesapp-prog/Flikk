@@ -98,7 +98,7 @@ interface CartState {
   // A pre-order cart's delivery day + slot; null for a quick-delivery cart.
   preorder: CartPreorder | null;
   // A pre-order line needs the day + slot; it applies to the whole cart.
-  addItem: (product: CartProduct, preorder?: CartPreorder) => void;
+  addItem: (product: CartProduct, preorder?: CartPreorder, amount?: number) => void;
   // Move a pre-order cart to another day/slot (no-op for other carts).
   setPreorder: (preorder: CartPreorder) => void;
   incrementItem: (id: string) => void;
@@ -153,7 +153,8 @@ export const useCartStore = create<CartState>()(
       tipAmount: 0,
       preorder: null,
 
-      addItem: (product, preorder) => {
+      addItem: (product, preorder, amount) => {
+        if (amount != null && (!Number.isInteger(amount) || amount < 1 || amount > 999)) return;
         product = { ...product, ...cartIdentity(product) };
         if (product.isAvailable === false || product.variantId?.startsWith('preview-')) return;
         // A product with no real store id (any feed that hasn't been wired
@@ -168,11 +169,14 @@ export const useCartStore = create<CartState>()(
 
         set((state) => {
           const existing = state.items.find((item) => item.id === product.id);
+          const added = amount ?? (existing ? 1 : product.preorderMinQty ?? 1);
+          const nextQuantity = (existing?.quantity ?? 0) + added;
+          if (nextQuantity > 999 || nextQuantity < (product.preorderMinQty ?? 1)) return state;
           const items = existing
             ? state.items.map((item) =>
-                item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+                item.id === product.id ? { ...item, quantity: nextQuantity } : item,
               )
-            : [...state.items, { ...product, quantity: product.preorderMinQty ?? 1 }];
+            : [...state.items, { ...product, quantity: nextQuantity }];
           return {
             items, appliedPromo: null, lastAddedItemId: product.id, preorder: preorder ?? state.preorder,
             recentItemIds: getCartPreviewIds(items, state.recentItemIds, product.id),

@@ -1,7 +1,3 @@
-// Maps to POST /reviews, GET /reviews/order/:orderId (backend/src/routes/
-// reviews.ts) — real submission behind OrderRow's "Rate your order" prompt
-// (previously decorative only, see that component's own updated note).
-
 // orderId may be a trips.id: the server rates every delivered leg of that
 // trip (one review per store order) and reports the trip as rated once any
 // leg is — so the combined trip card's prompt works without client fan-out.

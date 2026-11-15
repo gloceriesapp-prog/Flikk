@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FlashList } from '@shopify/flash-list';
@@ -57,7 +58,7 @@ export function BrandProductsScreen({ navigation, route }: Props) {
               <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center px-4">
                 <Text className="font-semibold text-primary">Choose delivery location</Text>
               </Pressable>
-            ) : query.isPending ? <ActivityIndicator accessibilityLabel="Loading brand products" color={colors.ink} /> : query.isError ? (
+            ) : query.isPending ? <ScreenSkeleton columns={2} label="Loading brand products" /> : query.isError ? (
               <Pressable accessibilityRole="button" onPress={() => void query.refetch()} className="min-h-11 justify-center px-4">
                 <Text className="font-semibold text-primary">Couldn’t load products. Try again</Text>
               </Pressable>

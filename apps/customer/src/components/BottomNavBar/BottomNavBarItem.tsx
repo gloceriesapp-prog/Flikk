@@ -1,5 +1,6 @@
 import { Platform, Pressable, Text, View } from 'react-native';
-import { IconlyCategory, IconlyHome, IconlyStore, IconlyTimer, type IconlyIconProps } from '../icons/iconly';
+import { IconlyCategory, IconlyHome, IconlyStore, type IconlyIconProps } from '../icons/iconly';
+import { IconlyDeliveryBox } from '../icons/IconlyDeliveryBox';
 import type { NavTab } from './data';
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
 // inactive, filled when active).
 const ICON_BY_TAB: Record<string, React.ComponentType<IconlyIconProps>> = {
   home: IconlyHome,
-  'order-again': IconlyTimer,
+  'order-again': IconlyDeliveryBox,
   categories: IconlyCategory,
   store: IconlyStore,
 };
@@ -20,7 +21,7 @@ const ICON_BY_TAB: Record<string, React.ComponentType<IconlyIconProps>> = {
 export function BottomNavBarItem({ tab, isActive, onPress }: Props) {
   const Icon = ICON_BY_TAB[tab.id] ?? IconlyHome;
   return (
-    <Pressable onPress={onPress} className="items-center px-0">
+    <Pressable onPress={onPress} accessibilityRole="tab" accessibilityState={{ selected: isActive }} className="items-center px-0">
       {/* Android: drop the gray active pill per request — the active state
           still reads via the filled icon + bold label. iOS keeps the pill. */}
       <View

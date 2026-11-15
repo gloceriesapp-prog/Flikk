@@ -25,15 +25,17 @@
 
 import { ChevronRightIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
-import { RupeePrice } from '../RupeePrice';
+import { stockLabel } from '../stockLabel';
+import { ProductPriceRow } from '../ProductPriceRow';
 import { GILROY } from '../../theme/fonts';
 import { AppImage as Image } from '../AppImage';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
-import { ProductVariantOptions, discountPercentOf } from './ProductVariantOptions';
+import { ProductVariantOptions } from './ProductVariantOptions';
 import { ProductCutOptions } from './ProductCutOptions';
 import { ProductFlavourOptions } from './ProductFlavourOptions';
+import { flavourAvailableQuantity } from '../FlavourPicker/flavourStock';
 import { flavourPrice } from '../FlavourPicker/flavourPricing';
 import { flavourChoices } from './flavourSelection';
 import { ProductServingOptions } from './ProductServingOptions';
@@ -78,9 +80,9 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
   const variants = product.variants?.map(v => ({ ...v, ...flavourPrice(product, option, v) }));
   const hasRealVariants = variants && variants.length > 1;
   const selectedVariant = hasRealVariants ? variants!.find((v) => v.id === selectedVariantId) : undefined;
+  const lowStock = stockLabel(flavourAvailableQuantity(product, option, selectedVariant), product.isAvailable !== false && option?.isAvailable !== false);
   const displayPrice = selectedVariant?.price ?? price;
   const displayOriginalPrice = selectedVariant?.originalPrice ?? originalPrice;
-  const displayPercent = discountPercentOf(displayPrice, displayOriginalPrice);
 
   // With no option pickers between them, the size line hugs the title with
   // the same 4px gap it has above the price (card gap-3 minus -mt-2).
@@ -112,11 +114,11 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
         ) : null}
 
         {product.options?.length && onSelectOption ? (
-          <ProductFlavourOptions options={flavourChoices(product)} availableQuantity={selectedVariant?.availableQuantity ?? product.availableQuantity} selectedId={selectedOptionId} onSelect={onSelectOption} />
+          <ProductFlavourOptions options={flavourChoices(product)} availableQuantity={hasRealVariants ? selectedVariant?.availableQuantity : product.availableQuantity} selectedId={selectedOptionId} onSelect={onSelectOption} />
         ) : null}
 
         {product.preorder && onSelectPreorder ? (
-          <ProductPreorderOptions minQty={product.preorder.minQty} leadDays={product.preorder.leadDays} value={preorder} onChange={onSelectPreorder} />
+          <ProductPreorderOptions unitLabel={variants?.find(v => v.id === selectedVariantId)?.label ?? weight} minQty={product.preorder.minQty} leadDays={product.preorder.leadDays} value={preorder} onChange={onSelectPreorder} />
         ) : null}
 
         {product.servingOptions?.length && onSelectServing ? (
@@ -127,21 +129,13 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
             With several sizes the Select Unit cards above already show all of it. */}
         {hasRealVariants ? null : <View className={hasOptions ? '' : '-mt-2'}>
           <Text className="text-[14px] font-bold text-ink">{selectedVariant?.label ?? weight}</Text>
-          <View className="mt-2 flex-row flex-wrap items-center gap-2">
-            <RupeePrice amount={displayPrice} size={22} />
-            {displayPercent ? (
-              <View className="flex-row items-center gap-1">
-                <Text className="text-[13px] text-ink/50">MRP</Text>
-                <RupeePrice amount={displayOriginalPrice!} size={13} strike color="#6B6B6B" />
-              </View>
-            ) : null}
+          <View className="mt-2">
+            <ProductPriceRow price={displayPrice} originalPrice={displayOriginalPrice} size={18} showMrpLabel />
           </View>
-          {displayPercent ? (
-            <Text className="mt-1 text-[13px] font-bold text-[#16A34A]">{displayPercent}% OFF on MRP</Text>
-          ) : null}
           {(selectedVariant?.unitPriceLabel ?? unitPriceLabel) ? (
             <Text className="mt-1 text-[13px] text-ink/70">{selectedVariant?.unitPriceLabel ?? unitPriceLabel}</Text>
           ) : null}
+          {lowStock ? <Text className="mt-1 text-[11px] font-semibold leading-[16px] text-[#8A8F98]">{lowStock}</Text> : null}
         </View>}
 
         {storeName && (

@@ -1,6 +1,4 @@
 import { useCallback, useState } from 'react';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -9,15 +7,12 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
+import { STORE_HEADER_BACKGROUND } from '../storeAppearance';
+
 import { LocationSelector } from '../../home/components/LocationSelector';
 import { DeliveryModeSwitcher } from '../../home/components/DeliveryModeSwitcher';
 import { HomeSearchBar } from '../../home/components/HomeSearchBar';
 import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
-
-const STORE_HEADER_GRADIENT = {
-  colors: ['#A5BA98', '#99AF8C', '#8EA480', '#849B76'] as const,
-  stops: [0, 0.35, 0.68, 1] as const,
-};
 
 const COLLAPSE_DISTANCE = 50;
 
@@ -55,18 +50,7 @@ export function StoreHeader({
     };
   });
 
-  const gradientStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      scrollY.value,
-      [0, COLLAPSE_DISTANCE],
-      [1, 0],
-      Extrapolation.CLAMP,
-    ),
-  }));
-
-  // White backing fades IN as the gradient fades out, so the pinned search bar
-  // sits on a clean white header once scrolled (per request). Same scroll
-  // window as the collapsing location row, so both finish together.
+  // Fade to white as the location row collapses.
   const frostedStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       scrollY.value,
@@ -77,26 +61,7 @@ export function StoreHeader({
   }));
 
   return (
-    <View className="overflow-hidden">
-      <BlurView
-        intensity={80}
-        tint="dark"
-        style={StyleSheet.absoluteFill}
-      />
-
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, gradientStyle]}
-      >
-        <LinearGradient
-          colors={STORE_HEADER_GRADIENT.colors}
-          locations={STORE_HEADER_GRADIENT.stops}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
-
+    <View className="overflow-hidden" style={styles.background}>
       <Animated.View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, frostedStyle, { backgroundColor: '#FFFFFF' }]}
@@ -127,6 +92,7 @@ export function StoreHeader({
 }
 
 const styles = StyleSheet.create({
+  background: { backgroundColor: STORE_HEADER_BACKGROUND },
   collapsibleRow: {
     overflow: 'hidden',
   },

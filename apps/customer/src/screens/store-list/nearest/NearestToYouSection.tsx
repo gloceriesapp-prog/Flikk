@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 // "Nearest to you" — real horizontal card row below StoreFilterBar.
 //
 // Premium card treatment:
@@ -330,6 +331,7 @@ export function NearestToYouSection() {
     prefetchImages(stores.flatMap(store => store.photoUrl ? [store.photoUrl] : []));
   }, [stores]);
 
+  if (location && isPending && stores.length === 0) return <View className="px-5 pt-6"><ScreenSkeleton layout="list" label="Loading nearby stores" /></View>;
   if (stores.length === 0) {
     return (
       <View className="px-5 pt-6">
