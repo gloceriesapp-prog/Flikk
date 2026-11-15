@@ -1,7 +1,7 @@
 'use client';
 
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
-import { createItem, type HomeContentSection, type HomeContentItem } from '@/lib/homeContent';
+import { categoryCardStyle, createItem, type CategoryCardStyle, type HomeContentKey, type HomeContentSection, type HomeContentItem } from '@/lib/homeContent';
 import { Field, inputClass, Toggle } from './Fields';
 import { PopularBrandPicker } from './PopularBrandPicker';
 import { SelectionEditor } from './SelectionEditor';
@@ -9,9 +9,11 @@ import { SECTION_KIND_LABELS } from './sectionInsertion';
 
 export function SectionEditor({
   value: section,
+  tabKey,
   onChange,
 }: {
   value: HomeContentSection;
+  tabKey: HomeContentKey;
   onChange: (value: HomeContentSection) => void;
 }) {
   const update = (patch: Partial<HomeContentSection>) => onChange({ ...section, ...patch });
@@ -23,6 +25,8 @@ export function SectionEditor({
     update({ items });
   }
   const hasProducts = ['products', 'hero', 'stores', 'banner'].includes(section.kind);
+  const cardStyle = categoryCardStyle(section, tabKey);
+  const photoCards = section.kind === 'categories' && cardStyle === 'photo';
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -80,7 +84,16 @@ export function SectionEditor({
             />
           </Field>
         )}
-        {['products', 'hero', 'categories'].includes(section.kind) && (
+        {section.kind === 'categories' && (
+          <Field label="Category card style">
+            <select value={cardStyle} className={inputClass}
+              onChange={(event) => update({ categoryCardStyle: event.target.value as CategoryCardStyle })}>
+              <option value="standard">Standard tiles</option>
+              <option value="photo">Photo cards · horizontal scroll</option>
+            </select>
+          </Field>
+        )}
+        {!photoCards && ['products', 'hero', 'categories'].includes(section.kind) && (
           <>
             <Field label="Layout">
               <select
