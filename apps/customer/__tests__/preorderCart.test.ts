@@ -69,3 +69,31 @@ describe('pre-order cart lines', () => {
     expect(useCartStore.getState().items.map((i) => i.id)).toEqual(['idli']);
   });
 });
+
+
+describe('chosen pre-order quantities', () => {
+  beforeEach(() => useCartStore.getState().clear());
+  const booking = cartPreorder('2026-11-07', slot, now);
+  it('adds the chosen amount atomically, retaining the unit price and booking', () => {
+    const chicken = { ...idli, id: 'chicken', productId: 'chicken', weight: '0.5 kg', price: 100, preorderMinQty: 1 };
+    useCartStore.getState().addItem(chicken, booking, 4);
+    expect(useCartStore.getState().items[0]).toMatchObject({ quantity: 4, price: 100, weight: '0.5 kg' });
+    expect(useCartStore.getState().preorder).toEqual(booking);
+    useCartStore.getState().addItem(chicken, booking, 2);
+    expect(useCartStore.getState().items[0]!.quantity).toBe(6);
+  });
+  it('rejects fractional, invalid and below-minimum counts without adding a line', () => {
+    for (const amount of [0, -1, 1.5, NaN, Infinity, 1000, 9]) {
+      useCartStore.getState().addItem(idli, booking, amount);
+    }
+    expect(useCartStore.getState().items).toHaveLength(0);
+    expect(useCartStore.getState().preorder).toBeNull();
+  });
+  it('never exceeds the server cart count limit or adds without a delivery slot', () => {
+    useCartStore.getState().addItem(idli, undefined, 10);
+    expect(useCartStore.getState().items).toHaveLength(0);
+    useCartStore.getState().addItem(idli, booking, 999);
+    useCartStore.getState().addItem(idli, booking, 1);
+    expect(useCartStore.getState().items[0]!.quantity).toBe(999);
+  });
+});

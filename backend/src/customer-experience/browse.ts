@@ -32,8 +32,8 @@ export async function hydrateBrowse(ids: { id: string }[], stores: string[], fie
   if (error) throw error;
   return ids.flatMap(id => (data ?? []).filter(row => (row as unknown as { id: string }).id === id.id));
 }
-export function optionalUuid(value: unknown): string | null {
+export function optionalUuid(value: unknown, kind: 'category' | 'brand' = 'category'): string | null {
   if (value === undefined || value === null) return null;
-  if (typeof value !== 'string' || !UUID.test(value)) throw new AppError(400, 'INVALID_CATEGORY', 'Invalid category.');
+  if (typeof value !== 'string' || !UUID.test(value)) throw new AppError(400, `INVALID_${kind.toUpperCase()}`, `Invalid ${kind}.`);
   return value;
 }

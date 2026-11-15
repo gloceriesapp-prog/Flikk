@@ -1,4 +1,4 @@
-// "Biggest Price Drops" — the premium magenta gradient DealCard row (highest
+// "Biggest Price Drops" — the DealCard row (highest
 // % / ₹ off, first 4 of the nearest-store discounted feed). Renamed from the
 // old "Deals for You" section: this one is specifically the price-drop
 // showcase; the plain ProductCard "Deals for You" row lives in

@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 // Frequently asked questions (admin "App settings" > Customer FAQ, migration
 // 112; served in GET /app-config). Reached from Help & support.
 import { useState } from 'react';
@@ -15,7 +16,7 @@ export function FaqScreen({ navigation }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <CareLayout allowGuest title="Common questions" onBack={() => navigation.goBack()}>
-      {config.isPending ? <Text className="text-sm text-gray-600">Loading…</Text> : null}
+      {config.isPending ? <ScreenSkeleton layout="list" /> : null}
       {config.isError && !config.data ? (
         <>
           <CareEmpty text="We couldn’t load the questions." />

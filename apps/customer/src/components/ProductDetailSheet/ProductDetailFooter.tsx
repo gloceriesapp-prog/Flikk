@@ -7,19 +7,21 @@ import {
 
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { PreorderQuantitySelector } from './PreorderQuantitySelector';
 
-import { RupeePrice } from '../RupeePrice';
+import { canAddFlavourPack } from '../FlavourPicker/flavourStock';
+import { flavourPrice } from '../FlavourPicker/flavourPricing';
+import { ProductPriceRow } from '../ProductPriceRow';
 import { AppIcon } from '../AppIcon';
 
 import { useCartStore } from '../../store/useCartStore';
 import { addToCart } from '../../store/addToCart';
 import { CUT_SIZE_LABEL, SERVING_LABEL, cartLineId, type CutSize, type Serving } from '../../store/cartIdentity';
 import type { CartPreorder } from '../../store/preorder';
+import { preorderMinimumLabel } from '../../store/preorderQuantity';
 
 import type { Product, ProductOption } from '../../screens/home/products/types';
-import { canAddFlavourPack } from '../FlavourPicker/flavourStock';
-import { flavourPrice } from '../FlavourPicker/flavourPricing';
-import { discountPercentOf } from './ProductVariantOptions';
 
 const BAR_BLUE = '#1447e6';
 
@@ -74,9 +76,8 @@ export function ProductDetailFooter({
     selectedVariant?.label ?? product.weight;
 
   const { price, originalPrice } = flavourPrice(product, option, selectedVariant);
-  const discount = discountPercentOf(price, originalPrice);
   const selectionLabel = [weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name,
-    serving ? SERVING_LABEL[serving] : null, product.preorder ? `Min ${product.preorder.minQty}` : null]
+    serving ? SERVING_LABEL[serving] : null, product.preorder ? preorderMinimumLabel(product.preorder.minQty, weight) : null]
     .filter(Boolean).join(' · ');
 
   const quantity = useCartStore(
@@ -84,7 +85,16 @@ export function ProductDetailFooter({
       state.items.find((item) => item.id === id)?.quantity ?? 0
   );
 
-  const canAdd = useCartStore(state => canAddFlavourPack(product, option, { id: variantId, availableQuantity: selectedVariant?.availableQuantity ?? product.availableQuantity }, state.items, quantity === 0 ? product.preorder?.minQty ?? 1 : 1));
+  const minimum = product.preorder?.minQty ?? 1;
+  const [selection, setSelection] = useState({ id, count: minimum });
+  const count = selection.id === id ? Math.max(minimum, selection.count) : minimum;
+  const stockPack = { id: variantId, availableQuantity: selectedVariant?.availableQuantity ?? product.availableQuantity };
+  const needed = quantity === 0 && product.preorder ? count : 1;
+  const canAdd = useCartStore(state => quantity + needed <= 999 && canAddFlavourPack(product, option, stockPack, state.items, needed));
+  const canIncrease = useCartStore(state => count < 999 && canAddFlavourPack(product, option, stockPack, state.items, count + 1));
+  const multiplier = product.preorder ? (quantity || count) : 1;
+  const totalPrice = Math.round(price * multiplier * 100) / 100;
+  const totalOriginalPrice = originalPrice == null ? undefined : Math.round(originalPrice * multiplier * 100) / 100;
 
   const incrementItem = useCartStore(
     (state) => state.incrementItem
@@ -94,62 +104,29 @@ export function ProductDetailFooter({
     (state) => state.decrementItem
   );
 
-  // OUT OF STOCK / UNAVAILABLE
-  if (
-    !availability.isAvailable ||
-    selectedVariant?.isAvailable === false ||
-    needsFlavour
-  ) {
-    return (
-      <View className="mx-5 my-4 rounded-2xl bg-[#FFF0EE] px-5 py-4">
-        <Text className="text-center font-bold text-[#B42318]">
-          {needsFlavour && availability.isAvailable && selectedVariant?.isAvailable !== false
-            ? 'This flavour is out of stock'
-            : selectedVariant?.isAvailable === false
-            ? selectedVariant.unavailableReason === 'stock_unconfirmed'
-              ? 'Stock updating'
-              : 'Out of stock'
-            : availability.label}
-        </Text>
-      </View>
-    );
-  }
+  const unavailableLabel = selectedVariant?.isAvailable === false
+    ? (selectedVariant.unavailableReason === 'stock_unconfirmed' ? 'Stock updating' : 'Out of stock')
+    : availability.label ?? (needsFlavour ? 'Out of stock' : undefined);
 
   return (
+    <View>
+      {!unavailableLabel && product.preorder && quantity === 0 ? <PreorderQuantitySelector count={count} minimum={minimum} unit={weight}
+        canIncrease={canIncrease} onChange={(next) => setSelection({ id, count: next })} /> : null}
     <View className="flex-row items-center justify-between px-5 pb-1 pt-3">
       {/* LEFT — PRICE */}
       <View className="flex-shrink" style={{ flex: 1, paddingRight: 12 }}>
         <Text numberOfLines={2} className="mb-1 text-[12px] font-medium text-ink/60">{selectionLabel}</Text>
-        <View className="flex-row items-end gap-2" style={{ flexWrap: 'wrap' }}>
-          <RupeePrice
-            amount={price}
-            size={22}
-          />
-
-          {originalPrice != null &&
-            originalPrice > price && (
-              <RupeePrice
-                amount={originalPrice}
-                size={14}
-                strike
-                color="#101C1066"
-                style={{
-                  paddingBottom: 2,
-                }}
-              />
-            )}
-          {discount != null && discount > 0 && (
-            <Text className="pb-0.5 text-[12px] font-bold text-[#16A34A]">{discount}% off</Text>
-          )}
-        </View>
+        <ProductPriceRow price={totalPrice} originalPrice={totalOriginalPrice} size={18} />
 
         <Text className="mt-0.5 text-[11px] font-medium text-ink/50">
-          Inclusive of all taxes
+          {product.preorder ? `Total for ${quantity || count} × ${weight} · incl. taxes` : 'Inclusive of all taxes'}
         </Text>
       </View>
 
       {/* RIGHT */}
-      {quantity === 0 && product.preorder && !preorder ? (
+      {unavailableLabel ? (
+        <Text className="text-right text-[14px] font-semibold text-[#B42318]">{unavailableLabel}</Text>
+      ) : quantity === 0 && product.preorder && !preorder ? (
         /* PRE-ORDER: day + slot first */
         <View className="h-[42px] min-w-[128px] items-center justify-center rounded-xl bg-[#E5E7EB] px-5">
           <Text className="text-[13px] font-semibold text-ink/50">Pick day & slot</Text>
@@ -175,7 +152,7 @@ export function ProductDetailFooter({
               storeName,
               imageUrl: option?.imageUrl ?? imageUrl,
               preorderMinQty: product.preorder?.minQty,
-            }, product.preorder ? preorder : undefined)
+            }, product.preorder ? preorder : undefined, product.preorder ? count : undefined)
           }
           className="
             h-[42px]
@@ -187,10 +164,11 @@ export function ProductDetailFooter({
           "
           style={{
             backgroundColor: BAR_BLUE,
+            opacity: canAdd ? 1 : 0.45,
           }}
         >
           <Text className="text-[14px] font-semibold text-white">
-            {product.preorder ? `Pre-order ${product.preorder.minQty}` : 'Add to Cart'}
+            {product.preorder ? 'Add pre-order' : 'Add to Cart'}
           </Text>
         </Pressable>
       ) : (
@@ -264,6 +242,7 @@ export function ProductDetailFooter({
           </Pressable>
         </View>
       )}
+    </View>
     </View>
   );
 }

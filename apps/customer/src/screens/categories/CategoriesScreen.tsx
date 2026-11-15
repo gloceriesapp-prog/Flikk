@@ -58,7 +58,7 @@ export function CategoriesScreen({ navigation }: Props) {
       </View>
 
       <Animated.ScrollView className="flex-1" contentContainerClassName="pb-28" onScroll={scrollHandler} scrollEventThrottle={16}>
-        <PopularBrands onSelect={brand => navigation.navigate('BrandProducts', { brand })} onSeeAll={() => navigation.navigate('AllBrands')} />
+        <PopularBrands previewLimit={5} titleSpacing={20} onSelect={brand => navigation.navigate('BrandProducts', { brand })} onSeeAll={() => navigation.navigate('AllBrands')} />
         <CategorySections />
         <BrandFooter />
       </Animated.ScrollView>

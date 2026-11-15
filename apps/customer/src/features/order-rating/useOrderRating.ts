@@ -4,8 +4,11 @@ import { fetchReviewForOrder, submitReview } from '../../api/reviews';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useOrderRatingPreview } from './preview';
 
-// Both rating surfaces share an account-scoped review. Hide only after the
-// server accepts the rating; failures preserve the prompt for an explicit retry.
+export function orderReviewKey(orderId: string | undefined, customerId: string | null) {
+  return ['review', orderId, customerId] as const;
+}
+
+// Keep the prompt available until the server accepts the rating.
 export function useOrderRating(orderId: string | undefined, enabled: boolean, previewOnly = false) {
   const customerId = useAuthStore(s => s.customerId);
   const sessionEpoch = useAuthStore(s => s.sessionEpoch);
@@ -13,16 +16,18 @@ export function useOrderRating(orderId: string | undefined, enabled: boolean, pr
   const client = useQueryClient();
   const [selection, setSelection] = useState<{ orderId: string | undefined; score: number } | null>(null);
   const sending = useRef(false);
-  const key = ['review', orderId, customerId];
+  const key = orderReviewKey(orderId, customerId);
   const review = useQuery({
     queryKey: key,
     queryFn: () => fetchReviewForOrder(orderId!),
     enabled: enabled && !!orderId && !!customerId && !previewOnly,
+    staleTime: 60_000,
   });
   const savingCount = useIsMutating({ mutationKey: key });
   const save = useMutation({
     mutationKey: key,
-    mutationFn: (score: number) => submitReview(orderId!, score),
+    mutationFn: ({ score, comment }: { score: number; comment?: string }) =>
+      comment ? submitReview(orderId!, score, comment) : submitReview(orderId!, score),
     retry: false,
     onSuccess: result => {
       if (useAuthStore.getState().sessionEpoch === sessionEpoch) client.setQueryData(key, result);
@@ -35,7 +40,7 @@ export function useOrderRating(orderId: string | undefined, enabled: boolean, pr
   });
   const visible = enabled && (previewOnly ? sampleRating === 0 : !!customerId && review.isSuccess && !review.data);
 
-  async function rate(score: number) {
+  async function rate(score: number, comment?: string) {
     // Read the shared mutation cache at tap time. The reactive count can lag
     // behind another surface's tap, briefly allowing two submissions.
     if (!visible || sending.current || client.isMutating({ mutationKey: key, exact: true }) > 0 || !Number.isInteger(score) || score < 1 || score > 5) return;
@@ -45,11 +50,11 @@ export function useOrderRating(orderId: string | undefined, enabled: boolean, pr
       return;
     }
     sending.current = true;
-    try { await save.mutateAsync(score); }
+    try { await save.mutateAsync({ score, comment }); }
     catch { /* The visible prompt presents the mutation error for retry. */ }
     finally { sending.current = false; }
   }
 
   return { visible, rating: selection?.orderId === orderId ? selection?.score ?? 0 : 0, rate, isSaving: savingCount > 0,
-    error: save.isError && selection?.orderId === orderId ? 'Couldn’t save your rating. Tap a star to retry.' : null };
+    error: save.isError && selection?.orderId === orderId ? 'Couldn’t save your rating. Please try again.' : null };
 }

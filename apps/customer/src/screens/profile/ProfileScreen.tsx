@@ -18,11 +18,11 @@ import {
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { AccountPageHeader } from '../../components/AccountPageHeader';
 import { AppIcon } from '../../components/AppIcon';
 import { BrandFooter } from '../../components/BrandFooter';
 import {
   IconlyAddUser,
-  IconlyArrowLeft,
   IconlyArrowRight,
   IconlyHeadphone,
   IconlyIncognito,
@@ -79,6 +79,7 @@ function MenuRow({
   return (
     <>
       <Pressable
+        accessibilityRole="button"
         onPress={onPress}
         disabled={disabled}
         className={`
@@ -112,7 +113,7 @@ function MenuRow({
           className="
             ml-3.5
             flex-1
-            text-[14.5px]
+            text-[15px]
             font-semibold
             text-[#1C1C1C]
           "
@@ -207,9 +208,10 @@ function SectionCard({
         "
       >
         <Text
+          accessibilityRole="header"
           className="
-            text-[16px]
-            font-semibold
+            text-[17px]
+            font-bold
             tracking-[-0.2px]
             text-[#1C1C1C]
           "
@@ -293,49 +295,7 @@ export function ProfileScreen({
     >
       <StatusBar style="dark" />
 
-      {/* HEADER */}
-      <View
-        className="
-          flex-row
-          items-center
-          px-5
-          pb-3
-          pt-2
-        "
-      >
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back"
-          onPress={() =>
-            navigation.goBack()
-          }
-          hitSlop={12}
-          className="
-            h-10
-            w-10
-            items-center
-            justify-center
-            rounded-full
-            bg-white
-            active:scale-95
-          "
-        >
-          <IconlyArrowLeft size={22} color="#1C1C1C" />
-        </Pressable>
-
-        <Text
-          className="
-            flex-1
-            text-center
-            text-[20px]
-            font-bold
-            tracking-[-0.3px]
-            text-[#1C1C1C]
-          "
-        >
-          My Account
-        </Text>
-
-        <View className="h-10 w-10" />
-      </View>
+      <AccountPageHeader title="My Account" onBack={() => navigation.goBack()} />
 
       <ScrollView
         className="flex-1"

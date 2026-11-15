@@ -1,6 +1,7 @@
 // Before typing, show real nearby product recommendations only.
 // Category and store-type shortcuts are intentionally excluded from search.
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { SectionTitle } from '../../home/components/SectionTitle';
 import { ProductCard } from '../../home/products/ProductCard';
 import { NearYouBox } from './NearYouBox';
 import { useEverydayEssentials } from '../../home/everyday-essentials/useEverydayEssentials';
@@ -25,7 +26,7 @@ export function SearchSuggestions() {
 
       {gridProducts.length > 0 && (
         <View className="pt-8">
-          <Text className="mb-4 px-5 text-lg font-bold text-ink">More to explore</Text>
+          <SectionTitle>More to explore</SectionTitle>
           <View className="flex-row flex-wrap gap-x-2.5 gap-y-5 px-5">
             {gridProducts.map((product) => (
               <ProductCard key={product.id} product={product} widthClassName={GRID_CARD_WIDTH} showDiscountBadge />

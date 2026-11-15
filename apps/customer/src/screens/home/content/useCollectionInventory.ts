@@ -14,14 +14,14 @@ export function useCollectionInventory(tab: HomeContentKey, section: string, ite
   const query = useInfiniteQuery({
     queryKey: ['home', 'groceries', 'collection-pages', storeIds, tab, section, item],
     initialPageParam: Object.fromEntries(storeIds.map(id => [id, ''])) as Record<string, string | null>,
-    queryFn: async ({ pageParam }) => {
+    queryFn: async ({ pageParam, signal }) => {
       const pages = await Promise.all(storeIds.map(async storeId => {
         const cursor = pageParam[storeId];
         if (cursor === null) return { storeId, products: [], nextCursor: null };
         const params = new URLSearchParams({ tab, section, limit: '24' });
         if (item) params.set('item', item);
         if (cursor) params.set('after', cursor);
-        const page = await apiRequest<Page>(`/stores/${storeId}/collection-products?${params}`, { auth: false });
+        const page = await apiRequest<Page>(`/stores/${storeId}/collection-products?${params}`, { auth: false, signal });
         return { storeId, ...page };
       }));
       return pages;

@@ -1,29 +1,8 @@
-// Maps to POST /auth/otp/request, POST /auth/otp/verify, GET /auth/me, and
-// POST /auth/push-token — the actual HTTP contract for all four now lives
-// in one place (@gloceries/shared's auth module, packages/shared/src/auth/
-// otp.ts) instead of being hand-copied per app; this file wraps that
-// shared implementation with the two things that are genuinely specific to
-// this app: the devAuthFallback dev-mode stand-in below, and this app's
-// own richer VerifyOtpResponse/AccountStatus needs (is_approved/has_store/
-// application_submitted — customer's own copy of the shared contract only
-// needs "token exists = logged in", nothing else, so it stays on the
-// shared shape unwrapped).
-//
-// Every OTP/session function here falls back to devAuthFallback.ts when
-// the real backend is unreachable (not when it responds with a real error
-// — see isBackendUnreachable's own note) — that's what "OTP not receiving"
-// in this sandbox actually was: no backend/SMS provider reachable, same
-// situation every other screen in this app already handles via
-// placeholder data. The fallback disappears on its own the moment a real
-// backend answers; nothing here needs to change when that happens.
-
+// Partner authentication and uploads always use the real API.
 import { createAuthApi, type AccountStatus, type VerifyOtpResponse as SharedVerifyOtpResponse } from '@gloceries/shared';
 import { ApiError, apiRequest } from './client';
 import { API_BASE_URL } from './baseUrl';
 import { normalizeStoreHour } from '../utils/storeHours';
-import {
-  isBackendUnreachable,
-} from './devAuthFallback';
 
 // Which of the four apps this is — sent on OTP request/verify so the
 // backend can pin a number to one app and 403 ACCOUNT_WRONG_APP a number
@@ -46,9 +25,7 @@ export interface RequestOtpResult {
   devMode: boolean;
 }
 
-// Login never falls back to devAuthFallback: a fake "sent" code that only
-// accepted 123456 hid every real problem (wrong Wi-Fi IP, backend stopped)
-// behind "invalid code". An unreachable backend is now a clear error.
+// OTP requests always use the backend and surface real delivery failures.
 function unreachable(err: unknown): never {
   if (!(err instanceof ApiError) || err.status === 0) {
     const message = __DEV__
@@ -124,15 +101,8 @@ export async function submitStoreApplication(application: StoreApplication): Pro
 // local file. base64 in, public URL out — see backend/src/routes/
 // storeOnboarding.ts's own note on why this is its own endpoint, not
 // bundled into POST /store-application's body.
-export async function uploadStorePhoto(base64: string, contentType: string, localUri: string): Promise<{ url: string }> {
-  try {
-    return await apiRequest('/partner/store-photo', { method: 'POST', body: { base64, contentType } });
-  } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    // No real storage to fall back to — stands in with the picked file's own
-    // local URI so StoreReviewScreen still has something to render.
-    return { url: localUri };
-  }
+export async function uploadStorePhoto(base64: string, contentType: string, _localUri: string): Promise<{ url: string }> {
+  return apiRequest('/partner/store-photo', { method: 'POST', body: { base64, contentType } });
 }
 
 // Re-checked on cold start (a returning session's approval/store status

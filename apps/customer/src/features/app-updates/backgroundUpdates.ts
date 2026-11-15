@@ -1,3 +1,5 @@
+export const CHECK_INTERVAL_MS = 15 * 60_000;
+
 /** A download-only adapter: deliberately has no reload/install operation. */
 export interface UpdateDownloadDriver {
   check(): Promise<{ isAvailable: boolean; isRollBackToEmbedded?: boolean }>;
@@ -17,7 +19,8 @@ export function createBackgroundUpdates(driver: UpdateDownloadDriver, now = Date
         if (!canDownload()) { nextAttempt = 0; return; }
         await driver.fetch();
       }
-      nextAttempt = now() + 4 * 60 * 60_000;
+      // A pushed update reaches an open app within one interval (see useBackgroundUpdates).
+      nextAttempt = now() + CHECK_INTERVAL_MS;
     } catch {
       // Offline, timeout and unsupported development clients must never block the app.
       // A later foreground/network event may retry after the short failure cooldown.

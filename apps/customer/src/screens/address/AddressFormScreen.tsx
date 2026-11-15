@@ -1,3 +1,4 @@
+import { locationFromAddress } from '../../features/delivery-address/mapAddress';
 import { useLocationStore } from '../../store/useLocationStore';
 import { useAuthStore } from '../../store/useAuthStore';
 // Real saved-address form — reached only via LocationSearchScreen's own
@@ -168,9 +169,10 @@ export function AddressFormScreen({ route, navigation }: Props) {
       if (editing) await updateAddress(editing.id, fields);
       else await createAddress({ ...fields, make_default: true });
       if (!editing || editing.is_default) {
-        await useLocationStore
+        const selectedPin = await locationFromAddress({ ...fields, map_address: fields.map_address ?? null });
+        if (selectedPin) await useLocationStore
           .getState()
-          .setLocation({ latitude, longitude, addressLabel: fields.map_address || line1, city })
+          .setLocation(selectedPin)
           .catch(() => {
             console.warn('[AddressForm] Could not persist the selected delivery pin.');
           });
@@ -212,15 +214,15 @@ export function AddressFormScreen({ route, navigation }: Props) {
           accessibilityLabel="Go back"
           onPress={() => navigation.goBack()}
           hitSlop={12}
-          className="h-10 w-10 items-center justify-center"
+          className="h-11 w-11 items-center justify-center rounded-full border border-[#E6E8EC] bg-white active:opacity-70"
         >
-          <IconlyArrowLeft size={18} color={colors.ink} />
+          <IconlyArrowLeft size={21} color={colors.ink} />
         </Pressable>
         <View className="flex-1">
-          <Text className="text-[17px] font-medium text-ink" numberOfLines={1}>
+          <Text accessibilityRole="header" className="text-[18px] font-bold leading-6 text-ink" numberOfLines={1}>
             {city}
           </Text>
-          <Text className="text-xs text-ink/45" numberOfLines={1}>
+          <Text className="text-[13px] leading-5 text-ink/65" numberOfLines={1}>
             {addressLabel}
           </Text>
         </View>

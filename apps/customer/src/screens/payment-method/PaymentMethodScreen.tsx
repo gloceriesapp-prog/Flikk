@@ -15,6 +15,7 @@ import { PaymentMethodList } from './components/PaymentMethodList';
 import type { PaymentMethod } from '../../payments/paymentMethod';
 import { usePaymentAvailability } from '../../payments/usePaymentAvailability';
 import { useAuthStore } from '../../store/useAuthStore';
+import { AccountPageHeader } from '../../components/AccountPageHeader';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PaymentMethod'>;
@@ -51,18 +52,24 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
   }
   return (
     <View className="flex-1 bg-[#F2F2F7]">
-      <View className="bg-[#F2F2F7] px-3 pb-1 pt-safe-offset-2">
-        <View className="relative flex-row items-center justify-between">
-          <Pressable onPress={() => navigation.goBack()} accessibilityLabel={fromProfile ? "Back to profile" : "Back to cart"} accessibilityRole="button"
-            className="h-11 w-11 items-center justify-center rounded-full bg-white">
-            <IconlyArrowLeft size={22} color="#111111" />
-          </Pressable>
-          <View className="h-11 w-11" />
-          <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-            <Text className="text-[18px] font-semibold text-ink">Choose how to pay</Text>
+      {fromProfile ? (
+        <View className="pt-safe">
+          <AccountPageHeader title="Payment methods" backLabel="Back to profile" onBack={() => navigation.goBack()} />
+        </View>
+      ) : (
+        <View className="bg-[#F2F2F7] px-3 pb-1 pt-safe-offset-2">
+          <View className="relative flex-row items-center justify-between">
+            <Pressable onPress={() => navigation.goBack()} accessibilityLabel="Back to cart" accessibilityRole="button"
+              className="h-11 w-11 items-center justify-center rounded-full bg-white">
+              <IconlyArrowLeft size={22} color="#111111" />
+            </Pressable>
+            <View className="h-11 w-11" />
+            <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+              <Text className="text-[18px] font-semibold text-ink">Choose how to pay</Text>
+            </View>
           </View>
         </View>
-      </View>
+      )}
       <KeyboardAwareScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-8 pt-4" bottomOffset={40}>
         {!fromProfile && Platform.OS === 'android' && paymentAvailabilityLoaded && !directUpiAvailable && allowed.online && <Text className="text-sm text-ink/60">UPI app payments are unavailable in this test environment. Choose another payment method.</Text>}
         {!!error && <Text className="text-red-600">{error}</Text>}

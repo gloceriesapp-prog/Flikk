@@ -9,12 +9,12 @@ import { Alert } from 'react-native';
 import { cartConflict, type CartPreorder } from './preorder';
 import { useCartStore, type CartProduct } from './useCartStore';
 
-export function addToCart(product: CartProduct, preorder?: CartPreorder): void {
+export function addToCart(product: CartProduct, preorder?: CartPreorder, amount?: number): void {
   const cart = useCartStore.getState();
   const conflict = cartConflict(cart.items, product);
-  if (!conflict) { cart.addItem(product, preorder); return; }
+  if (!conflict) { cart.addItem(product, preorder, amount); return; }
   Alert.alert('Start a new cart?', `${conflict} Replace your cart with this item?`, [
     { text: 'Keep cart', style: 'cancel' },
-    { text: 'Replace', style: 'destructive', onPress: () => { cart.clear(); useCartStore.getState().addItem(product, preorder); } },
+    { text: 'Replace', style: 'destructive', onPress: () => { cart.clear(); useCartStore.getState().addItem(product, preorder, amount); } },
   ]);
 }

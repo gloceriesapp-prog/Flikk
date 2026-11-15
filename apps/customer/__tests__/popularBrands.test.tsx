@@ -20,6 +20,13 @@ beforeEach(() => {
 });
 afterEach(() => client.clear());
 
+it('renders only the brands returned by the API when the row is partially filled', async () => {
+  jest.mocked(fetchPopularBrands).mockResolvedValue(brands.slice(0, 2));
+  await render(<PopularBrands onSelect={jest.fn()} onSeeAll={jest.fn()} />, { wrapper: Wrapper });
+  await screen.findByLabelText('Brand 1');
+  expect(screen.getAllByRole('button')).toHaveLength(2);
+});
+
 it('shows one five-brand Store row with See all even when fewer brands exist', async () => {
   const select = jest.fn(); const seeAll = jest.fn();
   const { rerender } = await render(<PopularBrands previewLimit={5} alwaysShowSeeAll onSelect={select} onSeeAll={seeAll} />, { wrapper: Wrapper });

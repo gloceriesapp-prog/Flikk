@@ -128,7 +128,7 @@ function ManagedSection({
         products={products}
         sectionTitle={section.title || 'products'}
         label={section.buttonLabel}
-        avatarCount={section.kind === 'hero' ? 2 : 3}
+        avatarCount={section.showProductImages === false ? 0 : section.kind === 'hero' ? 2 : 3}
         onPress={() => openCollection()}
       />
     </View>
@@ -183,6 +183,7 @@ function ManagedSection({
               tabKey={tabKey}
               featuredCategories={tabKey === 'grocery' && section.kind === 'categories'}
               freshCategories={(tabKey === 'fresh' || tabKey === 'regional') && section.kind === 'categories'}
+              fullImageCategories={tabKey === 'regional' && section.kind === 'categories'}
               archedCategories={tabKey === 'meat' && section.kind === 'categories'}
               section={{ ...section, items }}
               products={inventory.visibleProducts}

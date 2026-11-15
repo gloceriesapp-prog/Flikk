@@ -1,44 +1,86 @@
-import { inaccessibleCare } from '../useCareQuery';
-import { useAuthStore } from '../../../store/useAuthStore';
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { IconlyArrowLeft } from '../../../components/icons/iconly';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { AccountPageHeader } from '../../../components/AccountPageHeader';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { inaccessibleCare } from '../useCareQuery';
+
 export function CareLayout({ title, onBack, children, allowGuest = false }: {
-    title: string;
-    onBack: () => void;
-    children: ReactNode;
-    allowGuest?: boolean;
+  title: string;
+  onBack: () => void;
+  children: ReactNode;
+  allowGuest?: boolean;
 }) {
-    const token = useAuthStore(s => s.accessToken);
-    const signIn = useAuthStore(s => s.exitGuestMode);
-    return <View className="flex-1 bg-[#F5F6F8] pt-safe">
-  <View className="flex-row items-center px-5 py-3">
-   <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} className="h-10 w-10 items-center justify-center rounded-full bg-white"><IconlyArrowLeft size={22} color="#111" /></Pressable>
-   <Text className="flex-1 text-center text-lg font-bold text-black">{title}</Text><View className="w-10"/>
-  </View>
-  <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-4 px-5 pb-safe-offset-6 pt-3">{token || allowGuest ? children : <><CareEmpty text="Sign in to view your orders and refunds."/><CareButton label="Sign in" onPress={signIn}/></>}</ScrollView>
- </View>;
+  const token = useAuthStore(s => s.accessToken);
+  const signIn = useAuthStore(s => s.exitGuestMode);
+
+  return (
+    <View className="flex-1 bg-[#F5F6F8] pt-safe">
+      <AccountPageHeader title={title} onBack={onBack} />
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pb-safe-offset-6 pt-2">
+        <View className="w-full max-w-[520px] gap-4 self-center">
+          {token || allowGuest ? children : (
+            <>
+              <CareEmpty text="Sign in to continue." />
+              <CareButton label="Sign in" onPress={signIn} />
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
 }
-export function CareButton({ label, onPress, disabled = false }: {
-    label: string;
-    onPress: () => void;
-    disabled?: boolean;
+
+export function CareCard({ children }: { children: ReactNode }) {
+  return <View className="rounded-[24px] border border-[#E6E8EC] bg-white p-5">{children}</View>;
+}
+
+export function CareButton({ label, onPress, disabled = false, secondary = false }: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  secondary?: boolean;
 }) {
-    return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} className="rounded-2xl bg-primary px-4 py-3" style={{ opacity: disabled ? .5 : 1 }}><Text className="text-center text-sm font-bold text-white">{label}</Text></Pressable>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      className={`min-h-[48px] justify-center rounded-2xl px-4 py-3 active:opacity-80 disabled:opacity-50 ${secondary ? 'border border-[#E6E8EC] bg-white' : 'bg-primary'}`}
+    >
+      <Text className={`text-center text-[15px] font-semibold ${secondary ? 'text-ink' : 'text-white'}`}>{label}</Text>
+    </Pressable>
+  );
 }
+
 export function QueryNotice({ loading, error, hasData, retry }: {
-    loading: boolean;
-    error: unknown;
-    hasData: boolean;
-    retry: () => void;
+  loading: boolean;
+  error: unknown;
+  hasData: boolean;
+  retry: () => void;
 }) {
-    if (loading && !hasData)
-        return <ActivityIndicator accessibilityLabel="Loading"/>;
-    if (!error)
-        return null;
-    return <View className="rounded-2xl bg-white p-4"><Text className="mb-3 text-sm text-gray-600">{inaccessibleCare(error) ? 'This information is no longer available for your account.' : hasData ? 'Showing your last update. New updates are temporarily unavailable.' : 'Could not load this information. Check your connection and retry.'}</Text><CareButton label="Retry" onPress={retry}/></View>;
+  if (loading && !hasData) {
+    return <ScreenSkeleton layout="list" label="Loading account information" />;
+  }
+  if (!error) return null;
+
+  const message = inaccessibleCare(error)
+    ? 'This information is unavailable for your account.'
+    : hasData ? 'Showing your last update. New updates are temporarily unavailable.'
+      : 'Couldn’t load this information. Check your connection and try again.';
+
+  return (
+    <CareCard>
+      <Text className="mb-3 text-[15px] leading-[22px] text-ink/70">{message}</Text>
+      <CareButton label="Retry" onPress={retry} secondary />
+    </CareCard>
+  );
 }
-export function CareEmpty({ text }: {
-    text: string;
-}) { return <View className="rounded-3xl bg-white p-6"><Text className="text-center text-sm text-gray-600">{text}</Text></View>; }
-export const displayDate = (value: string) => new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+export function CareEmpty({ text }: { text: string }) {
+  return <CareCard><Text className="text-center text-[15px] leading-[22px] text-ink/70">{text}</Text></CareCard>;
+}
+
+export const displayDate = (value: string) => new Date(value).toLocaleString('en-IN', {
+  day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+});

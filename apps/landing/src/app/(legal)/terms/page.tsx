@@ -83,6 +83,12 @@ export default function TermsPage() {
           </a>
           .
         </p>
+        <p>
+          Delivery tracking uses Google Maps and is subject to the{" "}
+          <a className="underline" href="https://maps.google.com/help/terms_maps/">Google Maps Terms of Service</a>
+          {" "}and{" "}
+          <a className="underline" href="https://policies.google.com/privacy">Google Privacy Policy</a>.
+        </p>
       </LegalSection>
 
       <LegalSection title="7. Cancellations and refunds">

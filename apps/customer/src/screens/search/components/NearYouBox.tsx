@@ -2,9 +2,8 @@
 // bar (16px gutter, SearchHeader px-4), with a banner on top
 // and the products as a rail inside it (the Instamart collection layout).
 // The banner is the coastal Udupi sunrise artwork unless admin App content
-// sets another (search.nearYou.imageUrl). The title always sits top-left on a
-// soft white fade from the left edge, so it reads cleanly over the light sky
-// without covering the produce on the right.
+// sets another (search.nearYou.imageUrl). The title sits bottom-left on a
+// soft white backing so the title stays readable over the darker foreground.
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCopy, useCopyImage } from '../../../api/appConfig';
@@ -23,7 +22,7 @@ export function NearYouBox({ products }: { products: Product[] }) {
   return (
     <View className="overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white" style={{ marginHorizontal: 13 }}>
       <View style={{ height: BANNER_HEIGHT, backgroundColor: '#FBE9D7' }}>
-        <Image source={{ uri: banner || NEAR_YOU_BANNER }} accessible={false} className="h-full w-full" resizeMode="cover" />
+        <Image source={{ uri: banner || NEAR_YOU_BANNER }} accessible={false} className="h-full w-full" resizeMode="cover" contentPosition="bottom center" />
         <LinearGradient
           pointerEvents="none"
           colors={['rgba(255,255,255,0.92)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
@@ -32,7 +31,14 @@ export function NearYouBox({ products }: { products: Product[] }) {
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}
         />
-        <View pointerEvents="none" className="absolute left-0 top-0 px-5 pt-4" style={{ maxWidth: '62%' }}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.95)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.titleBacking}
+        />
+        <View pointerEvents="none" className="absolute bottom-0 left-0 px-5 pb-4" style={{ maxWidth: '62%' }}>
           <Text accessibilityRole="header" className="text-[22px] font-bold leading-[27px] tracking-tight text-ink">{title}</Text>
         </View>
       </View>
@@ -51,3 +57,7 @@ export function NearYouBox({ products }: { products: Product[] }) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  titleBacking: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 90 },
+});

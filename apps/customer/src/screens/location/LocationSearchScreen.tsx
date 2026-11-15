@@ -14,7 +14,7 @@
 // of SDK 52+, this screen requires a development build (`npx expo run:ios` /
 // EAS dev client) to actually render. See src/screens/location/README.md.
 
-import { GpsSignal01Icon, Search01Icon } from '@hugeicons/core-free-icons';
+import { GpsSignal01Icon } from '@hugeicons/core-free-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import { matchSavedAddress } from '../../features/delivery-address/matchSavedAddress';
@@ -53,7 +53,8 @@ import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
 import { MapLoadingState } from './components/MapLoadingState';
 import { LocationCardIcon } from './components/LocationCardIcon';
-import { IconlyArrowLeft } from '../../components/icons/iconly';
+import { LocationSearchField } from './components/LocationSearchField';
+import { IconlyArrowLeft, IconlySearch } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LocationSearch'>;
 
@@ -683,30 +684,20 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             absolutely-positioned Views each guessing the same top offset) —
             that's what guarantees they sit on the exact same line instead
             of relying on two separate `top` values happening to match. */}
-        <View style={{ top: insets.top + 12 }} className="absolute left-4 right-4 h-11 flex-row items-center gap-2.5">
+        <View style={{ top: insets.top + 12 }} className="absolute left-4 right-4 flex-row items-center gap-2.5">
           <Pressable accessibilityRole="button" accessibilityLabel="Go back"
             onPress={() => navigation.canGoBack()
               ? navigation.goBack()
               : navigation.replace('LocationPermission')}
             hitSlop={12}
-            className="h-11 w-11 items-center justify-center rounded-full border border-gray-300 bg-white"
+            style={{ width: 48, height: 48, flexShrink: 0 }}
+            className="items-center justify-center rounded-2xl border border-[#DDE1E6] bg-white"
           >
-            <IconlyArrowLeft size={20} color={colors.ink} />
+            <IconlyArrowLeft size={24} color={colors.ink} />
           </Pressable>
 
-          <View className="h-11 flex-1 flex-row items-center rounded-full border border-gray-300 bg-white px-4">
-            <TextInput
-              ref={searchInputRef}
-              value={query}
-              onChangeText={setQuery}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-              placeholder="Search an area or address"
-              placeholderTextColor="#9AA5A3"
-              textAlignVertical="center"
-              className="h-full flex-1 py-0 text-base leading-tight text-ink"
-            />
-            <AppIcon icon={Search01Icon} size={18} color={colors.ink} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <LocationSearchField inputRef={searchInputRef} value={query} onChangeText={setQuery} onSubmit={handleSearch} />
           </View>
         </View>
 
@@ -719,7 +710,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             on-device geocodeAddress every other search does. */}
         {suggestions.length > 0 ? (
           <View
-            style={{ top: insets.top + 64 }}
+            style={{ top: insets.top + 68 }}
             className="absolute left-4 right-4 overflow-hidden rounded-2xl bg-white shadow-sm shadow-black/10"
           >
             {suggestions.map((label, i) => (
@@ -728,7 +719,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                 onPress={() => handleSelectSuggestion(label)}
                 className={`flex-row items-center gap-3 px-4 py-3 ${i > 0 ? 'border-t border-mist' : ''}`}
               >
-                <AppIcon icon={Search01Icon} size={15} color={`${colors.ink}80`} />
+                <IconlySearch size={18} color="#6B7280" />
                 <Text className="flex-1 text-[14px] text-ink" numberOfLines={1}>
                   {label}
                 </Text>
@@ -738,7 +729,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
         ) : null}
 
         {error ? (
-          <View style={{ top: insets.top + 64 }} className="absolute left-4 right-4 rounded-xl bg-danger/10 px-4 py-2">
+          <View style={{ top: insets.top + 68 }} className="absolute left-4 right-4 rounded-xl bg-danger/10 px-4 py-2">
             <Text className="text-[13px] text-danger">{error}</Text>
           </View>
         ) : null}
@@ -810,10 +801,10 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                 are one visual unit, not two unrelated pieces of info. */}
             <View className="rounded-2xl bg-white p-3">
               <View className="flex-row items-center gap-3">
-                <View className="h-11 w-11 items-center justify-center rounded-full">
-                  <LocationCardIcon />
+                <View className="h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F3F4F6]">
+                  <LocationCardIcon size={28} />
                 </View>
-                <View className="flex-1">
+                <View className="min-w-0 flex-1">
                   {/* Text stays mounted through a resolve — previously this
                       swapped the whole block out for a plain "Locating…"
                       Text while resolving was true, which fired on every
@@ -823,7 +814,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                       un-swapped while the next one resolves; the small
                       spinner below is the only thing that comes and goes. */}
                   <View className="flex-row items-center gap-1.5">
-                    <Text className="text-[16px] font-bold text-ink" numberOfLines={1}>
+                    <Text className="flex-1 text-[16px] font-bold text-ink" numberOfLines={1}>
                       {shortName || 'Move the pin to your location'}
                     </Text>
                     {resolving ? <ActivityIndicator size="small" color={colors.ink} /> : null}
@@ -846,12 +837,12 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                     {resolving ? 'Finding the address for this pin…' : addressLabel || 'Choose your current location or search an address.'}
                   </Text>
                 </View>
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Change delivery location"
                   onPress={() => searchInputRef.current?.focus()}
-                  hitSlop={8}
-                  className="rounded-full border border-mist bg-white/70 px-3 py-1.5"
+                  hitSlop={6}
+                  className="h-11 min-w-[80px] shrink-0 items-center justify-center rounded-xl border border-[#D9E4FF] bg-[#EEF3FF] px-3"
                 >
-                  <Text className="text-[12.5px] font-bold" style={{ color: BUTTON_ACCENT }}>
+                  <Text className="text-[14px] font-semibold" style={{ color: BUTTON_ACCENT }}>
                     Change
                   </Text>
                 </Pressable>

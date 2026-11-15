@@ -1,93 +1,83 @@
-// Real submission behind OrderRow's "Rate your order" prompt — previously
-// decorative only (that component's own updated note). One review per
-// delivered order (POST /reviews, backend/src/routes/reviews.ts) —
-// 1-5 stars, an optional comment.
-
 import { useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { IconlyDeliveryBox } from '../../../components/icons/IconlyDeliveryBox';
+import { useOrderRating } from '../../../features/order-rating/useOrderRating';
 import { OrderRatingStars } from './OrderRatingStars';
-import { colors } from '../../../theme/tokens';
-import { submitReview } from '../../../api/reviews';
 
 interface Props {
-  visible: boolean;
   orderId: string;
   storeName: string;
-  initialRating?: number;
   onClose: () => void;
-  onSubmitted: (rating: number) => void;
 }
 
-export function RateOrderModal({ visible, orderId, storeName, initialRating = 0, onClose, onSubmitted }: Props) {
-  const [rating, setRating] = useState(initialRating);
+export function RateOrderModal({ orderId, storeName, onClose }: Props) {
+  const [score, setScore] = useState(0);
   const [comment, setComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const rating = useOrderRating(orderId, true);
+  if (!rating.visible) return null;
 
-  function reset() {
-    setRating(0);
-    setComment('');
-    setError(null);
-  }
-
-  async function handleSubmit() {
-    if (rating === 0 || isSubmitting) return;
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await submitReview(orderId, rating, comment.trim() || undefined);
-      onSubmitted(rating);
-      reset();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit your rating.');
-    } finally {
-      setIsSubmitting(false);
-    }
+  function dismiss() {
+    if (!rating.isSaving) onClose();
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 items-center justify-center bg-black/40 px-6">
-        <View className="w-full gap-4 rounded-3xl bg-white p-6">
-          <View>
-            <Text className="text-lg font-bold text-ink">Rate your order</Text>
-            <Text className="mt-0.5 text-sm text-ink/50">How was your experience with {storeName}?</Text>
-          </View>
+    <Modal transparent animationType="fade" onRequestClose={dismiss}>
+      <KeyboardAvoidingView
+        className="flex-1 justify-center bg-black/40 px-5"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View className="max-h-[85%] w-full max-w-[420px] self-center rounded-[28px] bg-white" accessibilityViewIsModal>
+          <ScrollView style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" contentContainerClassName="gap-4 p-6">
+            <View className="items-center">
+              <View className="mb-3 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF3FF]">
+                <IconlyDeliveryBox size={26} color="#155DFC" active />
+              </View>
+              <Text accessibilityRole="header" className="text-center text-[23px] font-bold tracking-tight text-ink">
+                How was your delivery?
+              </Text>
+              <Text className="mt-1.5 text-center text-sm leading-5 text-ink/65">
+                Rate your order from {storeName}.
+              </Text>
+            </View>
 
-          <OrderRatingStars rating={rating} onChange={setRating} disabled={isSubmitting} />
+            <OrderRatingStars rating={score} onChange={setScore} disabled={rating.isSaving} />
 
-          <TextInput
-            value={comment}
-            onChangeText={setComment}
-            placeholder="Add a comment (optional)"
-            placeholderTextColor={`${colors.ink}55`}
-            multiline
-            className="min-h-[80px] rounded-2xl bg-[#F5F5F5] px-4 py-3 text-sm text-ink"
-            textAlignVertical="top"
-          />
+            <TextInput
+              value={comment}
+              onChangeText={setComment}
+              accessibilityLabel="Add an optional comment"
+              placeholder="Add a comment (optional)"
+              placeholderTextColor="#68707B"
+              editable={!rating.isSaving}
+              maxLength={2000}
+              multiline
+              className="min-h-[72px] rounded-2xl bg-[#F3F4F6] px-3.5 py-3 text-sm text-ink"
+              textAlignVertical="top"
+            />
 
-          {error && <Text className="text-sm text-danger">{error}</Text>}
+            {rating.error && <Text accessibilityRole="alert" className="text-sm text-danger">{rating.error}</Text>}
 
-          <View className="flex-row gap-3">
-            <Pressable
-              onPress={() => {
-                reset();
-                onClose();
-              }}
-              className="flex-1 items-center rounded-full border border-ink/10 py-3.5"
-            >
-              <Text className="text-sm font-semibold text-ink">Cancel</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSubmit}
-              disabled={rating === 0 || isSubmitting}
-              className="flex-1 items-center rounded-full bg-ink py-3.5 disabled:opacity-40"
-            >
-              <Text className="text-sm font-semibold text-white">{isSubmitting ? 'Submitting…' : 'Submit'}</Text>
-            </Pressable>
-          </View>
+            <View className="flex-row gap-3">
+              <Pressable
+                accessibilityRole="button"
+                onPress={dismiss}
+                disabled={rating.isSaving}
+                className="flex-1 items-center rounded-2xl bg-[#F3F4F6] px-2 py-3.5"
+              >
+                <Text className="text-center text-sm font-semibold text-ink">Later</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void rating.rate(score, comment.trim())}
+                disabled={score === 0 || rating.isSaving}
+                className="flex-1 items-center rounded-2xl bg-primary px-2 py-3.5 disabled:opacity-40"
+              >
+                <Text className="text-center text-sm font-semibold text-white">{rating.isSaving ? 'Sending…' : 'Submit rating'}</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

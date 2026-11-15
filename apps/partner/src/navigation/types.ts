@@ -75,10 +75,7 @@ export type AuthStackParamList = {
   // own WelcomeScreen/RootNavigator pattern), before either stack ever
   // mounts. Login is this stack's real first screen now.
   Login: undefined;
-  // devMode flags that requestOtp fell back to the local dev stand-in
-  // (backend unreachable — see api/devAuthFallback.ts) so this screen can
-  // show the fixed demo code instead of leaving "why doesn't my real SMS
-  // arrive" a mystery.
+  // The live OTP response keeps this compatibility flag false.
   OtpVerification: { phone: string; devMode: boolean };
   // Step 1 of the onboarding wizard and its entry point (the old
   // "Get Started" / OnboardingIntro screen was removed, so after OTP a
@@ -120,7 +117,7 @@ export type AuthStackParamList = {
 
 export type AppStackParamList = {
   Orders: undefined;
-  OrderHistory: { status?: 'delivered' | 'cancelled' | 'failed' } | undefined;
+  OrderHistory: { status?: import('../api/orders').ApiOrder['status'] } | undefined;
   Reviews: undefined;
   Staff: undefined;
   DocumentReplacement: undefined;
@@ -145,16 +142,10 @@ export type AppStackParamList = {
   // payoutId is the real payouts.id used to fetch the real order-by-order
   // breakdown (GET /partner/payouts/:id/orders) — weekLabel is display-
   // only, carried along so the header can render instantly without
-  // waiting on that fetch. isSample/sampleTotals thread through only for
-  // screens/payouts/data.ts's own sample fallback (a brand-new store with
-  // zero real payouts yet) — that payoutId is a fake "sample-*" string
-  // GET /partner/payouts/:id/orders would 404 on, so this screen builds
-  // its sample order breakdown from these numbers instead of fetching.
+  // waiting on the real settlement response.
   PayoutOrderHistory: {
     payoutId: string;
     weekLabel: string;
-    isSample?: boolean;
-    sampleTotals?: { orderCount: number; grossAmount: number; commissionAmount: number };
   };
   // Store settings (P6) — reached from StoreProfileHeader's gear icon.
   // No params; reads/writes the shared ../store/useStoreProfileStore.ts.

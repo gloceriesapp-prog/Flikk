@@ -1,9 +1,25 @@
 import type { AppStackParamList } from '../types';
-// These screens already render a cart bar inside their own bottom navigation.
-const SCREEN_NAVIGATION = new Set<keyof AppStackParamList>(['Categories', 'Purchase', 'Store']);
-// Checkout owns its footer and recovery controls. A second cart entry could
-// interrupt an in-flight payment, so it must not cover those controls.
-const CHECKOUT_SCREENS = new Set<keyof AppStackParamList>(['Cart', 'PaymentMethod', 'PaymentProcessing', 'PaymentStatus', 'OrderPlaced', 'CheckoutAttemptRecovery', 'PaymentRecovery']);
+
+export const STANDALONE_CART_CLEARANCE = 68;
+
+// Opt in shopping routes. New utility/address/checkout screens stay clear by default.
+const BROWSE_SCREENS = new Set<keyof AppStackParamList>([
+  'CategoryDetail', 'HomeContentCollection', 'HomeSectionCollection', 'BrandProducts',
+  'AllBrands', 'Search', 'StoreDetail', 'Wishlist', 'BreakfastEssentials',
+  'KitchenEssentials', 'FestivalCollection', 'SnacksAndDrinks', 'LocalPantryBrand',
+  'FreshCategory', 'EverydayVegetables', 'FruitFavourites', 'HomeGrownProduce',
+  'RegionalCategory', 'CoconutOilCollection',
+]);
+const SHOPPING_NAVIGATION = new Set<keyof AppStackParamList>(['Home', 'HomeCategory', 'Categories', 'Store']);
+
+export function usesFloatingCollectionCart(route: keyof AppStackParamList) {
+  return route === 'CategoryDetail' || route === 'HomeContentCollection' || route === 'HomeSectionCollection';
+}
+
 export function showStandaloneCart(route: keyof AppStackParamList, shellNavigationVisible: boolean, quantity: number) {
-  return quantity > 0 && !shellNavigationVisible && !SCREEN_NAVIGATION.has(route) && !CHECKOUT_SCREENS.has(route);
+  return quantity > 0 && !shellNavigationVisible && BROWSE_SCREENS.has(route);
+}
+
+export function canShowShoppingCart(route: string) {
+  return BROWSE_SCREENS.has(route as keyof AppStackParamList) || SHOPPING_NAVIGATION.has(route as keyof AppStackParamList);
 }

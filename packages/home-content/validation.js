@@ -80,11 +80,13 @@ export function validateContent(raw) {
   const sections = unique(
     list(doc.sections, 'sections', 40).map((rawSection, index) => {
       const path = `sections[${index}]`,
-        s = object(rawSection, path, [...Object.keys(createSection('products', 'new')), 'categoryCardStyle']);
+        s = object(rawSection, path, [...Object.keys(createSection('products', 'new')), 'categoryCardStyle', 'showProductImages']);
       if (!SECTION_KINDS.includes(s.kind)) fail(path + '.kind', 'invalid section type');
       if (s.categoryCardStyle !== undefined &&
         (s.kind !== 'categories' || !['standard', 'photo'].includes(s.categoryCardStyle)))
         fail(path + '.categoryCardStyle', 'choose a valid style for category tiles');
+      if (s.showProductImages !== undefined && s.kind !== 'hero')
+        fail(path + '.showProductImages', 'only split banners support this setting');
       if (!['horizontal', 'grid'].includes(s.layout) || ![2, 3, 4].includes(s.columns))
         fail(path, 'invalid layout');
       if (!Number.isInteger(s.limit) || s.limit < 1 || s.limit > 24)
@@ -110,6 +112,9 @@ export function validateContent(raw) {
         imageUrl: url(s.imageUrl, path),
         imageAspectRatio: s.imageAspectRatio,
         imageFade: boolean(s.imageFade, path),
+        ...(s.showProductImages === undefined ? {} : {
+          showProductImages: boolean(s.showProductImages, path + '.showProductImages'),
+        }),
         buttonEnabled: boolean(s.buttonEnabled, path),
         buttonLabel: text(s.buttonLabel, path, 60, true),
         hideWhenEmpty: boolean(s.hideWhenEmpty, path),

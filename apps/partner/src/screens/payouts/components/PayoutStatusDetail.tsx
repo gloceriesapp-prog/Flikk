@@ -1,7 +1,7 @@
 // Per-payout extra line under the status pill: the UTR (with copy) for a
 // paid week so the owner can match it in their bank statement, or a clear
 // problem message + "Update payout details" CTA for blocked/failed.
-// Renders nothing for scheduled weeks or sample rows.
+// Renders nothing for scheduled weeks.
 
 import { Clipboard, Pressable, Text, View } from 'react-native';
 import { Copy01Icon } from '@hugeicons/core-free-icons';
@@ -16,7 +16,6 @@ export function PayoutStatusDetail({ payout, variant = 'light' }: { payout: Week
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { problem } = payoutStatusPresentation(payout);
   const isDark = variant === 'dark';
-  if (payout.isSample) return null;
 
   if (payout.status === 'paid' && payout.utr) {
     const utr = payout.utr;

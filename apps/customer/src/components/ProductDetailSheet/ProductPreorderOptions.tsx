@@ -5,6 +5,7 @@
 // item goes in at its bulk minimum.
 
 import { useState } from 'react';
+import { GILROY } from '../../theme/fonts';
 import { Pressable, Text, View } from 'react-native';
 import { bookingDates, cartPreorder, dayCard, dayOpen, slotOpen, type CartPreorder } from '../../store/preorder';
 import { usePreorders } from '../../screens/home/preorders/usePreorders';
@@ -12,6 +13,7 @@ import { usePreorderDayStore } from '../../store/usePreorderDayStore';
 
 interface Props {
   minQty: number;
+  unitLabel?: string;
   leadDays: number;
   value?: CartPreorder;
   onChange: (preorder: CartPreorder | undefined) => void;
@@ -19,7 +21,7 @@ interface Props {
 
 const BLUE = '#155DFC';
 
-export function ProductPreorderOptions({ minQty, leadDays, value, onChange }: Props) {
+export function ProductPreorderOptions({ minQty, unitLabel, leadDays, value, onChange }: Props) {
   const slots = usePreorders().data?.slots ?? [];
   const dates = bookingDates();
   const open = dates.filter((d) => dayOpen(d, leadDays, slots));
@@ -38,12 +40,13 @@ export function ProductPreorderOptions({ minQty, leadDays, value, onChange }: Pr
   };
   return (
     <View className="gap-3">
-      <View className="rounded-[12px] bg-[#F3F6FF] px-3 py-2.5">
-        <Text className="text-[13px] font-semibold text-ink">Pre-order · minimum {minQty}</Text>
-        <Text className="mt-0.5 text-[12px] text-ink/60">
-          Book any day up to 4 days ahead. The shop confirms and delivers in your slot
-          {leadDays > 0 ? ` (needs ${leadDays === 1 ? '1 day' : `${leadDays} days`}' notice)` : ''}.
-        </Text>
+      <View style={{ backgroundColor: '#EAF2FF', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 }}>
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}
+        style={{ fontFamily: GILROY.medium, fontSize: 14, lineHeight: 20, color: '#68716B' }}>
+        <Text style={{ fontFamily: GILROY.semibold, color: '#101C10' }}>Note: </Text>
+        Minimum {unitLabel ? (minQty === 1 ? unitLabel : `${minQty} × ${unitLabel}`) : `${minQty} ${minQty === 1 ? 'unit' : 'units'}`}
+        {leadDays > 0 ? ` · ${leadDays}-day advance booking.` : ' · choose a delivery slot.'}
+      </Text>
       </View>
 
       <Text className="text-[13px] font-semibold text-ink/60">Pick a day</Text>

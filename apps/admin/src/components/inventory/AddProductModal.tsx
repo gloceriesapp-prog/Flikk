@@ -256,7 +256,7 @@ export function AddProductModal({
           <ProductFlavoursEditor variants={draft.variants} options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
 
           <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
-          <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} />
+          <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} variants={draft.variants} onVariantsChange={(variants) => setDraft({ ...draft, variants })} />
 
           {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
             <label className="flex items-center gap-2 text-sm text-ink">

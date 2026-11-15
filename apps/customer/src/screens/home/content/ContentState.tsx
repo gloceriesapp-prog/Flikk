@@ -25,12 +25,10 @@ export function ContentState({
     : isError
       ? retry
       : undefined;
+  if (hasLocation && isLoading) return <BrowseLoadingText message={loadingMessage} />;
   return (
     <View className="mx-5 items-center gap-3 rounded-2xl border border-ink/10 px-5 py-6">
-      {hasLocation && isLoading ? (
-        <BrowseLoadingText message={loadingMessage} />
-      ) : (
-        <>
+      <>
           <Text className="text-center text-sm text-ink/60">
             {!hasLocation
               ? 'Choose your delivery address to see what is available nearby.'
@@ -49,8 +47,7 @@ export function ContentState({
               </Text>
             </Pressable>
           )}
-        </>
-      )}
+      </>
     </View>
   );
 }

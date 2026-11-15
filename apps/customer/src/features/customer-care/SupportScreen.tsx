@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
-import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import { Alert, Linking, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../navigation/types';
 import { useAppConfig, useCopy } from '../../api/appConfig';
-import { CareLayout, CareButton } from './components/CareLayout';
+import { IconlyHeadphone } from '../../components/icons/iconly';
+import { colors } from '../../theme/tokens';
+import { CareLayout, CareButton, CareCard } from './components/CareLayout';
 import { supportEmailAddress, supportEmailUrl } from './supportEmail';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Support'>;
@@ -31,28 +33,27 @@ export function SupportScreen({ navigation, route }: Props) {
 
   return (
     <CareLayout allowGuest title="Help & support" onBack={() => navigation.goBack()}>
-      <View className="w-full max-w-[520px] self-center rounded-3xl bg-white p-5">
-        <Text accessibilityRole="header" className="text-[22px] font-bold text-black">We’re here to help</Text>
-        <Text className="mt-3 text-[15px] leading-6 text-gray-600">
-          Email us about your order, payment or account. Include your order number so we can help you faster.
-        </Text>
-        <Text selectable accessibilityLabel={`Support email: ${email}`} className="mt-5 text-[17px] font-semibold text-black">{email}</Text>
-        {hours ? <Text className="mt-2 text-sm text-gray-600">{hours}</Text> : null}
-        <View className="mt-5">
-          <CareButton label={opening ? 'Opening email…' : 'Email support'} onPress={() => void openEmail()} disabled={opening} />
+      <CareCard>
+        <View className="mb-4 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF3FF]">
+          <IconlyHeadphone size={23} color={colors.primary} />
         </View>
-        <Text className="mt-3 text-xs leading-5 text-gray-500">
-          Opens your email app. Nothing is sent until you send the email. Replies arrive in your inbox.
+        <Text accessibilityRole="header" className="text-[22px] font-bold leading-7 tracking-tight text-ink">
+          How can we help?
         </Text>
-      </View>
-      <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Faq')}
-        className="w-full max-w-[520px] self-center flex-row items-center justify-between rounded-2xl bg-white p-4">
-        <Text className="text-[15px] font-bold text-black">Common questions</Text>
-        <Text className="text-sm font-semibold text-black">View</Text>
-      </Pressable>
-      <Text className="w-full max-w-[520px] self-center text-sm leading-5 text-gray-500">
-        Never share your OTP, card PIN or UPI PIN by email.
-      </Text>
+        <Text className="mt-2 text-[15px] leading-[22px] text-ink/70">
+          Email us about an order, payment, or your account. For order questions, include your order number.
+        </Text>
+
+        <View className="my-5 gap-1.5 rounded-2xl bg-[#F5F6F8] px-4 py-3.5">
+          <Text className="text-[13px] font-semibold text-ink/65">Support email</Text>
+          <Text selectable className="text-base font-semibold text-ink">{email}</Text>
+          {hours ? <Text className="text-sm leading-5 text-ink/65">{hours}</Text> : null}
+        </View>
+        <CareButton label={opening ? 'Opening email…' : 'Email support'} onPress={() => void openEmail()} disabled={opening} />
+        <Text className="mt-3 text-center text-sm leading-5 text-ink/65">Replies arrive in your email inbox.</Text>
+      </CareCard>
+
+      <Text className="px-1 text-sm leading-5 text-ink/65">Keep your OTP, card PIN, and UPI PIN private.</Text>
     </CareLayout>
   );
 }

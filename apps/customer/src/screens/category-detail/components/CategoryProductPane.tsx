@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
@@ -15,13 +16,19 @@ interface Props {
   previewOnly: boolean;
   filters: ProductFilters;
   onFiltersChange: (filters: ProductFilters) => void;
+  showFilters?: boolean;
+  columns?: number;
+  bottomPadding?: number;
   serverTypes?: string[];
   serverBrands?: string[];
   onLoadMore?: () => void;
   loadingMore?: boolean;
 }
 
-export function CategoryProductPane({ products, isLoading, isError, onRetry, previewOnly, filters, onFiltersChange, serverTypes, serverBrands, onLoadMore, loadingMore }: Props) {
+export function CategoryProductPane({
+  products, isLoading, isError, onRetry, previewOnly, filters, onFiltersChange,
+  serverTypes, serverBrands, onLoadMore, loadingMore, showFilters = true, columns = 2, bottomPadding = 64,
+}: Props) {
   const [panel, setPanel] = useState<FilterPanel | null>(null);
   const list = useRef<FlashListRef<Product>>(null);
   const types = useMemo(() => serverTypes ? serverTypes.map(label => ({ id: label.toLowerCase(), label })) : getTypeOptions(products), [products, serverTypes]);
@@ -35,24 +42,24 @@ export function CategoryProductPane({ products, isLoading, isError, onRetry, pre
   return (
     // Constrain the filter ScrollView to the product column on every width.
     <View className="flex-1 overflow-hidden bg-mist/30" style={{ minWidth: 0 }}>
-      <CategoryFilterBar filters={filters} onOpen={setPanel} />
+      {showFilters && <CategoryFilterBar filters={filters} onOpen={setPanel} />}
       {isError && products.length > 0 && <Pressable accessibilityRole="button" onPress={onRetry} className="px-3 py-2"><Text className="text-[12px] text-[#155DFC]">Couldn’t refresh products. Tap to retry.</Text></Pressable>}
       <View className="flex-1">
         <FlashList
           ref={list}
           data={filteredProducts}
-          numColumns={2}
+          numColumns={columns}
           onEndReached={onLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={loadingMore ? <ActivityIndicator className="py-4" color="#155DFC" /> : null}
           keyExtractor={(product) => product.id}
-          contentContainerStyle={{ paddingTop: 8, paddingLeft: 2, paddingRight: 12, paddingBottom: 64 }}
+          contentContainerStyle={{ paddingTop: 8, paddingLeft: 2, paddingRight: 12, paddingBottom: bottomPadding }}
           showsVerticalScrollIndicator={false}
           refreshing={previewOnly ? undefined : isLoading}
           onRefresh={previewOnly ? undefined : onRetry}
           ListEmptyComponent={
             <View className="items-center gap-3 px-4 py-12">
-              {isLoading ? <ActivityIndicator accessibilityLabel="Loading products" color="#155DFC" /> : <>
+              {isLoading ? <ScreenSkeleton columns={2} label="Loading products" /> : <>
                 <Text className="text-center text-[14px] leading-5 text-ink/60">{isError ? 'We couldn’t load these products.' : products.length > 0 ? 'No products match your filters.' : 'No products available in this category yet.'}</Text>
                 {isError ? <Pressable accessibilityRole="button" onPress={onRetry} className="min-h-11 justify-center rounded-xl bg-primary px-4"><Text className="font-semibold text-white">Try again</Text></Pressable> : activeFilterCount(filters) > 0 && <Pressable accessibilityRole="button" onPress={() => changeFilters({ ...DEFAULT_FILTERS })} className="min-h-11 justify-center px-4"><Text className="font-semibold text-[#155DFC]">Clear filters</Text></Pressable>}
               </>}
@@ -65,7 +72,7 @@ export function CategoryProductPane({ products, isLoading, isError, onRetry, pre
           )}
         />
       </View>
-      <CategoryFilterSheet panel={panel} filters={filters} types={types} brands={brands} onChange={changeFilters} onClose={() => setPanel(null)} />
+      {showFilters && <CategoryFilterSheet panel={panel} filters={filters} types={types} brands={brands} onChange={changeFilters} onClose={() => setPanel(null)} />}
     </View>
   );
 }

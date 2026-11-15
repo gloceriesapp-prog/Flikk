@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 // Generic body for any admin-managed Home tab (Bakery, Protein, Meat & Fish
 // and every tab without a dedicated template). Everything is admin data from
 // GET /home-tabs — no hardcoded category ids:
@@ -52,7 +53,7 @@ function TabProducts({ target }: { target?: HomeTabTileLink }) {
   const products = query.data?.pages.flatMap((p) => p.products) ?? [];
 
   if (target && query.isPending && query.fetchStatus !== 'idle') {
-    return <Text className="px-5 py-10 text-center text-sm text-ink/50">Loading products…</Text>;
+    return <ScreenSkeleton label="Loading products" />;
   }
   if (products.length === 0) {
     return (

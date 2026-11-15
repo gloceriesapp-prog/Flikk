@@ -31,11 +31,11 @@ interface Props {
 
 function BorderedTile({ icon: Icon, label, onPress }: { icon: ComponentType<IconlyIconProps>; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className="flex-1 items-center gap-2 rounded-[24px] border border-[#EAEAEA] bg-white py-3.5">
+    <Pressable accessibilityRole="button" onPress={onPress} className="flex-1 items-center gap-2 rounded-[24px] border border-[#EAEAEA] bg-white py-3.5">
       <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-100">
         <Icon size={20} color={`${colors.ink}99`} />
       </View>
-      <Text className="text-[13px] font-semibold text-ink">{label}</Text>
+      <Text className="text-center text-sm font-semibold text-ink">{label}</Text>
     </Pressable>
   );
 }
@@ -44,6 +44,7 @@ export function ProfileActionsBento({ onMyOrders, onWishlist, onSupport, onRefun
   return (
     <View className="gap-2">
       <Pressable
+        accessibilityRole="button"
         onPress={onMyOrders}
         className="flex-row items-center gap-3 rounded-[24px] bg-white border border-[#EAEAEA] px-4 py-3.5"
       >

@@ -15,6 +15,7 @@ export function ContentTiles({
   featuredCategories = false,
   archedCategories = false,
   freshCategories = false,
+  fullImageCategories = false,
 }: {
   section: HomeContentSection;
   tabKey?: HomeContentKey;
@@ -23,6 +24,7 @@ export function ContentTiles({
   featuredCategories?: boolean;
   archedCategories?: boolean;
   freshCategories?: boolean;
+  fullImageCategories?: boolean;
 }) {
   const items = section.items.filter((item) => item.enabled).slice(0, section.limit);
   const imageForItem = (item: HomeContentItem) =>
@@ -47,8 +49,9 @@ export function ContentTiles({
         <View
           className="w-full items-center justify-center overflow-hidden"
           style={{
+            width: fullImageCategories ? '88%' : '100%',
             aspectRatio: archedCategories ? 4 / 5.2 : arched ? 4 / 4.6 : 1,
-            backgroundColor: item.backgroundColor || '#EEF4E5',
+            backgroundColor: fullImageCategories ? 'transparent' : item.backgroundColor || '#EEF4E5',
             borderTopLeftRadius: arched ? 999 : 20,
             borderTopRightRadius: arched ? 999 : 20,
             borderBottomLeftRadius: arched ? 0 : 20,
@@ -56,7 +59,9 @@ export function ContentTiles({
           }}
         >
           {image ? (
-            <AppImage source={{ uri: image }} className="h-[80%] w-[88%]" resizeMode="contain" />
+            <AppImage source={{ uri: image }}
+              style={{ width: fullImageCategories ? '100%' : '88%', height: fullImageCategories ? '100%' : '80%' }}
+              resizeMode={fullImageCategories ? 'cover' : 'contain'} />
           ) : (
             <AppIcon icon={ShoppingBasket01Icon} size={32} color="#526A36" />
           )}
@@ -75,7 +80,7 @@ export function ContentTiles({
       </Pressable>
     );
   };
-  if (section.layout === 'horizontal' && !archedCategories)
+  if (section.layout === 'horizontal' && !archedCategories && !fullImageCategories)
     return (
       <ScrollView
         horizontal
@@ -93,7 +98,7 @@ export function ContentTiles({
     <View className="px-5" style={archedCategories ? { width: '100%', maxWidth: 560, alignSelf: 'center' } : undefined}>
       <View className="-mx-1.5 flex-row flex-wrap gap-y-5">
         {items.map((item) => (
-          <View key={item.id} className="px-1.5" style={{ width: `${100 / (archedCategories ? 4 : section.columns)}%` }}>
+          <View key={item.id} className="px-1.5" style={{ width: `${100 / (fullImageCategories ? 3 : archedCategories ? 4 : section.columns)}%` }}>
             {tile(item)}
           </View>
         ))}

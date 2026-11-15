@@ -59,7 +59,7 @@ it('retains a failed rating prompt for an explicit retry', async () => {
   const view = await render(tree());
   await waitFor(() => expect(view.getByLabelText('card')).toBeTruthy());
   await fireEvent.press(view.getByLabelText('card'));
-  await waitFor(() => expect(view.getByText('Couldn’t save your rating. Tap a star to retry.')).toBeTruthy());
+  await waitFor(() => expect(view.getByText('Couldn’t save your rating. Please try again.')).toBeTruthy());
   await fireEvent.press(view.getByLabelText('card'));
   await waitFor(() => expect(view.queryByLabelText('card')).toBeNull());
 });

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { acceptOrder, fetchOrders, fetchOrderUpdates, fetchOrderPage, fetchOrderTransitions, updateOrderStatus, type ApiOrder } from '../api/orders';
-import { buildSimulatedIncomingOrder, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
+import { mapApiOrder, type PartnerOrder } from '../screens/orders/data';
 import { computeNewlyArrivedIds, computeJustDeliveredIds, sameOrderList } from './orderBaseline';
 import { getSessionEpoch, isCurrentSession, onSessionReset } from './sessionScope';
 
@@ -22,7 +22,6 @@ interface OrdersState {
   rejectOrder: (id: string, reason: string) => Promise<void>;
   clearNewlyArrived: (id: string) => void;
   clearJustDelivered: (id: string) => void;
-  simulateIncomingOrder: () => void;
 }
 
 const initialState = () => ({ orders: [] as PartnerOrder[], acknowledgedOrderIds: new Set<string>(),
@@ -72,7 +71,7 @@ export const useOrdersStore = create<OrdersState>((set) => ({
         const previous = useOrdersStore.getState();
         const currentIds = new Set(rows.map(row => row.id));
         const departedIds = previous.orders.filter(order => !['delivered', 'failed', 'cancelled'].includes(order.status)
-          && !currentIds.has(order.id) && !order.id.startsWith('sample-')).slice(0, 100).map(order => order.id);
+          && !currentIds.has(order.id)).slice(0, 100).map(order => order.id);
         const transitions = departedIds.length ? await fetchOrderTransitions(departedIds) : [];
         if (!isCurrentSession(epoch) || readRevision !== revision || generation !== readGeneration) return;
         const delivered = transitions.filter(row => row.status === 'delivered').map(row => mapApiOrder(row, transitions));
@@ -154,23 +153,23 @@ export const useOrdersStore = create<OrdersState>((set) => ({
   acknowledgeOrder: id => runAction(id, async () => {
     const epoch = getSessionEpoch();
     revision += 1;
-    const row = id.startsWith('sample-') && __DEV__ ? null : await acceptOrder(id);
+    const row = await acceptOrder(id);
     if (!isCurrentSession(epoch)) return;
     set(state => ({
-      orders: state.orders.map(order => order.id === id ? row ? mapApiOrder(row, [row]) : { ...order, acceptedAtTimestamp: Date.now() } : order),
+      orders: state.orders.map(order => order.id === id ? mapApiOrder(row, [row]) : order),
       acknowledgedOrderIds: new Set(state.acknowledgedOrderIds).add(id),
       newlyArrivedOrderIds: new Set([...state.newlyArrivedOrderIds].filter(value => value !== id)),
     }));
   }),
   markPacked: id => runAction(id, async () => {
     const epoch = getSessionEpoch(); revision += 1;
-    if (!(id.startsWith('sample-') && __DEV__)) await updateOrderStatus(id, 'packed');
+    await updateOrderStatus(id, 'packed');
     if (!isCurrentSession(epoch)) return;
     set(state => ({ orders: state.orders.map(order => order.id === id ? { ...order, status: 'packed' } : order) }));
   }),
   rejectOrder: (id, reason) => runAction(id, async () => {
     const epoch = getSessionEpoch(); revision += 1;
-    if (!(id.startsWith('sample-') && __DEV__)) await updateOrderStatus(id, 'cancelled', reason);
+    await updateOrderStatus(id, 'cancelled', reason);
     if (!isCurrentSession(epoch)) return;
     set(state => ({ orders: state.orders.filter(order => order.id !== id),
       acknowledgedOrderIds: new Set([...state.acknowledgedOrderIds].filter(value => value !== id)),
@@ -179,12 +178,7 @@ export const useOrdersStore = create<OrdersState>((set) => ({
   clearNewlyArrived: id => set(state => ({ newlyArrivedOrderIds: new Set([...state.newlyArrivedOrderIds].filter(value => value !== id)) })),
   clearJustDelivered: id => set(state => ({ justDeliveredOrderIds: new Set([...state.justDeliveredOrderIds].filter(value => value !== id)),
     orders: state.orders.filter(order => order.id !== id || order.status !== 'delivered') })),
-  simulateIncomingOrder: () => {
-    if (!__DEV__) return;
-    const order = buildSimulatedIncomingOrder();
-    set(state => ({ orders: [order, ...state.orders], baselineEstablished: true,
-      newlyArrivedOrderIds: new Set(state.newlyArrivedOrderIds).add(order.id) }));
-  },
+
 }));
 
 onSessionReset(() => {

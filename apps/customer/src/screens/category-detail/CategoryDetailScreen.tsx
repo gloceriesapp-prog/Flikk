@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useCollectionBottomPadding } from '../../navigation/home/useCollectionBottomPadding';
 import { CategoryDetailHeader } from './components/CategoryDetailHeader';
 import { SubCategorySidebar } from './components/SubCategorySidebar';
 import { CategoryProductPane } from './components/CategoryProductPane';
@@ -15,12 +16,14 @@ const ALL_TAB: DetailSubCategory = { id: 'all', label: 'All' };
 type Props = NativeStackScreenProps<AppStackParamList, 'CategoryDetail'>;
 
 export function CategoryDetailScreen({ navigation, route }: Props) {
+  const productBottomPadding = useCollectionBottomPadding(64);
   return (
     <CategoryDetailContent
       key={`${route.params.categoryId}:${route.params.subcategoryId ?? 'all'}`}
       categoryId={route.params.categoryId}
       label={route.params.label}
       initialSubcategoryId={route.params.subcategoryId}
+      productBottomPadding={productBottomPadding}
       onBack={() => navigation.goBack()}
       onSearch={() => navigation.navigate('Search')}
     />
@@ -29,13 +32,18 @@ export function CategoryDetailScreen({ navigation, route }: Props) {
 
 interface ContentProps {
   initialSubcategoryId?: string;
+  showFilters?: boolean;
+  productColumns?: number;
+  productBottomPadding?: number;
   categoryId: string;
   label: string;
   onBack: () => void;
   onSearch: () => void;
 }
 
-export function CategoryDetailContent({ categoryId, label, initialSubcategoryId, onBack, onSearch }: ContentProps) {
+export function CategoryDetailContent({
+  categoryId, label, initialSubcategoryId, onBack, onSearch, showFilters = true, productColumns, productBottomPadding,
+}: ContentProps) {
   const [selectedSubId, setSelectedSubId] = useState(initialSubcategoryId ?? 'all');
   const isReal = isRealCategoryId(categoryId);
   const [filters, setFilters] = useState<ProductFilters>({ ...DEFAULT_FILTERS });
@@ -72,6 +80,9 @@ export function CategoryDetailContent({ categoryId, label, initialSubcategoryId,
           onRetry={retry}
           previewOnly={false}
           filters={filters}
+          showFilters={showFilters}
+          columns={productColumns}
+          bottomPadding={productBottomPadding}
           onFiltersChange={setFilters}
           serverTypes={facets?.types}
           serverBrands={facets?.brands}

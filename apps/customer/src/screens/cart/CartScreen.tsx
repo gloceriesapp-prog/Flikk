@@ -1,3 +1,4 @@
+import { locationFromAddress } from '../../features/delivery-address/mapAddress';
 import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
 import { useCopy } from '../../api/appConfig';
 // Reached from CartBar's "View cart" tap (see components/CartBar/CartBar.tsx)
@@ -25,8 +26,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addresses';
-import type { ApiAddress } from '../../api/addresses';
+import { fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
 import { groupCartItemsByStore, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { useLocationStore } from '../../store/useLocationStore';
@@ -93,7 +93,6 @@ export function CartScreen({ navigation, route }: Props) {
 
   const [addressSheetVisible, setAddressSheetVisible] = useState(false);
   const [selectingAddressId, setSelectingAddressId] = useState<string | null>(null);
-  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Real address-book check (api/addresses.ts) — not a guess: whether the
@@ -122,6 +121,7 @@ export function CartScreen({ navigation, route }: Props) {
   const selectedAddress = locationHydrated ? cartAddressForLocation(addresses ?? [], location) : null;
 
   const availabilityQuery = useCartAvailability(selectedAddress?.id);
+  const orderingClosedIssue = availabilityQuery.data?.issues.find(issue => issue.code === 'PLATFORM_CLOSED');
   const storeClosed = availabilityQuery.data?.lines.some(line => line.status === 'STORE_CLOSED') ?? false;
   const quoteQuery = useCheckoutQuote(selectedAddress?.id);
   const quote = quoteQuery.data && quoteMatchesCart(items, quoteQuery.data) ? quoteQuery.data : undefined;
@@ -155,9 +155,9 @@ export function CartScreen({ navigation, route }: Props) {
     try {
       await setDefaultAddress(id);
       const chosen = addresses?.find(address => address.id === id);
-      if (chosen?.latitude != null && chosen.longitude != null) {
-        await useLocationStore.getState().setLocation({ latitude: chosen.latitude, longitude: chosen.longitude,
-          addressLabel: chosen.map_address || chosen.line1, city: '' }).catch(() => {
+      const selectedPin = chosen ? await locationFromAddress(chosen) : null;
+      if (selectedPin) {
+        await useLocationStore.getState().setLocation(selectedPin).catch(() => {
             console.warn('[CartScreen] Could not persist the selected delivery pin.');
           });
       }
@@ -173,29 +173,6 @@ export function CartScreen({ navigation, route }: Props) {
     }
   }
 
-  async function handleDeleteAddress(id: string) {
-    setDeletingAddressId(id);
-    // Optimistic removal — the row disappears the instant you tap, not
-    // after a round trip + refetch. Snapshot the prior list so a failed
-    // delete can roll back to it instead of leaving the UI wrong.
-    const previous = queryClient.getQueryData<ApiAddress[]>(['addresses', customerId]);
-    queryClient.setQueryData<ApiAddress[]>(['addresses', customerId], (current) => (current ?? []).filter((a) => a.id !== id));
-    try {
-      await deleteAddress(id);
-      await queryClient.invalidateQueries({ queryKey: ['addresses', customerId] });
-    } catch (err) {
-      queryClient.setQueryData(['addresses', customerId], previous);
-      // Surfaced, not swallowed — a silent catch here looks identical to
-      // "the tap did nothing" from the outside, which is exactly the bug
-      // report this was written in response to. Logged too, since
-      // ApiError.message alone (e.g. a generic 500) isn't always enough
-      // to tell what actually failed server-side. Dev-only and id-free.
-      if (__DEV__) console.error('[CartScreen] failed to delete address', err);
-      Alert.alert('Could not remove this address', err instanceof ApiError ? err.message : 'Please try again.');
-    } finally {
-      setDeletingAddressId(null);
-    }
-  }
 
   return (
     <View className="flex-1 bg-[#F2F2F7]">
@@ -263,7 +240,7 @@ export function CartScreen({ navigation, route }: Props) {
       ) : (
         <>
           <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-4 pt-4">
-            {storeClosed && <StoreClosedNotice />}
+            {(storeClosed || orderingClosedIssue) && <StoreClosedNotice reopeningMessage={orderingClosedIssue?.message} />}
             <View className="rounded-2xl bg-white px-4 py-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2.5">
@@ -332,7 +309,7 @@ export function CartScreen({ navigation, route }: Props) {
                 This is a bulk order. The shop confirms it before preparing; if it can’t supply that much, the order is cancelled and any payment refunded.
               </Text>
             )}
-            {availabilityQuery.data?.issues.map((issue) => <Text key={issue.code} className="px-2 text-[13px] font-semibold text-[#B42318]">{issue.message}</Text>)}
+            {availabilityQuery.data?.issues.filter(issue => issue.code !== 'PLATFORM_CLOSED').map((issue) => <Text key={issue.code} className="px-2 text-[13px] font-semibold text-[#B42318]">{issue.message}</Text>)}
             {availabilityQuery.isError && <Text className="px-2 text-[13px] text-[#B42318]">Could not check item availability. <Text onPress={() => { void availabilityQuery.refetch(); }} className="font-semibold">Retry</Text></Text>}
             {quote && quoteHasPriceChanges(items, quote) && (
               <Text className="px-2 text-[13px] text-[#996A16]">Some pack prices or sizes have changed. You’ll be asked to confirm before ordering.</Text>
@@ -365,10 +342,8 @@ export function CartScreen({ navigation, route }: Props) {
             addresses={addresses ?? []}
             selectedId={selectedAddress?.id ?? null}
             selectingId={selectingAddressId}
-            deletingId={deletingAddressId}
             onClose={() => setAddressSheetVisible(false)}
             onSelect={handleSelectAddress}
-            onDelete={handleDeleteAddress}
             onAddNew={() => {
               setAddressSheetVisible(false);
               addAddressAtLocation();

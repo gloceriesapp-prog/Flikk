@@ -21,8 +21,6 @@ const regionalEdge = `M0 3 ${Array.from({ length: regionalScallopCount }, (_, in
 const bannerEdges = {
   festival: { height: 10, viewBox: '0 0 400 16', path: festivalEdge },
   regional: { height: 20, viewBox: `0 0 ${regionalEdgeWidth} 24`, path: regionalEdge },
-  fresh: { height: 22, viewBox: '0 0 400 24', path: 'M0 11 C105 27 250 -5 400 9 V24 H0 Z' },
-  meat: { height: 24, viewBox: '0 0 400 24', path: 'M0 22 L400 2 V24 H0 Z' },
 };
 
 export function HomeCategoryBanner({
@@ -40,12 +38,12 @@ export function HomeCategoryBanner({
   backgroundColor?: string;
   imageFit?: 'cover' | 'contain';
   seamless?: boolean;
-  bottomEdge?: keyof typeof bannerEdges;
+  bottomEdge?: keyof typeof bannerEdges | 'straight';
 }) {
   const [failedUri, setFailedUri] = useState<string>();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const edge = bottomEdge ? bannerEdges[bottomEdge] : undefined;
+  const edge = bottomEdge && bottomEdge !== 'straight' ? bannerEdges[bottomEdge] : undefined;
   return (
     <View className="overflow-hidden" style={{
       height: Math.max(width * 7 / 16, 60) + insets.top,

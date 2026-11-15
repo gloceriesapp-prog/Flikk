@@ -9,30 +9,21 @@ interface Props {
   onPress: () => void;
 }
 
-// Soft neutral gray tile, no per-item border/hairline divider — matches the
-// reference's clean rail (no lines between entries, spacing alone
-// separates them, same "premium not flat-white" backdrop CategoryTile.tsx
-// already uses for the main Categories grid). Selection reads from the
-// black rail bar + bold label alone now, not a colored border on the tile
-// itself — keeps every tile visually consistent with the reference instead
-// of the selected one looking like a different component.
+const ACTIVE_GREEN = '#1E8A3C';
+
+// Round photo over a two-line label. The selected entry sits on a white card
+// with a soft shadow and a bold green label; the rest stay flat on the rail.
 export function SubCategorySidebarItem({ subCategory, isSelected, onPress }: Props) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={subCategory.label} accessibilityState={{ selected: isSelected }} onPress={onPress} className="relative items-center gap-1.5 px-1">
-      {/* Right rail indicator — flags the active sub-category, matches the
-          reference's black bar running down the rail's outer edge. */}
-      {isSelected && <View className="absolute right-0 bottom-1 top-1 w-[3px] rounded-full bg-ink" />}
-
-      <View
-        className="h-16 w-16 items-center justify-center overflow-hidden rounded-2xl"
-        style={{ backgroundColor: '#EDEDF0' }}
-      >
+    <Pressable accessibilityRole="button" accessibilityLabel={subCategory.label} accessibilityState={{ selected: isSelected }} onPress={onPress}
+      className="items-center gap-1.5 rounded-2xl px-1 py-2.5"
+      style={isSelected ? { backgroundColor: '#FFFFFF', shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3 } : undefined}>
+      <View className="h-[52px] w-[52px] overflow-hidden rounded-full bg-[#E5E7EB]">
         <Image source={{ uri: subCategory.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
       </View>
-      <Text
-        className={`text-center text-[12px] leading-4 ${isSelected ? 'font-bold text-ink' : 'font-medium text-ink/55'}`}
-        numberOfLines={2}
-      >
+      <Text numberOfLines={2}
+        className={`text-center text-[12px] leading-[15px] ${isSelected ? 'font-bold' : 'font-medium text-ink/55'}`}
+        style={isSelected ? { color: ACTIVE_GREEN } : undefined}>
         {subCategory.label}
       </Text>
     </Pressable>

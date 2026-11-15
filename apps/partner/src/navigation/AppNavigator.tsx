@@ -1,21 +1,5 @@
-// Bottom-tab structure per specs/02-partner-app/screens.md: Orders /
-// Catalog / Payouts. No auth gate yet — see App.tsx. Orders is the
-// initial route since the order queue (P2) is this app's home screen,
-// not a separate tab.
-//
-// Native-stack, not @react-navigation/bottom-tabs — BottomNavBar is a
-// custom floating glass pill rendered as a sibling of each screen's own
-// ScrollView (same architecture as apps/customer), not the library's
-// built-in tab bar UI. Since each of the three tab screens mounts its OWN
-// BottomNavBar instance rather than sharing one persistent bar, native-
-// stack's default push/slide transition between them visibly slid the
-// bar itself along with the screen content — reading as "the navbar is
-// reloading/moving" on every tab switch, not staying fixed the way a
-// real tab bar would. `animation: 'none'` on these three screens only
-// (same fix apps/customer's own AppNavigator.tsx already applies to its
-// four bottom-tab screens) makes the switch instant with no slide, so
-// only the content underneath actually changes and the bar reads as
-// fixed in place.
+// Custom bottom navigation: Home queue, Orders history, Inventory and Payouts.
+// Tab routes switch without sliding their independently rendered navigation bars.
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AddProductScreen } from '../screens/catalog/AddProductScreen';
@@ -42,7 +26,7 @@ export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Orders">
       <Stack.Screen name="Orders" component={OrdersScreen} options={{ animation: 'none' }} />
-      <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
+      <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Reviews" component={ReviewsScreen} />
       <Stack.Screen name="Staff" component={StaffScreen} />
       <Stack.Screen name="DocumentReplacement" component={DocumentReplacementScreen} />

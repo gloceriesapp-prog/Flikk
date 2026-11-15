@@ -54,7 +54,7 @@ export function LocationSelector({ onPress, isClosed = false, light = false }: P
   const iconColor = light ? '#101C10' : '#FFFFFF';
 
   return (
-    <Pressable onPress={onPress} className="w-full max-w-[230px]">
+    <Pressable onPress={onPress} className="w-full">
       {isClosed ? <Text className={`text-[18px] font-extrabold ${primaryText}`}>
         {`Opens ${reopen.time} ${reopen.day}`}
       </Text> : <DeliveryHeading minutes={estimatedMinutes} light={light} highDemand={highDemand} />}

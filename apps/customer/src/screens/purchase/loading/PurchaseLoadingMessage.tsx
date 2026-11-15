@@ -1,7 +1,6 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 
 export function PurchaseLoadingMessage() {
-  return <View className="items-center px-6 py-16" accessibilityLiveRegion="polite">
-    <Text className="text-center text-[15px] font-medium text-ink/60">Bringing your purchases together…</Text>
-  </View>;
+  return <View style={{ paddingHorizontal: 20 }}><ScreenSkeleton layout="list" rows={3} label="Loading orders" /></View>;
 }

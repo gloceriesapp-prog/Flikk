@@ -43,13 +43,13 @@ export function AccountDetailsCard({ profile }: Props) {
           </View>
 
           <View className="flex-1">
-            <Pressable onPress={openNameEditor} className="flex-row items-center gap-1.5">
-              <Text className="text-[17px] font-semibold text-ink" numberOfLines={1}>
+            <Pressable accessibilityRole="button" accessibilityHint="Edit your name" onPress={openNameEditor} className="flex-row items-center gap-1.5">
+              <Text className="shrink text-[18px] font-bold text-ink" numberOfLines={1}>
                 {profile.name?.trim() || 'Add your name'}
               </Text>
               <AppIcon icon={PencilEdit02Icon} size={12} color={`${colors.ink}40`} strokeWidth={1.8} />
             </Pressable>
-            <Text className="mt-0.5 text-[13px] font-normal text-ink/45">{formatPhone(profile.phone)}</Text>
+            <Text className="mt-0.5 text-sm text-ink/65">{formatPhone(profile.phone)}</Text>
           </View>
         </View>
 
@@ -59,8 +59,9 @@ export function AccountDetailsCard({ profile }: Props) {
       <Modal visible={isNameEditOpen} transparent animationType="fade" onRequestClose={() => setIsNameEditOpen(false)}>
         <View className="flex-1 items-center justify-center bg-black/40 px-8">
           <View className="w-full rounded-3xl bg-white p-5">
-            <Text className="text-base font-semibold text-ink">Your name</Text>
+            <Text accessibilityRole="header" className="text-[20px] font-bold text-ink">Your name</Text>
             <TextInput
+              accessibilityLabel="Your name"
               maxLength={100}
               value={nameDraft}
               onChangeText={setNameDraft}
@@ -69,10 +70,10 @@ export function AccountDetailsCard({ profile }: Props) {
               className="mt-3 rounded-xl border border-gray-200 px-3.5 py-3 text-[15px] text-ink"
             />
             <View className="mt-4 flex-row justify-end gap-4">
-              <Pressable onPress={() => setIsNameEditOpen(false)} hitSlop={8}>
+              <Pressable accessibilityRole="button" onPress={() => setIsNameEditOpen(false)} hitSlop={8}>
                 <Text className="text-[15px] font-medium text-ink/50">Cancel</Text>
               </Pressable>
-              <Pressable onPress={saveName} hitSlop={8}>
+              <Pressable accessibilityRole="button" onPress={saveName} hitSlop={8}>
                 <Text className="text-[15px] font-semibold text-ink">Save</Text>
               </Pressable>
             </View>

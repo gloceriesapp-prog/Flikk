@@ -34,10 +34,17 @@ const CARD_DOT = 6;
 // wide, short strip: 'cover' blew packshots up and cropped them, so it shows
 // the whole photo instead.
 const FIT = { card: 'cover', hero: 'contain' } as const;
+// Detail photos must not reuse an early-resized thumbnail from the memory
+// cache. Decode the available source pixels for the hero; keep grid images
+// small and cached in memory, and keep offscreen gallery photos unmounted.
+const IMAGE_POLICY = {
+  card: { enforceEarlyResizing: true, cachePolicy: 'memory-disk' },
+  hero: { enforceEarlyResizing: false, cachePolicy: 'disk' },
+} as const;
 
 function ProductImageGalleryImpl({ images, variant = 'card' }: Props) {
   if (images.length <= 1) {
-    return <Image source={{ uri: images[0] || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode={FIT[variant]} />;
+    return <Image source={{ uri: images[0] || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode={FIT[variant]} {...IMAGE_POLICY[variant]} />;
   }
   // Keyed by the list so a recycled list cell showing another product starts
   // again at its first photo instead of keeping the old scroll offset.
@@ -57,7 +64,7 @@ function Pager({ images, variant }: Required<Props>) {
   return (
     <View className="h-full w-full" onLayout={onLayout}>
       {width === 0 ? (
-        <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode={FIT[variant]} />
+        <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode={FIT[variant]} {...IMAGE_POLICY[variant]} />
       ) : (
         <ScrollView
           horizontal
@@ -70,7 +77,7 @@ function Pager({ images, variant }: Required<Props>) {
         >
           {images.map((uri, i) => (
             i === 0 || swiped
-              ? <Image key={`${i}:${uri}`} source={{ uri }} style={{ width, height: '100%' }} resizeMode={FIT[variant]} />
+              ? <Image key={`${i}:${uri}`} source={{ uri }} style={{ width, height: '100%' }} resizeMode={FIT[variant]} {...IMAGE_POLICY[variant]} />
               : <View key={`${i}:${uri}`} style={{ width }} />
           ))}
         </ScrollView>

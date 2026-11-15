@@ -1,3 +1,4 @@
+import { canShowShoppingCart } from '../../navigation/home/cartBarVisibility';
 // Two genuinely different containers by platform now, per an explicit
 // ask — iOS: a floating rounded pill with insets on both sides, real iOS
 // 26 Liquid Glass (GlassView, expo-glass-effect) when
@@ -285,13 +286,13 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
           explicit ask — just CartBar now, always centered, no locked/
           unlocked/celebrating state to branch on. CartBar itself
           self-nulls when the cart's empty. */}
-      <Animated.View
+      {canShowShoppingCart(route.name) && <Animated.View
         pointerEvents="box-none"
         style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + NAV_BOTTOM_OFFSET + PILL_HEIGHT + 4 + cartBottomOffset }, cartBarAnimatedStyle]}
         className="flex-row items-center justify-center"
       >
         <CartBar />
-      </Animated.View>
+      </Animated.View>}
     </>
   );
 }

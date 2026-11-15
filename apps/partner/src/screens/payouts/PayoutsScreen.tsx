@@ -19,7 +19,7 @@ import { colors } from '../../theme/tokens';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { fetchCommission, fetchPayoutPage, COMMISSION_QUERY_KEY } from '../../api/payouts';
 import { CommissionRatesCard } from './components/CommissionRatesCard';
-import { buildSamplePayouts, toWeeklyPayout } from './data';
+import { toWeeklyPayout } from './data';
 import { CurrentWeekPayoutCard } from './components/CurrentWeekPayoutCard';
 import { PayoutStatusFilter, type PayoutStatusFilterValue } from './components/PayoutStatusFilter';
 import { PayoutWeekCard } from './components/PayoutWeekCard';
@@ -38,16 +38,7 @@ export function PayoutsScreen({ navigation }: Props) {
   const commission = useQuery({ queryKey: [...COMMISSION_QUERY_KEY, queryScope], queryFn: fetchCommission, refetchOnWindowFocus: false });
   const rows = query.data?.pages.flatMap(page => page.items);
   const realPayouts = (rows ?? []).map(toWeeklyPayout);
-  // A brand-new store (zero delivered orders, zero real payouts yet) has
-  // nothing real to show — falls back to sample data (data.ts's own
-  // buildSamplePayouts, every row flagged isSample: true) so the balance
-  // card and history stay a permanent, always-visible fixture of this
-  // screen instead of disappearing until the first real settlement
-  // exists. Only kicks in once loading is actually done and the real
-  // fetch genuinely came back empty — never shown alongside real rows.
-  // Development builds only — a real store must never see a balance or
-  // payouts it was not paid.
-  const payouts = __DEV__ && !isLoading && !query.isError && realPayouts.length === 0 ? buildSamplePayouts() : realPayouts;
+  const payouts = realPayouts;
   const hasNoPayouts = !isLoading && !query.isError && payouts.length === 0;
 
   // The most recent row that hasn't actually landed yet is the hero card
@@ -88,19 +79,6 @@ export function PayoutsScreen({ navigation }: Props) {
         </View>
       ) : (
         <ScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-28">
-          {/* Real vs sample is never ambiguous — a plain banner, not a
-              per-card watermark, since every row on screen right now is
-              sample together (data.ts's own gate: sample data only ever
-              renders when the real fetch came back completely empty, so
-              it's an all-or-nothing state, not a mix). */}
-          {currentWeek?.isSample && (
-            <View className="flex-row items-center gap-2 rounded-2xl bg-gold/15 px-4 py-3">
-              <Text className="text-xs font-semibold text-ink/70">
-                Sample data — real settlements will replace this once your first delivered order completes a full week.
-              </Text>
-            </View>
-          )}
-
           {hasNoPayouts && (
             <View className="items-center gap-2 rounded-3xl bg-white px-6 py-10">
               <Text className="text-[16px] font-semibold text-ink">No payouts yet</Text>

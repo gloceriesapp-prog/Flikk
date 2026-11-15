@@ -1,42 +1,36 @@
-import {
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppImage as Image } from '../../../components/AppImage';
 import { useCopyImage } from '../../../api/appConfig';
+import { STORE_HEADER_BACKGROUND, STORE_PAGE_BACKGROUND } from '../storeAppearance';
 
-const PROMO_IMAGE_URI =
-  'https://images.gloceries.com/appsui/store-welcome.png';
-
-const PROMO_BACKGROUND = '#849B76';
+const PROMO_IMAGE_URI = 'https://images.gloceries.com/appsui/storev2.png';
+const LEGACY_IMAGE_URIS = new Set([
+  'https://images.gloceries.com/appsui/storev1.png',
+  'https://images.gloceries.com/appsui/store-welcome.png',
+  'https://images.gloceries.com/appsui/store-new.png',
+]);
+const PROMO_ASPECT_RATIO = 2048 / 682;
 
 export function StorePromoBanner() {
   const { width: screenWidth } = useWindowDimensions();
-  // Admin App content: stores.promo.imageUrl. Kept read here (with the hosted
-  // default as fallback) so admin can still swap the promo image AND the
-  // backend copyKeys invariant — every registered key must be read by the
-  // customer app — stays satisfied.
-  const imageUri = useCopyImage('stores.promo.imageUrl', PROMO_IMAGE_URI);
+  // Retain admin overrides while replacing previously shipped default artwork.
+  const configuredImageUri = useCopyImage('stores.promo.imageUrl', PROMO_IMAGE_URI);
+  const imageUri = LEGACY_IMAGE_URIS.has(configuredImageUri) ? PROMO_IMAGE_URI : configuredImageUri;
 
   return (
-    <View
-      className="self-center overflow-hidden"
-      style={{
-        width: screenWidth,
-        height: 160,
-        marginBottom: 0,
-        paddingBottom: 0,
-        backgroundColor: PROMO_BACKGROUND,
-      }}
-    >
-      <Image
-        source={{ uri: imageUri }}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        contentPosition="bottom center"
-      />
+    <View style={[styles.banner, {
+      width: screenWidth,
+      height: imageUri === PROMO_IMAGE_URI ? screenWidth / PROMO_ASPECT_RATIO : 160,
+    }]}>
+      <View pointerEvents="none" style={styles.headerBackground} />
+      <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill}
+        contentFit="contain" contentPosition="bottom center" />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  banner: { alignSelf: 'center', overflow: 'hidden', backgroundColor: STORE_PAGE_BACKGROUND },
+  headerBackground: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%', backgroundColor: STORE_HEADER_BACKGROUND },
+});

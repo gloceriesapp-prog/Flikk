@@ -2,13 +2,15 @@ import { memo, useState } from 'react';
 import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
-import { stockLabel } from '../../../components/stockLabel';
 import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
-import { RupeePrice } from '../../../components/RupeePrice';
+import { stockLabel } from '../../../components/stockLabel';
+import { ProductPriceRow } from '../../../components/ProductPriceRow';
+import { discountPercentLabel } from '../../../components/priceComparison';
 import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
+import { preorderMinimumLabel } from '../../../store/preorderQuantity';
 import { useProductAvailability } from './useProductAvailability';
 import type { Product } from './types';
 
@@ -19,6 +21,7 @@ interface Props {
   product: Product;
   widthClassName?: string;
   showDiscountBadge?: boolean;
+  showImage?: boolean;
   // Festival-rail variant: ADD button is a bold + icon (not text).
   // Every other Home row leaves this off and keeps the full card.
   compact?: boolean;
@@ -28,6 +31,7 @@ interface Props {
   onDark?: boolean;
   onPress?: () => void;
   onAdd?: () => void;
+  // Kept for existing section callers; product cards no longer show ETA.
   // Lifted from the parent section so one shared 30s browse-clock tick / a
   // delivery-settings refetch re-renders the section node once instead of
   // every card. ProductCard supplies these — either passing a section's
@@ -40,7 +44,7 @@ interface Props {
   availabilityLabel?: string;
 }
 
-function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscountBadge = false, compact = false, onDark = false, onPress, onAdd, isAvailable, availabilityLabel }: Props) {
+function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = true, compact = false, onDark = false, onPress, onAdd, isAvailable, availabilityLabel }: Props) {
   const {
     id,
     name,
@@ -55,123 +59,117 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
     isVeg = true,
   } = product;
 
-  const discountPercent = showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
 
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize] = useState(chips[0]);
 
-  const remainingStock = stockLabel(product.availableQuantity, product.isAvailable !== false);
+  const discount = discountPercentLabel(price, originalPrice);
+  const stockStatus = isAvailable
+    ? stockLabel(product.availableQuantity, (product.availableQuantity ?? 0) < 5)
+    : availabilityLabel ?? 'Unavailable';
   const cutSize = quickAddCut(product);
   const lineId = cartLineId(id, product.defaultVariantId, cutSize);
   const quantity = useCartStore((state) => state.items.find((item) => item.id === lineId)?.quantity ?? 0);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
+  const cartControl = !isAvailable ? null : quantity === 0 || !!product.options?.length ? (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
+      onPress={(event) => {
+        event.stopPropagation();
+        if (product.options?.length && onAdd) { onAdd(); return; }
+        if (mustPickInDetail(product)) {
+          onPress?.();
+          return;
+        }
+        addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
+      }}
+      className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
+    >
+      {compact ? (
+        <AppIcon icon={Add01Icon} size={18} color="#241712" fill="#155dfc" strokeWidth={3.5} />
+      ) : (
+        <AppIcon icon={Add01Icon} size={20} color="#155dfc" fill="#155dfc" strokeWidth={3} />
+      )}
+    </Pressable>
+  ) : (
+    <View className="flex-row items-center gap-2.5 rounded-[8px] border border-[#155dfc] bg-white px-3 py-2">
+      <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`} onPress={() => decrementItem(lineId)} hitSlop={12}>
+        <AppIcon icon={MinusSignIcon} size={20} color="#155dfc" strokeWidth={2.5} />
+      </Pressable>
+      <Text className="min-w-[12px] text-center text-[13px] font-extrabold text-[#155dfc]">{quantity}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`} onPress={() => incrementItem(lineId)} hitSlop={12}>
+        <AppIcon icon={Add01Icon} size={20} color="#155dfc" strokeWidth={2.5} />
+      </Pressable>
+    </View>
+  );
+
   return (
     <Pressable onPress={onPress} className={`${widthClassName} gap-0`}>
 
-      {/* Image card with the ADD button pinned to its bottom-right corner. */}
-      <View className="relative mb-2">
-        <View className="aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
-          <ProductImageGallery images={product.imageUrls ?? (imageUrl ? [imageUrl] : [])} />
-        </View>
-
-        {freshnessTag && (
-          <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
-            <Text className="text-[9px] font-semibold text-ink">{freshnessTag}</Text>
+      {/* Pin the cart control to the image when it is visible. */}
+      {showImage && (
+        <View className="relative mb-2">
+          <View className="aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+            <ProductImageGallery images={product.imageUrls ?? (imageUrl ? [imageUrl] : [])} />
           </View>
-        )}
 
-        {/* ADD / stepper — flush to the image's bottom-right corner (no inset,
-            no outer gap). */}
-        <View
-          className="absolute bottom-0 right-0 z-10"
-        >
-          {!isAvailable ? (
-            <View className="rounded-lg bg-[#FFF0EE] px-2 py-2"><Text className="text-[10px] font-bold text-[#B42318]">{availabilityLabel}</Text></View>
-          ) : quantity === 0 || !!product.options?.length ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
-              onPress={(event) => {
-                event.stopPropagation();
-                if (product.options?.length && onAdd) { onAdd(); return; }
-                mustPickInDetail(product)
-                  ? onPress?.()
-                  : addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
-              }}
-              className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
-            >
-              {compact ? (
-                <AppIcon icon={Add01Icon} size={18} color="#241712" fill="#155dfc" strokeWidth={3.5} />
-              ) : (
-                <AppIcon icon={Add01Icon} size={20} color="#155dfc" fill="#155dfc" strokeWidth={3} />
-              )}
-            </Pressable>
-          ) : (
-            <View className="flex-row items-center gap-2.5 rounded-[8px] border border-[#155dfc] bg-white px-3 py-2">
-              <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`} onPress={() => decrementItem(lineId)} hitSlop={12}>
-                <AppIcon icon={MinusSignIcon} size={20} color="#155dfc" strokeWidth={2.5} />
-              </Pressable>
-              <Text className="min-w-[12px] text-center text-[13px] font-extrabold text-[#155dfc]">{quantity}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`} onPress={() => incrementItem(lineId)} hitSlop={12}>
-                <AppIcon icon={Add01Icon} size={20} color="#155dfc" strokeWidth={2.5} />
-              </Pressable>
+          {freshnessTag && (
+            <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
+              <Text className="text-[9px] font-semibold text-ink">{freshnessTag}</Text>
             </View>
           )}
-        </View>
-      </View>
 
-      {/* Details — weight + ETA row, price row, per-unit, % OFF, name. */}
+          <View className="absolute bottom-0 right-0 z-10">{cartControl}</View>
+        </View>
+      )}
+
+      {/* Pack, price and product name, followed by confirmed low stock. */}
       <View className="gap-1 px-0.5 pt-0">
-        {/* Weight chip + delivery-ETA pill, sitting next to each other (left-
-            aligned, small fixed gap — not pushed apart). Weight chip hugs its
-            text (no min width) so it stays compact. */}
+        {/* Dietary mark in its own tile on the left; the pack size fills the
+            rest of the row, centred. Both tiles share one height and tint. */}
         <View className="mb-0.5 flex-row items-center gap-1.5">
           {/* Veg / non-veg mark — square outline + center dot, standard Indian
               food-label convention. isVeg defaults true (types.ts), only
               fish/meat set it false. */}
-          <View
-            className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border"
-            style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
-          >
-            <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+          <View className="h-[22px] w-[26px] items-center justify-center rounded-[6px] bg-[#F1F1F4]">
+            <View
+              className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border bg-white"
+              style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
+            >
+              <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+            </View>
           </View>
-          {/* Pack size: soft grey chip, no border, about the veg mark's height. */}
-          <View className="justify-center rounded-[4px] bg-[#F1F1F4] px-1.5 py-[1px]">
-            <Text className="text-[9.5px] font-semibold leading-[12px] text-black/60">{weight}</Text>
+          <View className="h-[22px] flex-1 items-center justify-center rounded-[6px] bg-[#F1F1F4] px-1.5">
+            <Text numberOfLines={1} className="text-[11px] font-semibold text-black/65">{weight}</Text>
           </View>
-
         </View>
 
-        {/* Price row — RupeeIcon + current price, then strike-through MRP.
-            Numerals in Gilroy-ExtraBold (RupeePrice); everything else Gilroy. */}
-        <View className="flex-row items-center gap-[5px]">
-          <RupeePrice amount={price} size={17} color={onDark ? '#FFFFFFCC' : '#101C10CC'} />
-
-          {originalPrice && originalPrice > price && (
-            <RupeePrice amount={originalPrice} size={12} strike color={onDark ? '#FFFFFF73' : '#B8B8B8'} />
-          )}
-        </View>
+        <ProductPriceRow price={price} originalPrice={originalPrice} size={17} onDark={onDark} showDiscount={false} />
+        {/* Discount on its own line under the price, so the price row never shrinks to fit it. */}
+        {discount ? (
+          <Text className={`text-[12px] font-bold leading-[15px] ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discount}% off</Text>
+        ) : null}
 
         {/* Per-kg/litre price, right under the amount. */}
         {product.unitPriceLabel && (
           <Text className={`text-[11px] font-medium ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`}>{product.unitPriceLabel}</Text>
         )}
 
-        {discountPercent !== null && discountPercent > 0 && (
-          <Text className={`-mt-1 text-[12px] font-bold leading-[14px] ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discountPercent}% OFF</Text>
-        )}
-
         <Text className={`text-[13px] font-semibold leading-[17px] ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
           {name}
         </Text>
-        {remainingStock ? <Text className="text-[11px] font-semibold leading-[15px]" style={{ color: onDark ? '#FFB4AB' : '#D92D20' }}>{remainingStock}</Text> : null}
-        {/* Keep pre-order minimums; delivery estimates belong in the header. */}
+        {stockStatus ? (
+          <Text className="text-[11px] font-semibold leading-[15px]" style={{ color: onDark ? '#FFB4AB' : '#D92D20' }}>{stockStatus}</Text>
+        ) : null}
+        {/* Preserve the pre-order minimum; delivery estimates live in the header. */}
         {product.preorder ? (
           <View className={`self-start rounded-md px-1.5 py-0.5 ${onDark ? 'bg-white/15' : 'bg-[#F1EAF4]'}`}>
-            <Text className={`text-[10px] font-semibold ${onDark ? 'text-white' : 'text-[#4A2C5A]'}`}>pre-order · min {product.preorder.minQty}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className={`text-[10px] font-semibold ${onDark ? 'text-white' : 'text-[#4A2C5A]'}`}>{preorderMinimumLabel(product.preorder.minQty, product.weight)}</Text>
           </View>
         ) : null}
       </View>
+      {!showImage && cartControl && <View className="mt-2 self-start">{cartControl}</View>}
     </Pressable>
   );
 }

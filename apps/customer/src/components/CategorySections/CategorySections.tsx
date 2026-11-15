@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../loading/ScreenSkeleton';
 // Grouped category grid ("Groceries & Staples", "Snacks & Drinks", etc.) —
 // the single shared piece screens/categories/CategoriesScreen.tsx (full
 // standalone grid) and screens/home/sections/AllTabSections.tsx (a copy
@@ -20,12 +21,13 @@ import { useCategorySections } from './useCategorySections';
 
 export function CategorySections({ homeOnly = false }: { homeOnly?: boolean }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const { data: sections = [] } = useCategorySections();
+  const { data: sections = [], isPending } = useCategorySections();
   const nonEmptySections = sections
     .filter((section) => !homeOnly || section.showOnHome)
     .map((section) => (homeOnly ? { ...section, categories: section.categories.filter((c) => c.showOnHome) } : section))
     .filter((section) => section.categories.length > 0);
 
+  if (isPending && sections.length === 0) return <View className="px-5"><ScreenSkeleton layout="categories" /></View>;
   return (
     <View>
       {nonEmptySections.map((section) => (

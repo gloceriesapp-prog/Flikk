@@ -66,7 +66,7 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
   const isIOS = Platform.OS === 'ios';
   // Controls (40pt, 6pt below the status bar) plus a small gap before the photo.
   const headerHeight = insets.top + 54;
-  const [footerHeight, setFooterHeight] = useState(140 + insets.bottom);
+  const [cartBarHeight, setCartBarHeight] = useState(0);
   const scrollY = useSharedValue(0);
   // The header title appears once ~30% of the photo has scrolled away.
   const titleShowAt = (width * 810 / 720) * 0.3;
@@ -121,43 +121,57 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      <Animated.ScrollView
-        bounces
-        overScrollMode="never"
-        showsVerticalScrollIndicator={false}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: headerHeight,
-          paddingBottom: footerHeight }}
-      >
-        <View style={{ width: '100%', aspectRatio: 720 / 810, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
-          <ProductImageGallery key={selectedOptionId} variant="hero" images={heroPhotos} />
-          {hasRatings && (
-            <View className="absolute bottom-2.5 right-3 flex-row items-center gap-1 rounded-full bg-white/85 px-2 py-1">
-              <AppIcon icon={StarIcon} size={12} color={colors.success} fill={colors.success} strokeWidth={0} />
-              <Text className="text-[12px] font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
-                {product.rating.toFixed(1)} ({product.ratingCount})
-              </Text>
-            </View>
+      {/* The purchase controls size themselves below this scroll area. */}
+      <View className="flex-1">
+        <Animated.ScrollView
+          bounces
+          overScrollMode="never"
+          showsVerticalScrollIndicator={false}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingTop: headerHeight }}
+        >
+          <View style={{ width: '100%', aspectRatio: 720 / 810, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
+            <ProductImageGallery key={selectedOptionId} variant="hero" images={heroPhotos} />
+            {hasRatings && (
+              <View className="absolute bottom-2.5 right-3 flex-row items-center gap-1 rounded-full bg-white/85 px-2 py-1">
+                <AppIcon icon={StarIcon} size={12} color={colors.success} fill={colors.success} strokeWidth={0} />
+                <Text className="text-[12px] font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+                  {product.rating.toFixed(1)} ({product.ratingCount})
+                </Text>
+              </View>
+            )}
+          </View>
+          <View>
+            <ProductDetailInfo
+              product={product}
+              selectedVariantId={selectedVariantId}
+              selectedCut={product.cutOptions ? selectedCut : undefined}
+              onSelectCut={setSelectedCut}
+              selectedOptionId={selectedOptionId}
+              onSelectOption={setSelectedOptionId}
+              selectedServing={selectedServing}
+              onSelectServing={setSelectedServing}
+              preorder={preorder}
+              onSelectPreorder={selectPreorder}
+              onSelectVariant={setSelectedVariantId}
+              onSelectProduct={onOpenProduct}
+            />
+          </View>
+          {cartTotalQuantity > 0 && (
+            <View style={{ height: cartBarHeight, backgroundColor: '#F6F6F6' }} />
           )}
-        </View>
-        <View>
-          <ProductDetailInfo
-            product={product}
-            selectedVariantId={selectedVariantId}
-            selectedCut={product.cutOptions ? selectedCut : undefined}
-            onSelectCut={setSelectedCut}
-            selectedOptionId={selectedOptionId}
-            onSelectOption={setSelectedOptionId}
-            selectedServing={selectedServing}
-            onSelectServing={setSelectedServing}
-            preorder={preorder}
-            onSelectPreorder={selectPreorder}
-            onSelectVariant={setSelectedVariantId}
-            onSelectProduct={onOpenProduct}
-          />
-        </View>
-      </Animated.ScrollView>
+        </Animated.ScrollView>
+        {cartTotalQuantity > 0 && (
+          <View
+            pointerEvents="box-none"
+            className="absolute bottom-0 left-0 right-0 items-center pb-2"
+            onLayout={(event) => setCartBarHeight(event.nativeEvent.layout.height)}
+          >
+            <CartBar onBeforeNavigate={onClose} />
+          </View>
+        )}
+      </View>
 
       {/* Fixed controls remain tappable while the content scrolls underneath. */}
       <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: headerHeight }}>
@@ -196,16 +210,9 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
         </View>
       </View>
 
-      <View className="absolute bottom-0 left-0 right-0" onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}>
-        {cartTotalQuantity > 0 && <View className="items-center pb-3"><CartBar onBeforeNavigate={onClose} /></View>}
-        {/* Square bar flush with the screen edges; a hairline separates it from
-            the content. Bottom padding only clears the system navigation bar. */}
-        <View style={{ overflow: 'hidden', paddingBottom: Math.max(insets.bottom - 6, 6),
-          borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#E5E7EB' }}>
-          {isIOS && <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />}
-          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isIOS ? 'rgba(255,255,255,0.88)' : '#FFFFFF' }]} />
-          <ProductDetailFooter product={product} selectedVariant={selectedVariant} cutSize={product.cutOptions ? selectedCut : undefined} option={selectedOption} serving={lineServing} preorder={preorder} />
-        </View>
+      <View style={{ paddingBottom: Math.max(insets.bottom - 6, 6),
+        borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#E5E7EB' }}>
+        <ProductDetailFooter product={product} selectedVariant={selectedVariant} cutSize={product.cutOptions ? selectedCut : undefined} option={selectedOption} serving={lineServing} preorder={preorder} />
       </View>
     </View>
   );

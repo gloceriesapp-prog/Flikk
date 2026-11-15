@@ -12,7 +12,7 @@
 // smooth as the list grows instead of degrading linearly with item count.
 
 import { HeartIcon } from '@hugeicons/core-free-icons';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -23,7 +23,7 @@ import type { Product } from '../home/products/types';
 import type { AppStackParamList } from '../../navigation/types';
 import { useCopy } from '../../api/appConfig';
 import { productAvailability } from '../../utils/productAvailability';
-import { IconlyArrowLeft } from '../../components/icons/iconly';
+import { AccountPageHeader } from '../../components/AccountPageHeader';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Wishlist'>;
 
@@ -45,13 +45,7 @@ export function WishlistScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-white pt-safe">
-      <View className="flex-row items-center px-2 pb-2 pt-2">
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
-          <IconlyArrowLeft size={22} color={colors.ink} />
-        </Pressable>
-        <Text className="flex-1 text-center text-xl font-bold text-ink">{title}</Text>
-        <View className="h-11 w-11" />
-      </View>
+      <AccountPageHeader title={title} onBack={() => navigation.goBack()} />
 
       {items.length === 0 ? (
         <View className="flex-1 items-center justify-center gap-3 px-10">

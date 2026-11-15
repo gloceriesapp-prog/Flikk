@@ -40,6 +40,7 @@ export interface HomeContentSection {
   imageUrl: string;
   imageAspectRatio: number;
   imageFade: boolean;
+  showProductImages?: boolean;
   buttonEnabled: boolean;
   buttonLabel: string;
   hideWhenEmpty: boolean;
@@ -47,17 +48,20 @@ export interface HomeContentSection {
   items: HomeContentItem[];
 }
 export interface HomeContentDocument {
-  headerImageUrl?: string;
   schemaVersion: 1;
   tabTitle: string;
+  headerImageUrl?: string;
   enabled: boolean;
   sections: HomeContentSection[];
 }
 export interface HomeContentRecord {
-  headerImageUrl?: string;
+  productImagesHiddenSectionIds?: string[];
+  categoryCardStyles?: Record<string, CategoryCardStyle>;
   tabKey: HomeContentKey;
   homeTabId: string | null;
   revision: number;
+  /** Public response artwork, outside the legacy strict content document. */
+  headerImageUrl?: string;
   updatedAt: string;
   content: HomeContentDocument;
 }

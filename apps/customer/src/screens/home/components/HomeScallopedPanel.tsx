@@ -15,18 +15,12 @@ export function HomeScallopedPanel({ title, subtitle, backgroundColor, headerIma
 }) {
   return (
     <View className="bg-white pt-7">
-      <View className="relative w-full overflow-hidden pb-9" style={{ backgroundColor }}>
-        {(['-top-[9px]', '-bottom-[9px]'] as const).map((edge) => (
-          <View
-            key={edge}
-            pointerEvents="none"
-            className={`absolute left-0 right-0 z-20 flex-row justify-between ${edge}`}
-          >
-            {SCALLOPS.map((index) => (
-              <View key={index} className="h-[18px] w-[18px] rounded-full bg-white" />
-            ))}
-          </View>
-        ))}
+      <View className="relative w-full overflow-hidden pb-4" style={{ backgroundColor }}>
+        <View pointerEvents="none" className="absolute -top-[9px] left-0 right-0 z-20 flex-row justify-between">
+          {SCALLOPS.map((index) => (
+            <View key={index} className="h-[18px] w-[18px] rounded-full bg-white" />
+          ))}
+        </View>
 
         <View className="relative justify-center px-5 pb-5 pt-8" style={headerImageUrl ? { minHeight: 112 } : undefined}>
           {headerImageUrl && (

@@ -23,14 +23,14 @@ export function PromotionalPreferencesCard() {
     onError: () => setMessage('Could not save your preferences. Please try again.'),
   });
   return (
-    <View className="mx-5 mb-4 rounded-2xl bg-white p-4">
-      <Text className="text-base font-semibold text-ink">Offers & updates</Text>
-      <Text className="mt-1 mb-2 text-sm text-gray-500">Choose how you hear about promotions. Order updates stay separate.</Text>
+    <View className="mx-5 mb-4 rounded-[24px] border border-[#E6E8EC] bg-white p-5">
+      <Text accessibilityRole="header" className="text-[17px] font-bold text-ink">Offers & updates</Text>
+      <Text className="mb-2 mt-2 text-[15px] leading-[22px] text-ink/70">Choose how you hear about promotions. Order updates stay separate.</Text>
       {CHANNELS.map(channel => (
         <View key={channel.key} className="flex-row items-center gap-3 py-3">
           <View className="flex-1">
-            <Text className="font-semibold text-ink">{channel.label}</Text>
-            <Text className="mt-1 text-xs text-gray-500">{channel.description}</Text>
+            <Text className="text-[15px] font-semibold text-ink">{channel.label}</Text>
+            <Text className="mt-1 text-[13px] leading-5 text-ink/65">{channel.description}</Text>
           </View>
           <Switch accessibilityLabel={channel.label} value={query.data?.[channel.key] ?? true}
             disabled={!query.data || save.isPending} trackColor={{ false: '#D1D5DB', true: '#155DFC' }} thumbColor="#FFFFFF"
