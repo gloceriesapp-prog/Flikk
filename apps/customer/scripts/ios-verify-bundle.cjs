@@ -7,6 +7,7 @@
 // Usage: node scripts/ios-verify-bundle.cjs <Gloceries.app | .xcarchive>
 // Exit 1 when the bundle lacks the release API origin or contains a local one.
 const assert = require('node:assert/strict');
+const { Buffer } = require('node:buffer');
 const fs = require('node:fs');
 const path = require('node:path');
 
