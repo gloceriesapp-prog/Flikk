@@ -79,6 +79,7 @@ function CollectionContent({ route, navigation }: Props) {
       categoryId={parentCategoryId}
       label={title}
       showFilters={false}
+      productColumns={3}
       productBottomPadding={paddingBottom}
       onBack={() => navigation.goBack()}
       onSearch={() => navigation.navigate('Search')}
@@ -119,7 +120,7 @@ function CollectionContent({ route, navigation }: Props) {
             <FlashList
               key={isProductCollection ? 'custom-products' : 'catalogue-products'}
               data={products}
-              numColumns={isProductCollection ? 3 : 2}
+              numColumns={3}
               ListFooterComponent={inventory.hasNextPage ? (
                 <Pressable accessibilityRole="button" disabled={inventory.isFetchingNextPage} onPress={() => { void inventory.fetchNextPage(); }} className="items-center py-4">
                   <Text className="font-semibold text-[#155DFC]">{inventory.isFetchingNextPage ? 'Loading…' : inventory.isFetchNextPageError ? 'Retry loading more' : 'Load more products'}</Text>
@@ -128,7 +129,7 @@ function CollectionContent({ route, navigation }: Props) {
               keyExtractor={(product) => product.id}
               contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom }}
               renderItem={({ item }) => (
-                <View className="px-1 pb-6" style={isProductCollection ? { width: '33.333333%' } : { flex: 1 }}>
+                <View className="w-full px-1 pb-6">
                   <GroceryProductTile product={item} previewOnly={false} />
                 </View>
               )}

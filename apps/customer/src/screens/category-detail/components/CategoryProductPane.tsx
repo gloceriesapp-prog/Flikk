@@ -16,6 +16,7 @@ interface Props {
   filters: ProductFilters;
   onFiltersChange: (filters: ProductFilters) => void;
   showFilters?: boolean;
+  columns?: number;
   bottomPadding?: number;
   serverTypes?: string[];
   serverBrands?: string[];
@@ -25,7 +26,7 @@ interface Props {
 
 export function CategoryProductPane({
   products, isLoading, isError, onRetry, previewOnly, filters, onFiltersChange,
-  serverTypes, serverBrands, onLoadMore, loadingMore, showFilters = true, bottomPadding = 64,
+  serverTypes, serverBrands, onLoadMore, loadingMore, showFilters = true, columns = 2, bottomPadding = 64,
 }: Props) {
   const [panel, setPanel] = useState<FilterPanel | null>(null);
   const list = useRef<FlashListRef<Product>>(null);
@@ -46,7 +47,7 @@ export function CategoryProductPane({
         <FlashList
           ref={list}
           data={filteredProducts}
-          numColumns={2}
+          numColumns={columns}
           onEndReached={onLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={loadingMore ? <ActivityIndicator className="py-4" color="#155DFC" /> : null}

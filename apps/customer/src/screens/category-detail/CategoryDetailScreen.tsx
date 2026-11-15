@@ -30,6 +30,7 @@ export function CategoryDetailScreen({ navigation, route }: Props) {
 interface ContentProps {
   initialSubcategoryId?: string;
   showFilters?: boolean;
+  productColumns?: number;
   productBottomPadding?: number;
   categoryId: string;
   label: string;
@@ -38,7 +39,7 @@ interface ContentProps {
 }
 
 export function CategoryDetailContent({
-  categoryId, label, initialSubcategoryId, onBack, onSearch, showFilters = true, productBottomPadding,
+  categoryId, label, initialSubcategoryId, onBack, onSearch, showFilters = true, productColumns, productBottomPadding,
 }: ContentProps) {
   const [selectedSubId, setSelectedSubId] = useState(initialSubcategoryId ?? 'all');
   const isReal = isRealCategoryId(categoryId);
@@ -77,6 +78,7 @@ export function CategoryDetailContent({
           previewOnly={false}
           filters={filters}
           showFilters={showFilters}
+          columns={productColumns}
           bottomPadding={productBottomPadding}
           onFiltersChange={setFilters}
           serverTypes={facets?.types}
