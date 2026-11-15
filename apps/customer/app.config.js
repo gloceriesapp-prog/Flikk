@@ -119,8 +119,6 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
-      // iOS 27 refuses to launch an app without the scene life cycle.
-      './plugins/withSceneLifecycle',
       ['expo-build-properties', { ios: { enableSceneSupport: true } }],
       ['react-native-maps', {
         ...(androidGoogleMapsApiKey ? { androidGoogleMapsApiKey } : {}),

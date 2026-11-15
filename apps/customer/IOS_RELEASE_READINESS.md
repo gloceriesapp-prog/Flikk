@@ -18,6 +18,14 @@ Set `NODE_ENV=production`, `CUSTOMER_DIRECT_IOS_RELEASE=true`, `EAS_BUILD_PLATFO
 
 The preflight rejects a local/staging API, missing iOS Maps configuration, duplicate build number, wrong Sentry project and publicly exposed provider secrets. It validates configuration, not provider functionality or App Store approval. Generate the native project from this reviewed commit, archive with the intended distribution team, validate in Organizer and upload to TestFlight. Check source-map and dSYM uploads before treating crash reporting as verified.
 
+Metro's transform cache is not keyed on `EXPO_PUBLIC_*` values, so an archive made
+on a Mac that bundled earlier with another API URL can embed that old value (seen
+2026-11-15: a Release build crashed at launch with "Set EXPO_PUBLIC_API_URL").
+Before archiving, put `export EXTRA_PACKAGER_ARGS="--reset-cache"` and the release
+`EXPO_PUBLIC_*` values in `ios/.xcode.env.local` (not committed). After archiving,
+run `node scripts/ios-verify-bundle.cjs <path to .xcarchive>`; it fails unless the
+embedded JavaScript uses the release API origin and no LAN/tunnel address.
+
 ## Closed-store behavior
 
 Customer discovery includes otherwise eligible closed stores. Their `is_active=false` value is preserved so customers can browse and prepare a cart. Existing checkout eligibility still rejects ordering from closed stores. Suspended stores, geographic restrictions and checkout checks remain enforced. Public discovery responses use an explicit merchant-field allowlist.
