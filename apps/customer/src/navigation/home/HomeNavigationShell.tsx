@@ -5,7 +5,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CartBar } from '../../components/CartBar/CartBar';
 import { useCartStore, selectCartTotalQuantity } from '../../store/useCartStore';
-import { showStandaloneCart } from './cartBarVisibility';
+import { showStandaloneCart, STANDALONE_CART_CLEARANCE, usesFloatingCollectionCart } from './cartBarVisibility';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { ActiveOrderBar } from '../../features/active-order-tracker';
 import { useNearestStore } from '../../screens/home/useNearestStore';
@@ -32,10 +32,11 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
   const { isServiceable } = useNearestStore();
   const showBar = isServiceable && (route.name === 'Home' || route.name === 'HomeCategory');
   const showCart = showStandaloneCart(route.name, showBar, cartQuantity);
+  const reserveCartSpace = showCart && !usesFloatingCollectionCart(route.name);
   return (
     <HomeNavigationProgressContext.Provider value={hidden}>
       <View className="flex-1">
-        <View style={{ flex: 1, paddingBottom: showCart ? insets.bottom + 68 : 0 }}>{children}</View>
+        <View style={{ flex: 1, paddingBottom: reserveCartSpace ? insets.bottom + STANDALONE_CART_CLEARANCE : 0 }}>{children}</View>
         {showCart && (
           <NavigationContext.Provider value={navigation}>
             <NavigationRouteContext.Provider value={route}>

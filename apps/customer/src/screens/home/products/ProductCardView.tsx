@@ -60,7 +60,9 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize] = useState(chips[0]);
 
-  const remainingStock = stockLabel(product.availableQuantity, product.isAvailable !== false);
+  const stockStatus = isAvailable
+    ? stockLabel(product.availableQuantity, (product.availableQuantity ?? 0) < 5)
+    : availabilityLabel ?? 'Unavailable';
   const cutSize = quickAddCut(product);
   const lineId = cartLineId(id, product.defaultVariantId, cutSize);
   const quantity = useCartStore((state) => state.items.find((item) => item.id === lineId)?.quantity ?? 0);
@@ -87,9 +89,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
         <View
           className="absolute bottom-0 right-0 z-10"
         >
-          {!isAvailable ? (
-            <View className="rounded-lg bg-[#FFF0EE] px-2 py-2"><Text className="text-[10px] font-bold text-[#B42318]">{availabilityLabel}</Text></View>
-          ) : quantity === 0 || !!product.options?.length ? (
+          {!isAvailable ? null : quantity === 0 || !!product.options?.length ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
               onPress={(event) => {
                 event.stopPropagation();
@@ -164,7 +164,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
         <Text className={`text-[13px] font-semibold leading-[17px] ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
           {name}
         </Text>
-        {remainingStock ? <Text className="text-[11px] font-semibold leading-[15px]" style={{ color: onDark ? '#FFB4AB' : '#D92D20' }}>{remainingStock}</Text> : null}
+        {stockStatus ? <Text className="text-[11px] font-semibold leading-[15px]" style={{ color: onDark ? '#FFB4AB' : '#D92D20' }}>{stockStatus}</Text> : null}
         {/* Keep pre-order minimums; delivery estimates belong in the header. */}
         {product.preorder ? (
           <View className={`self-start rounded-md px-1.5 py-0.5 ${onDark ? 'bg-white/15' : 'bg-[#F1EAF4]'}`}>

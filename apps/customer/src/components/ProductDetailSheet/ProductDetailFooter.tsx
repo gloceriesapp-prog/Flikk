@@ -94,26 +94,9 @@ export function ProductDetailFooter({
     (state) => state.decrementItem
   );
 
-  // OUT OF STOCK / UNAVAILABLE
-  if (
-    !availability.isAvailable ||
-    selectedVariant?.isAvailable === false ||
-    needsFlavour
-  ) {
-    return (
-      <View className="mx-5 my-4 rounded-2xl bg-[#FFF0EE] px-5 py-4">
-        <Text className="text-center font-bold text-[#B42318]">
-          {needsFlavour && availability.isAvailable && selectedVariant?.isAvailable !== false
-            ? 'This flavour is out of stock'
-            : selectedVariant?.isAvailable === false
-            ? selectedVariant.unavailableReason === 'stock_unconfirmed'
-              ? 'Stock updating'
-              : 'Out of stock'
-            : availability.label}
-        </Text>
-      </View>
-    );
-  }
+  const unavailableLabel = selectedVariant?.isAvailable === false
+    ? (selectedVariant.unavailableReason === 'stock_unconfirmed' ? 'Stock updating' : 'Out of stock')
+    : availability.label ?? (needsFlavour ? 'Out of stock' : undefined);
 
   return (
     <View className="flex-row items-center justify-between px-5 pb-1 pt-3">
@@ -149,7 +132,9 @@ export function ProductDetailFooter({
       </View>
 
       {/* RIGHT */}
-      {quantity === 0 && product.preorder && !preorder ? (
+      {unavailableLabel ? (
+        <Text className="text-right text-[14px] font-semibold text-[#B42318]">{unavailableLabel}</Text>
+      ) : quantity === 0 && product.preorder && !preorder ? (
         /* PRE-ORDER: day + slot first */
         <View className="h-[42px] min-w-[128px] items-center justify-center rounded-xl bg-[#E5E7EB] px-5">
           <Text className="text-[13px] font-semibold text-ink/50">Pick day & slot</Text>

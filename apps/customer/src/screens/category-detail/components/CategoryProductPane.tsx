@@ -15,13 +15,19 @@ interface Props {
   previewOnly: boolean;
   filters: ProductFilters;
   onFiltersChange: (filters: ProductFilters) => void;
+  showFilters?: boolean;
+  columns?: number;
+  bottomPadding?: number;
   serverTypes?: string[];
   serverBrands?: string[];
   onLoadMore?: () => void;
   loadingMore?: boolean;
 }
 
-export function CategoryProductPane({ products, isLoading, isError, onRetry, previewOnly, filters, onFiltersChange, serverTypes, serverBrands, onLoadMore, loadingMore }: Props) {
+export function CategoryProductPane({
+  products, isLoading, isError, onRetry, previewOnly, filters, onFiltersChange,
+  serverTypes, serverBrands, onLoadMore, loadingMore, showFilters = true, columns = 2, bottomPadding = 64,
+}: Props) {
   const [panel, setPanel] = useState<FilterPanel | null>(null);
   const list = useRef<FlashListRef<Product>>(null);
   const types = useMemo(() => serverTypes ? serverTypes.map(label => ({ id: label.toLowerCase(), label })) : getTypeOptions(products), [products, serverTypes]);
@@ -35,18 +41,18 @@ export function CategoryProductPane({ products, isLoading, isError, onRetry, pre
   return (
     // Constrain the filter ScrollView to the product column on every width.
     <View className="flex-1 overflow-hidden bg-mist/30" style={{ minWidth: 0 }}>
-      <CategoryFilterBar filters={filters} onOpen={setPanel} />
+      {showFilters && <CategoryFilterBar filters={filters} onOpen={setPanel} />}
       {isError && products.length > 0 && <Pressable accessibilityRole="button" onPress={onRetry} className="px-3 py-2"><Text className="text-[12px] text-[#155DFC]">Couldn’t refresh products. Tap to retry.</Text></Pressable>}
       <View className="flex-1">
         <FlashList
           ref={list}
           data={filteredProducts}
-          numColumns={2}
+          numColumns={columns}
           onEndReached={onLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={loadingMore ? <ActivityIndicator className="py-4" color="#155DFC" /> : null}
           keyExtractor={(product) => product.id}
-          contentContainerStyle={{ paddingTop: 8, paddingLeft: 2, paddingRight: 12, paddingBottom: 64 }}
+          contentContainerStyle={{ paddingTop: 8, paddingLeft: 2, paddingRight: 12, paddingBottom: bottomPadding }}
           showsVerticalScrollIndicator={false}
           refreshing={previewOnly ? undefined : isLoading}
           onRefresh={previewOnly ? undefined : onRetry}
@@ -65,7 +71,7 @@ export function CategoryProductPane({ products, isLoading, isError, onRetry, pre
           )}
         />
       </View>
-      <CategoryFilterSheet panel={panel} filters={filters} types={types} brands={brands} onChange={changeFilters} onClose={() => setPanel(null)} />
+      {showFilters && <CategoryFilterSheet panel={panel} filters={filters} types={types} brands={brands} onChange={changeFilters} onClose={() => setPanel(null)} />}
     </View>
   );
 }
