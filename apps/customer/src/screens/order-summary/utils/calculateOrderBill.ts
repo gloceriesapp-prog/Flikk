@@ -5,6 +5,8 @@ interface StoredBill {
   delivery_fee: number;
   handling_fee?: number;
   discount_amount: number;
+  // Rider tip inside total (orders/trips.tip_amount); absent on older rows.
+  tip_amount?: number | string | null;
   total: number;
 }
 
@@ -19,10 +21,11 @@ export function calculateOrderBill(items: ApiOrderItem[], bill: StoredBill) {
     : null;
   const ourPrice = roundMoney(bill.item_total);
   const discount = roundMoney(bill.discount_amount ?? 0);
+  const tipAmount = roundMoney(Number(bill.tip_amount ?? 0) || 0);
   // The stored total includes handling. Older API responses may omit its
   // field; derive only the residual of historical amounts, never live fees.
   const handlingFee = roundMoney(bill.handling_fee
-    ?? Math.max(0, bill.total - ourPrice - bill.delivery_fee + discount));
+    ?? Math.max(0, bill.total - ourPrice - bill.delivery_fee + discount - tipAmount));
   return {
     totalMrp,
     productDiscount: totalMrp === null ? null : roundMoney(Math.max(0, totalMrp - ourPrice)),
@@ -31,6 +34,7 @@ export function calculateOrderBill(items: ApiOrderItem[], bill: StoredBill) {
     itemTotal: roundMoney(Math.max(0, ourPrice - discount)),
     deliveryFee: bill.delivery_fee,
     handlingFee,
+    tipAmount,
     total: bill.total,
   };
 }

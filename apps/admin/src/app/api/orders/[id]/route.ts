@@ -47,7 +47,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
   try {
     const { data: o, error } = await supabaseAdmin
       .from('orders')
-      .select('id, order_number, customer_id, store_id, rider_id, trip_id, address_id, status, item_total, delivery_fee, handling_fee, discount_amount, total, commission_amount, payment_method, payment_provider, provider_payment_id, refund_status, provider_refund_id, refunded_at, promo_code_id, cancel_reason, cancelled_by, placed_at, packed_at, picked_up_at, delivered_at, delivery_address_at_order, is_bulk, deliver_from, deliver_until')
+      .select('id, order_number, customer_id, store_id, rider_id, trip_id, address_id, status, item_total, delivery_fee, handling_fee, discount_amount, tip_amount, total, commission_amount, payment_method, payment_provider, provider_payment_id, refund_status, provider_refund_id, refunded_at, promo_code_id, cancel_reason, cancelled_by, placed_at, packed_at, picked_up_at, delivered_at, delivery_address_at_order, is_bulk, deliver_from, deliver_until')
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;
@@ -59,7 +59,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
       supabaseAdmin.from('users').select('id, name, phone').eq('id', o.customer_id).maybeSingle(),
       supabaseAdmin.from('stores').select('id, name, phone, district').eq('id', o.store_id).maybeSingle(),
       o.rider_id ? supabaseAdmin.from('riders').select('id, name, phone, status, last_location_update').eq('user_id', o.rider_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-      o.trip_id ? supabaseAdmin.from('trips').select('id, status, total, delivery_fee, cancelled_by, cancel_origin_order_id, cancel_origin_store_id').eq('id', o.trip_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      o.trip_id ? supabaseAdmin.from('trips').select('id, status, total, delivery_fee, tip_amount, cancelled_by, cancel_origin_order_id, cancel_origin_store_id').eq('id', o.trip_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
       o.trip_id ? supabaseAdmin.from('orders').select('id, order_number, store_id, status, total, rider_id, cancel_reason, refund_status, placed_at, stores(name)').eq('trip_id', o.trip_id).order('placed_at').order('id') : Promise.resolve({ data: [], error: null }),
       o.promo_code_id ? supabaseAdmin.from('promo_codes').select('code').eq('id', o.promo_code_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
       supabaseAdmin.from('delivery_codes').select('expires_at, attempts, consumed_at').eq('scope_id', scope).maybeSingle(),
@@ -88,7 +88,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
       cancelReason: leg.cancel_reason,
       refundStatus: leg.refund_status,
     }));
-    const trip = tripRes.data as { id: string; status: string; total: number; delivery_fee: number; cancelled_by: string | null; cancel_origin_order_id: string | null; cancel_origin_store_id: string | null } | null;
+    const trip = tripRes.data as { id: string; status: string; total: number; delivery_fee: number; tip_amount: number | string | null; cancelled_by: string | null; cancel_origin_order_id: string | null; cancel_origin_store_id: string | null } | null;
 
     const code = codeRes.data as { expires_at: string; attempts: number; consumed_at: string | null } | null;
     const resets = (resetsRes.data ?? []) as { created_at: string }[];
@@ -154,6 +154,8 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
       deliveryFee: num(o.delivery_fee),
       handlingFee: num(o.handling_fee),
       discountAmount: num(o.discount_amount),
+      // Rider tip: the order's own, or the whole trip's (paid to the rider in full).
+      tipAmount: num(trip ? trip.tip_amount : o.tip_amount),
       total: num(o.total),
       commissionAmount: num(o.commission_amount),
       isBulk: o.is_bulk === true,

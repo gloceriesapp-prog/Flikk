@@ -17,6 +17,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
 import { useRiderOrdersStore } from './src/store/useRiderOrdersStore';
 import { IncomingOrderAlert } from './src/features/incoming-order-alert/IncomingOrderAlert';
+import { OfferPopup } from './src/features/offer-popup/OfferPopup';
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { AEONIK_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -79,6 +80,7 @@ function App() {
           <ReleaseGate>
             <RootNavigator />
             {hasSession ? <IncomingOrderAlert /> : null}
+            {hasSession ? <OfferPopup /> : null}
           </ReleaseGate>
         </ErrorBoundary>
         <OfflineBanner />

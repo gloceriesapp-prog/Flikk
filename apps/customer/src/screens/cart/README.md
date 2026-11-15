@@ -82,8 +82,9 @@ the loading state. `quote/useCheckoutQuote.ts` loads the server bill; every
 payable display uses it, including additional-shop pickups. Order creation
 requires a signed quote and a fresh server check. Price/pack/fee changes require
 explicit confirmation. Quote errors disable ordering, with a retry action.
-Receipts and payment processing use the saved order/trip total. Tip controls
-are hidden until collection and payout are complete. See
+Receipts and payment processing use the saved order/trip total, tip included.
+`components/RiderTipCard.tsx` sets the cart's `tipAmount`; the quote prices it
+and the rider is paid all of it on delivery (migration 20261115090000). See
 `backend/CHECKOUT_QUOTES.md` for the server contract and deployment dependency.
 
 `quote/useCartAvailability.ts` checks every pack/shop against the selected saved

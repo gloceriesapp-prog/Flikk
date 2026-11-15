@@ -46,7 +46,7 @@ export async function PATCH(request: Request) {
     if (!Number.isFinite(handlingFee) || handlingFee < 0) throw new Error('Handling fee must be a real number, 0 or more.');
     // Rider payouts (migration 104) and the extra-store fee (migration 108)
     // are optional here: omitted = unchanged.
-    const riderPayouts: { rider_base_payout?: number; rider_extra_stop_payout?: number; extra_stop_fee?: number } = {};
+    const riderPayouts: { rider_base_payout?: number; rider_extra_stop_payout?: number; extra_stop_fee?: number; rider_per_km_payout?: number } = {};
     for (const [field, column, label] of [
       ['riderBasePayout', 'rider_base_payout', 'Rider pay per delivery'],
       ['riderExtraStopPayout', 'rider_extra_stop_payout', 'Rider payout per extra store'],
@@ -57,6 +57,13 @@ export async function PATCH(request: Request) {
         throw new Error(`${label} must be a real number, 0 or more.`);
       }
       riderPayouts[column] = body[field];
+    }
+    // Rider pay per road km (migration 20261115090000, CHECK 0..100).
+    if (body.riderPerKmPayout !== undefined) {
+      if (typeof body.riderPerKmPayout !== 'number' || !Number.isFinite(body.riderPerKmPayout) || body.riderPerKmPayout < 0 || body.riderPerKmPayout > 100) {
+        throw new Error('Rider pay per km must be between 0 and 100.');
+      }
+      riderPayouts.rider_per_km_payout = body.riderPerKmPayout;
     }
 
     // Delivery reach and distance pricing (migration 104): optional here,

@@ -74,12 +74,13 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
 // which GET /delivery-settings serves to customers as-is.
 export async function getRiderPaySettings(): Promise<Required<RiderPaySettings>> {
   const { data, error } = await supabase.from('delivery_settings')
-    .select('rider_base_payout, rider_extra_stop_payout, extra_stop_fee').limit(1).single();
+    .select('rider_base_payout, rider_extra_stop_payout, extra_stop_fee, rider_per_km_payout').limit(1).single();
   if (error) throw error;
   return {
     riderBasePayout: nonNegative(data.rider_base_payout, 0),
     riderExtraStopPayout: nonNegative(data.rider_extra_stop_payout, 0),
     extraStopFee: nonNegative(data.extra_stop_fee, DEFAULT_EXTRA_STOP_FEE),
+    riderPerKmPayout: nonNegative(data.rider_per_km_payout, 0),
   };
 }
 

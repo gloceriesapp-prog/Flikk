@@ -63,3 +63,11 @@ assert.equal(o.customerName, 'Asha');
 assert.equal(o.customerPhone, '9');
 
 console.log('orders.selfcheck OK');
+
+// The tip arrives inside rider_payout; RiderOrder shows it as its own line.
+o = toRiderOrder(raw({ rider_payout: 62, rider_tip: 20, road_km: 4.3 }))!;
+assert.equal(o.payout, 42);
+assert.equal(o.tip, 20);
+assert.equal(o.distanceKm, 4.3);
+o = toRiderOrder(raw())!;
+assert.equal(o.tip, undefined);

@@ -83,7 +83,7 @@ export const DispatchOfferCard = memo(function DispatchOfferCard({ offer, onAcce
       </View>
 
       {/* Stat tiles */}
-      <OfferStatTiles totalKm={offer.totalKm} payout={offer.payout} />
+      <OfferStatTiles totalKm={offer.totalKm} payout={offer.payout} tip={offer.tip} />
 
       {/* Meta line: item count + payment mode, from the order's real
           payment_method. Cash on delivery shows the amount to collect. */}

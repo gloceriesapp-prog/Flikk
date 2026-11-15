@@ -24,6 +24,7 @@ export function OrderSummaryBillCard({ summary }: { summary: OrderSummary }) {
           <OrderSummaryBillRow label="Item total" value={formatOrderPrice(summary.itemTotal)} bold />
           <OrderSummaryBillRow label="Delivery fee" value={summary.deliveryFee === 0 ? 'Free' : formatOrderPrice(summary.deliveryFee)} />
           <OrderSummaryBillRow label="Handling fee" value={formatOrderPrice(summary.handlingFee)} />
+          {summary.tipAmount > 0 && <OrderSummaryBillRow label="Tip for your rider" value={formatOrderPrice(summary.tipAmount)} />}
         </View>
       </View>
       <View className="flex-row items-center justify-between gap-3 border-t border-ink/5 px-5 py-4">

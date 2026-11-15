@@ -81,10 +81,20 @@ it('creates no order or address for a stale quote in either route', async () => 
   }
   expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.address).not.toHaveBeenCalled();
 });
-it('rejects tip amounts before checkout in either route', async () => {
+it('prices the tip into the quote and stores it with the order, in either route', async () => {
+  const items = [line('shop-a', 'small'), line('shop-b', 'large')];
+  mocks.confirm.mockResolvedValue({ items, bill: calculateCheckoutBill(items, settings, 0, null, 20), promoCodeId: null });
   for (const router of [ordersRouter, tripsRouter]) {
-    const { next } = await place(router, { store_id: 'shop', address_id: 'address', items: [line('shop', 'pack')], quote_token: 'signed', tip_amount: 20 });
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({ code: 'TIPS_UNAVAILABLE' }));
+    const { next } = await place(router, { store_id: 'shop-a', address_id: 'address', items, quote_token: 'signed', tip_amount: 20 });
+    expect(next).not.toHaveBeenCalled();
+    expect(mocks.confirm).toHaveBeenLastCalledWith(items, 'customer', 'signed', undefined, router === ordersRouter ? 'shop-a' : undefined, 'address', 20);
+  }
+  expect(mocks.rpc).toHaveBeenCalledWith('create_trip_orders', expect.objectContaining({ p_total: 140 }));
+});
+it('rejects an invalid tip before checkout in either route', async () => {
+  for (const router of [ordersRouter, tripsRouter]) {
+    const { next } = await place(router, { store_id: 'shop', address_id: 'address', items: [line('shop', 'pack')], quote_token: 'signed', tip_amount: 9999 });
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVALID_TIP' }));
   }
   expect(mocks.confirm).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
 });

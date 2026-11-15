@@ -20,7 +20,7 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { confirmCheckoutQuote } from '../lib/checkoutQuoteService.js';
-import { rejectUnsupportedTip } from '../lib/checkoutQuote.js';
+import { parseTip } from '../lib/checkoutQuote.js';
 import { checkoutTransactionError } from '../lib/checkoutItems.js';
 import type { CartItem } from '../lib/orderValidation.js';
 import { groupPricedCartByStore } from '../lib/trips.js';
@@ -58,13 +58,13 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
     }
 
     if (body.payment_method != null && !['cod', 'online'].includes(body.payment_method)) throw new AppError(400, 'INVALID_PAYMENT_METHOD', 'Choose a valid payment method.');
-    rejectUnsupportedTip(req.body);
+    const tip = parseTip(req.body);
     const identity = checkoutAttemptIdentity(req.body, 'trip');
     const previous = await findCheckoutAttempt(req.user!.id, identity.id, identity.fingerprint);
     if (previous) { res.status(200).json(previous.result); return; }
     // Admin checkout settings (migration 117) with the env as hard kill.
     await assertPaymentMethodAvailable(body.payment_method ?? 'cod');
-    const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, undefined, body.address_id);
+    const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, undefined, body.address_id, tip);
     const pricedItems = quote.items;
     const addressId = await resolveAddressId(req.user!.id, body);
     // Each store's commission: category rates (or its own rate), capped per order.
@@ -100,6 +100,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       p_discount_amount: discountAmount,
       p_payment_method: body.payment_method ?? 'cod',
       p_handling_fee: handlingFee,
+      p_tip_amount: quote.bill.tipAmount,
     });
     if (rpcErr) throw checkoutTransactionError(rpcErr.code);
     if (!attempt) throw new AppError(503, 'CHECKOUT_UNAVAILABLE', 'Please retry this checkout.');

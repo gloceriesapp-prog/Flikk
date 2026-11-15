@@ -65,6 +65,7 @@ export interface OrderDetail {
   deliveryFee: number;
   handlingFee: number;
   discountAmount: number;
+  tipAmount: number;
   total: number;
   commissionAmount: number;
   // Bulk chicken order: the store had the longer bulk response window.

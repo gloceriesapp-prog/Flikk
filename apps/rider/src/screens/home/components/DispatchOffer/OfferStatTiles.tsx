@@ -35,15 +35,17 @@ function Tile({ icon, value, label, tone, highlight }: { icon: IconSvgElement; v
 interface Props {
   totalKm: number;
   payout: number;
+  // Tip inside payout; shown on the earning tile when there is one.
+  tip?: number;
   tone?: Tone;
 }
 
-export function OfferStatTiles({ totalKm, payout, tone = 'onDark' }: Props) {
+export function OfferStatTiles({ totalKm, payout, tip = 0, tone = 'onDark' }: Props) {
   return (
     <View className="flex-row gap-2.5">
       <Tile icon={Route01Icon} value={`${totalKm.toFixed(1)} km`} label="Total distance" tone={tone} />
       <Tile icon={Clock01Icon} value={`${etaMinutes(totalKm)} min`} label="Est. time" tone={tone} />
-      <Tile icon={MoneyBag02Icon} value={`₹${payout}`} label="Est. earning" tone={tone} highlight />
+      <Tile icon={MoneyBag02Icon} value={`₹${payout}`} label={tip > 0 ? `Incl. ₹${tip} tip` : 'Est. earning'} tone={tone} highlight />
     </View>
   );
 }

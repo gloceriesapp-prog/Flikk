@@ -48,3 +48,20 @@ describe('extraStopCount', () => {
     expect(extraStopCount([])).toBe(0);
   });
 });
+
+describe('riderDeliveryPayout per km (migration 20261115090000)', () => {
+  const perKm = { riderBasePayout: 10, riderExtraStopPayout: 12, extraStopFee: 15, riderPerKmPayout: 6 };
+  it('pays base + rate x road km, ignoring the fee the customer paid', () => {
+    expect(riderDeliveryPayout(0, 0, perKm, 4.3)).toEqual({ amount: 35.8, base: 35.8, extraStop: 0 });
+    expect(riderDeliveryPayout(32, 0, perKm, 4.3)).toEqual({ amount: 35.8, base: 35.8, extraStop: 0 });
+  });
+  it('adds the extra-shop payout per extra shop', () => {
+    expect(riderDeliveryPayout(40, 2, perKm, 2)).toEqual({ amount: 46, base: 22, extraStop: 24 });
+  });
+  it('pays only the base when the distance is unknown', () => {
+    expect(riderDeliveryPayout(40, 0, perKm, null)).toEqual({ amount: 10, base: 10, extraStop: 0 });
+  });
+  it('works with no base pay', () => {
+    expect(riderDeliveryPayout(0, 0, { ...perKm, riderBasePayout: 0 }, 2.5)).toEqual({ amount: 15, base: 15, extraStop: 0 });
+  });
+});

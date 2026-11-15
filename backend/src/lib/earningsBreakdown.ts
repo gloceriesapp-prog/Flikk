@@ -6,19 +6,24 @@ export interface RiderPaySettings {
   riderBasePayout: number;
   riderExtraStopPayout: number;
   extraStopFee?: number;
+  // migration 20261115090000: rupees per road km, 0 = off.
+  riderPerKmPayout?: number;
 }
 
 export interface RiderPayout { amount: number; base: number; extraStop: number }
 
-// Mirror of rider_delivery_payout (migration 20261027090000), the rule the
-// database applies when it writes rider_earnings. Used to show a rider what a
-// delivery will pay before it completes.
+// Mirror of rider_delivery_pay (migration 20261115090000), the rule the
+// database applies when it writes rider_earnings (tip excluded; the tip is
+// added on top). The backend shows riders the database's own preview
+// (rider_pay_preview); this mirror is the fallback and pins the rule in tests.
+// - riderPerKmPayout > 0: riderBasePayout + riderPerKmPayout x road km, plus
+//   the extra-shop part below.
 // - riderBasePayout > 0: exactly riderBasePayout per order or trip (the rest
 //   of the delivery fee stays with the platform), plus riderExtraStopPayout
 //   for each extra shop, or the customer's extra-shop fee when that is 0.
 // - riderBasePayout = 0: exactly the delivery fee charged; the extra-shop
 //   part of that fee is reported as the extra-stop share.
-export function riderDeliveryPayout(deliveryFee: number, extraStops: number, settings: RiderPaySettings): RiderPayout {
+export function riderDeliveryPayout(deliveryFee: number, extraStops: number, settings: RiderPaySettings, roadKm: number | null = null): RiderPayout {
   const fee = Math.max(0, Number(deliveryFee) || 0);
   const stops = Math.max(0, Math.floor(Number(extraStops) || 0));
   const basePayout = Math.max(0, Number(settings.riderBasePayout) || 0);
@@ -26,8 +31,9 @@ export function riderDeliveryPayout(deliveryFee: number, extraStops: number, set
   let base: number;
   let extraStop: number;
   const stopPayout = Math.max(0, Number(settings.riderExtraStopPayout) || 0);
-  if (basePayout > 0) {
-    base = round2(basePayout);
+  const perKm = Math.max(0, Number(settings.riderPerKmPayout) || 0);
+  if (perKm > 0 || basePayout > 0) {
+    base = round2(perKm > 0 ? basePayout + perKm * Math.max(0, Number(roadKm) || 0) : basePayout);
     extraStop = round2(stopPayout > 0 ? stopPayout * stops : Math.min(fee, stopFee * stops));
   } else {
     extraStop = round2(Math.min(fee, stopFee * stops));

@@ -192,6 +192,10 @@ interface RiderOrdersState {
   // goOnline's own location loop last reported — see this file's own
   // header note. Cleared the moment the rider goes offline.
   nearbyOffers: DispatchOffer[];
+  // The offer shown full screen (OfferPopup) — the newest one that arrived
+  // while the app was open. null when none or the rider closed it.
+  popupOfferId: string | null;
+  closeOfferPopup: () => void;
   acceptOffer: (orderId: string) => Promise<AcceptDispatchOfferResult>;
   // In-memory only, on purpose (this file's own header note #2) — an
   // order dismissed this session shouldn't keep re-interrupting, but a
@@ -301,7 +305,13 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     // 20s tick that changed nothing.
     if (!offers) return;
     const fresh = newOfferIds(get().nearbyOffers, offers);
-    set((s) => ({ nearbyOffers: sameList(s.nearbyOffers, offers) ? s.nearbyOffers : offers }));
+    set((s) => ({
+      nearbyOffers: sameList(s.nearbyOffers, offers) ? s.nearbyOffers : offers,
+      // Pop the newest arrival full screen; drop a popup whose offer is gone
+      // (taken by another rider or expired).
+      popupOfferId: fresh.length && AppState.currentState === 'active' ? fresh[fresh.length - 1]!
+        : s.popupOfferId && offers.some((o) => o.orderId === s.popupOfferId) ? s.popupOfferId : null,
+    }));
     if (fresh.length && AppState.currentState === 'active') {
       Vibration.vibrate(NEW_OFFER_VIBRATION);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -438,6 +448,8 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   resumeOnline: false,
   dismissedIds: new Set(),
   nearbyOffers: [],
+  popupOfferId: null,
+  closeOfferPopup: () => set({ popupOfferId: null }),
 
   hydrateHistory: async () => {
     const [rawHistory, rawActive, rawCancelled, rawActiveOrders, rawOnline] = await Promise.all([
@@ -573,7 +585,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       const activeMsToday = carryOverActiveMs(state.activeMsToday, state.activeMsDate, today) + sessionMs;
       void SecureStore.setItemAsync(ACTIVE_MS_KEY, JSON.stringify({ ms: activeMsToday, date: today }));
       void SecureStore.setItemAsync(ONLINE_KEY, 'false');
-      return { isOnline: false, onlineSince: null, resumeOnline: false, nearbyOffers: [], activeMsToday, activeMsDate: today };
+      return { isOnline: false, onlineSince: null, resumeOnline: false, nearbyOffers: [], popupOfferId: null, activeMsToday, activeMsDate: today };
     });
     stopLocationPing();
     void stopBackgroundLocation();
@@ -591,7 +603,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     stopLocationPing();
     historyPulled = false;
     set({
-      isOnline: false, onlineSince: null, resumeOnline: false, nearbyOffers: [],
+      isOnline: false, onlineSince: null, resumeOnline: false, nearbyOffers: [], popupOfferId: null,
       incomingOrder: null, incomingOrderExpiresAt: null,
       activeOrders: [], completedOrders: [], cancelledOrders: [], dismissedIds: new Set(),
       activeMsToday: 0, activeMsDate: todayKey(),
@@ -609,9 +621,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       // Optimistic removal — the next GET /assignments poll (already
       // running via startSync) picks this up into activeOrders on its own
       // within POLL_INTERVAL_MS; no need to duplicate that fetch here.
-      set((state) => ({ nearbyOffers: state.nearbyOffers.filter((o) => o.orderId !== orderId) }));
+      set((state) => ({ nearbyOffers: state.nearbyOffers.filter((o) => o.orderId !== orderId), popupOfferId: state.popupOfferId === orderId ? null : state.popupOfferId }));
     } else if (result.alreadyTaken) {
-      // Lost the race — this offer is gone regardless of who got it.
+      // Lost the race — this offer is gone regardless of who got it. The popup
+      // stays open on its own copy to say so until the rider closes it.
       set((state) => ({ nearbyOffers: state.nearbyOffers.filter((o) => o.orderId !== orderId) }));
     }
     return result;

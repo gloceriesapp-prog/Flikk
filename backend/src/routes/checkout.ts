@@ -6,17 +6,17 @@ import { Router } from 'express';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { AppError } from '../lib/errors.js';
 import { createCheckoutQuote } from '../lib/checkoutQuoteService.js';
-import { rejectUnsupportedTip } from '../lib/checkoutQuote.js';
+import { parseTip } from '../lib/checkoutQuote.js';
 
 export const checkoutRouter = Router();
 checkoutRouter.post('/quote', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
-    rejectUnsupportedTip(req.body);
+    const tip = parseTip(req.body);
     if (req.body.promo_code != null && typeof req.body.promo_code !== 'string') {
       throw new AppError(400, 'INVALID_PROMO', 'Choose a valid promo code.');
     }
     res.setHeader('Cache-Control', 'no-store');
-    res.json(await createCheckoutQuote(req.body.items, req.user!.id, req.body.promo_code, req.body.address_id));
+    res.json(await createCheckoutQuote(req.body.items, req.user!.id, req.body.promo_code, req.body.address_id, tip));
   } catch (error) { next(error); }
 });
 

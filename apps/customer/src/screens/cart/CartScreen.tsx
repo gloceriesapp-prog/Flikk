@@ -45,6 +45,7 @@ import { cartIdentity } from '../../store/cartIdentity';
 import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
 import { ForgotToAddSection } from './components/ForgotToAddSection';
 import { PromoCodeCard } from './components/PromoCodeCard';
+import { RiderTipCard } from './components/RiderTipCard';
 import { BillDetailsCard } from './components/BillDetailsCard';
 import { CancellationNoteCard } from './components/CancellationNoteCard';
 import type { AppStackParamList } from '../../navigation/types';
@@ -313,6 +314,7 @@ export function CartScreen({ navigation, route }: Props) {
             <FreeDeliveryProgressCard itemTotal={quote?.bill.itemTotal ?? itemTotal} />
             <ForgotToAddSection cartItemIds={cartItemIds} />
             <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} quotedDiscount={quote?.bill.discountAmount} />
+            <RiderTipCard />
             {/* The last bill stays on screen (faded) while a changed cart is
                 re-priced; Place order is disabled until the fresh quote lands. */}
             {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && (

@@ -31,6 +31,8 @@ export interface CheckoutQuote {
     deliveryFee: number;
     handlingFee: number;
     discountAmount: number;
+    // Rider tip inside total (absent from older servers).
+    tipAmount?: number;
     total: number;
   };
   // Platform minimum order on the item subtotal (admin Checkout settings).
@@ -38,8 +40,8 @@ export interface CheckoutQuote {
   // Absent from older servers.
   minimumOrder?: { value: number; shortfall: number };
 }
-export function fetchCheckoutQuote(items: CreateOrderItem[], promoCode?: string, addressId?: string): Promise<CheckoutQuote> {
-  return apiRequest('/checkout/quote', { method: 'POST', body: { items, promo_code: promoCode, address_id: addressId } });
+export function fetchCheckoutQuote(items: CreateOrderItem[], promoCode?: string, addressId?: string, tipAmount = 0): Promise<CheckoutQuote> {
+  return apiRequest('/checkout/quote', { method: 'POST', body: { items, promo_code: promoCode, address_id: addressId, ...(tipAmount > 0 ? { tip_amount: tipAmount } : {}) } });
 }
 
 export interface CartAvailability {

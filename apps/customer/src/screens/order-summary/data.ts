@@ -21,6 +21,7 @@ export interface OrderSummary {
   itemTotal: number;
   deliveryFee: number;
   handlingFee: number;
+  tipAmount: number;
   discount: number;
   total: number;
 }

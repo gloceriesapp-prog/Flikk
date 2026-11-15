@@ -9,7 +9,7 @@ import { getCheckoutControls } from './platformSettings.js';
 import { lookupPromoForCheckout } from '../routes/promos.js';
 import { calculateCheckoutBill, issueQuote, requireConfirmedQuote } from './checkoutQuote.js';
 
-export async function buildCheckoutSnapshot(input: unknown, customerId: string, promoCode?: string, storeId?: string, addressId?: string) {
+export async function buildCheckoutSnapshot(input: unknown, customerId: string, promoCode?: string, storeId?: string, addressId?: string, tipAmount = 0) {
   // Quotes return changed prices for review instead of rejecting old prices.
   // Creation rechecks the signed snapshot and the database trigger checks
   // prices/pack labels again inside the order transaction.
@@ -21,7 +21,7 @@ export async function buildCheckoutSnapshot(input: unknown, customerId: string, 
   const promo = promoCode ? await lookupPromoForCheckout(promoCode, customerId, itemTotal)
     : { promoCodeId: null, discountAmount: 0 };
   const settings = await getDeliverySettings();
-  return { items, bill: calculateCheckoutBill(items, settings, promo.discountAmount, deliveryDistanceKm ?? null), promoCodeId: promo.promoCodeId, address };
+  return { items, bill: calculateCheckoutBill(items, settings, promo.discountAmount, deliveryDistanceKm ?? null, tipAmount), promoCodeId: promo.promoCodeId, address };
 }
 // Platform-wide minimum order (admin Checkout settings, migration 117) on the
 // item subtotal before coupon discount. Outside the signed snapshot: the quote
@@ -35,12 +35,12 @@ export function assertMinimumOrder(itemTotal: number, minOrderValue: number) {
     throw new AppError(409, 'BELOW_MINIMUM_ORDER', `The minimum order is ₹${value}. Add items worth ₹${shortfall} more to place this order.`);
   }
 }
-export async function createCheckoutQuote(input: unknown, customerId: string, promoCode?: string, addressId?: string) {
-  const [snapshot, controls] = await Promise.all([buildCheckoutSnapshot(input, customerId, promoCode, undefined, addressId), getCheckoutControls()]);
+export async function createCheckoutQuote(input: unknown, customerId: string, promoCode?: string, addressId?: string, tipAmount = 0) {
+  const [snapshot, controls] = await Promise.all([buildCheckoutSnapshot(input, customerId, promoCode, undefined, addressId, tipAmount), getCheckoutControls()]);
   return { ...issueQuote(snapshot, customerId, env.supabaseServiceRoleKey), minimumOrder: minimumOrder(snapshot.bill.itemTotal, controls.minOrderValue) };
 }
-export async function confirmCheckoutQuote(input: unknown, customerId: string, token: unknown, promoCode?: string, storeId?: string, addressId?: string) {
-  const snapshot = await buildCheckoutSnapshot(input, customerId, promoCode, storeId, addressId);
+export async function confirmCheckoutQuote(input: unknown, customerId: string, token: unknown, promoCode?: string, storeId?: string, addressId?: string, tipAmount = 0) {
+  const snapshot = await buildCheckoutSnapshot(input, customerId, promoCode, storeId, addressId, tipAmount);
   requireConfirmedQuote(token, snapshot, customerId, env.supabaseServiceRoleKey);
   assertMinimumOrder(snapshot.bill.itemTotal, (await getCheckoutControls()).minOrderValue);
   return snapshot;

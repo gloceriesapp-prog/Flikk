@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateCheckoutBill, issueQuote, requireConfirmedQuote, rejectUnsupportedTip } from './checkoutQuote.js';
+import { calculateCheckoutBill, issueQuote, requireConfirmedQuote, parseTip } from './checkoutQuote.js';
 import type { PricedCheckoutItem } from './checkoutItems.js';
 import { quotedCartItems, quoteHasPriceChanges } from '../../../apps/customer/src/screens/cart/quote/quoteItems';
 import type { CheckoutQuote } from '../../../apps/customer/src/api/checkout';
@@ -60,12 +60,21 @@ describe('quote confirmation boundary', () => {
     for (const version of changed) expect(() => requireConfirmedQuote(quote.token, version, 'customer-a', secret, 2000))
       .toThrow('Your bill has changed or expired');
   });
-  it('rejects unsupported tip amounts rather than silently discarding them', () => {
-    expect(() => rejectUnsupportedTip({})).not.toThrow();
-    expect(() => rejectUnsupportedTip({ tip_amount: 0 })).not.toThrow();
-    for (const field of ['tip', 'tip_amount', 'rider_tip']) expect(() => rejectUnsupportedTip({ [field]: 20 })).toThrow();
+  it('accepts whole-rupee tips from 0 to 500 and refuses anything else', () => {
+    expect(parseTip({})).toBe(0);
+    expect(parseTip({ tip_amount: 0 })).toBe(0);
+    expect(parseTip({ tip_amount: 20 })).toBe(20);
+    expect(parseTip({ tip_amount: 500 })).toBe(500);
+    for (const bad of [-1, 501, 10.5, '20', Number.NaN]) expect(() => parseTip({ tip_amount: bad })).toThrow();
+  });
+  it('adds the tip after the discount, so a coupon never eats into it', () => {
+    const plain = calculateCheckoutBill(items, settings, 1000);
+    expect(plain.total).toBe(0);
+    expect(calculateCheckoutBill(items, settings, 1000, null, 30)).toMatchObject({ tipAmount: 30, total: 30 });
+    expect(calculateCheckoutBill(items, settings, 10, null, 20).total).toBe(round(calculateCheckoutBill(items, settings, 10).total + 20));
   });
 });
+const round = (n: number) => Math.round(n * 100) / 100;
 describe('customer quote presentation', () => {
   const cart = [{ id: 'product-a', storeId: 'a', quantity: 1, name: 'Rice', price: 35, weight: '1 kg' }];
   const quote = issueQuote({ items: [line('a')], bill: calculateCheckoutBill([line('a')], settings, 0), promoCodeId: null }, 'a', secret) as CheckoutQuote;
