@@ -34,7 +34,7 @@ This is the single most important structural fact about the project. Build four 
 | Forms | React Hook Form | |
 | Backend | Node.js + Express, **monolith** serving all four apps | Not microservices, not one backend per app — a single API with role-scoped endpoints/auth is correct at this scale |
 | Database | PostgreSQL via **Supabase** | Auth (phone OTP) + Postgres + realtime + storage in one service — don't hand-roll any of these |
-| Payments | **Cashfree** PG (UPI-first; React Native SDK in the customer app, webhook at `/payments/webhook`) | Customer app only. Razorpay was replaced in migration 103; `payment_provider='razorpay'` marks a few legacy rows that are refunded by hand. Store/rider payouts are manual bank transfers recorded in admin |
+| Payments | **Razorpay** (Orders + native React Native Checkout, UPI-first; webhook at `/payments/webhook`) | Customer app only. Cashfree (migration 103) was replaced by Razorpay again in migrations 20261013105118/20261014061458; contract in `backend/PAYMENTS.md`. Store/rider payouts are manual bank transfers recorded in admin |
 | Notifications | WhatsApp Business API (Interakt/Gupshup); login OTP SMS via MSG91 (Supabase Send SMS hook) | Cross-cutting — customer order updates, partner new-order alerts, rider assignment pings |
 | Hosting | Railway/Render (backend), Vercel (admin dashboard), Supabase (DB/auth) | Cost ceiling: <₹2,000/month at MVP order volume — treat as a real constraint when adding any paid service. Re-check this ceiling now that infra serves 3 mobile apps instead of 1 |
 | Analytics | PostHog or Supabase event table | |
@@ -85,7 +85,7 @@ Customer app (Expo) ──┐
 Partner app (Expo)  ──┼─→ Node/Express API (monolith, role-scoped auth) ─→ Supabase (Postgres, Auth, Realtime, Storage)
 Rider app (Expo)    ──┘              │
 Admin dashboard (Next.js) ───────────┤
-                                      ├─→ Cashfree (payments)
+                                      ├─→ Razorpay (payments)
                                       └─→ WhatsApp Business API / MSG91 (notifications, OTP)
 ```
 
@@ -142,4 +142,4 @@ _To be filled in per app once scaffolded — `/apps/customer`, `/apps/partner`, 
 
 ## Environment / secrets
 
-Cashfree keys (`CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY`, backend only), Supabase service role key, WhatsApp API credentials — environment variables only, never committed, and never shared across apps beyond what each genuinely needs (no app holds a Cashfree secret — only the backend does — scope secrets per app, not one global `.env` copied everywhere). Add a `.env.example` per app once these are introduced.
+Razorpay keys (`RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`, backend only), Supabase service role key, WhatsApp API credentials — environment variables only, never committed, and never shared across apps beyond what each genuinely needs (no app holds a Razorpay secret — only the backend does — scope secrets per app, not one global `.env` copied everywhere). Add a `.env.example` per app once these are introduced.

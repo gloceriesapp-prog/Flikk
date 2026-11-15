@@ -31,6 +31,7 @@ import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { useReopenLabel } from '../../../utils/useOperatingHours';
 import { useLocationStore } from '../../../store/useLocationStore';
+import { displayAddressLabel } from '../../../location/geocoding';
 
 interface Props {
   onPress: () => void;
@@ -45,7 +46,7 @@ export function LocationSelector({ onPress, isClosed = false, light = false }: P
   const estimatedMinutes = useDeliveryEstimateMinutes();
   const reopen = useReopenLabel();
   const location = useLocationStore((s) => s.location);
-  const label = location?.addressLabel || location?.city || 'Set your location';
+  const label = (location?.addressLabel && displayAddressLabel(location.addressLabel)) || location?.city || 'Set your location';
 
   // On the light pastel 'all' header, text/icons are near-black; on every
   // dark-gradient tab they stay white.

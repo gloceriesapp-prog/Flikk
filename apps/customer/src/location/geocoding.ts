@@ -86,6 +86,13 @@ const NATIVE_GEOCODE_TIMEOUT_MS = 3000;
 const UNRESOLVED_ADDRESS: ReverseGeocodeResult = {
   addressLabel: '', city: '', shortName: 'Pinned location', resolved: false,
 };
+// A leading Plus Code ("7QF5+WRJ, Yenna Gudde, ...") is precise but reads as
+// noise in a one-line header; drop it for display only. The stored address
+// keeps it (backend/src/lib/reverseGeocode.ts).
+export function displayAddressLabel(label: string): string {
+  return label.replace(/^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}\s*,\s*/i, '');
+}
+
 function usableLabel(value: unknown): value is string {
   return typeof value === 'string' && !!value.trim()
     && !/^(selected|pinned) location$/i.test(value.trim());
