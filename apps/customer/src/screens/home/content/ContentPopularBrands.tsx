@@ -7,9 +7,12 @@ import { PopularBrandTiles } from '../../../components/PopularBrands/PopularBran
 import type { AppStackParamList } from '../../../navigation/types';
 import { HomeSectionButton } from '../components/HomeSectionButton';
 import { SectionTitle } from '../components/SectionTitle';
-import type { HomeContentSection } from './contracts';
+import type { HomeContentKey, HomeContentSection } from './contracts';
 
-export function ContentPopularBrands({ section }: { section: HomeContentSection }) {
+export function ContentPopularBrands({ section, tabKey }: {
+  section: HomeContentSection;
+  tabKey: HomeContentKey;
+}) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const ids = section.items.flatMap(item =>
     item.enabled && /^brand-[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/.test(item.id) ? [item.id.slice(6)] : [],
@@ -21,13 +24,16 @@ export function ContentPopularBrands({ section }: { section: HomeContentSection 
     staleTime: 60_000,
   });
   const brands = data?.slice(0, 4) ?? [];
+  const isUdupi = tabKey === 'regional';
 
   if (!brands.length) return null;
 
   return (
-    <View className="pt-8" style={{ backgroundColor: section.backgroundColor || undefined }}>
+    <View className={isUdupi ? 'bg-gray-50 pt-8' : 'pt-8'}
+      style={isUdupi ? undefined : { backgroundColor: section.backgroundColor || undefined }}>
       <SectionTitle subtitle={section.subtitle}>{section.title || 'Popular Brands'}</SectionTitle>
-      <PopularBrandTiles brands={brands} onSelect={brand => navigation.navigate('BrandProducts', { brand })} />
+      <PopularBrandTiles brands={brands} columns={isUdupi ? 4 : 5}
+        onSelect={brand => navigation.navigate('BrandProducts', { brand })} />
       <HomeSectionButton label="Explore more"
         onPress={() => navigation.navigate('AllBrands')} />
     </View>
