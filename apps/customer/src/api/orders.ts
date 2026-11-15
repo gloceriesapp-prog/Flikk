@@ -36,6 +36,8 @@ export interface CreateOrderInput {
   // Cart-level coupon (api/promos.ts) — re-validated server-side, never
   // trusted from the client's own earlier POST /promos/validate call.
   promo_code?: string;
+  // Rider tip in whole rupees (0-500), inside the quoted total.
+  tip_amount?: number;
   // Pre-order carts only: delivery day (India date) + slot (store/preorder.ts).
   preorder?: { date: string; slot_id: string };
   // 'cod' | 'online' — CheckoutScreen.tsx already knows which by the time

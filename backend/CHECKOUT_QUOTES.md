@@ -44,10 +44,14 @@ The cart bill, payment button and payment-method amount display consume quotes.
 After creation, payment-processing/receipt amounts use the saved server total,
 and receipt products use the selected pack details from the confirmed quote.
 Razorpay/UPI intent creation already reads the saved order/trip total server-side.
-Rider tip selection, custom-tip controls and tip bill rows are hidden until
-collection, storage and rider payout work end to end. The backend rejects
-nonzero tip fields rather than silently ignoring them. Rider delivery earnings
-and existing payout calculations remain unchanged.
+Rider tips (migration 20261115090000): the customer picks a whole-rupee tip
+(`tip_amount`, 0-500) on the cart. The quote adds it after the coupon
+(`bill.tipAmount`, inside `bill.total`) and signs it with the rest of the bill;
+order/trip creation re-quotes with the same tip and stores it in
+`orders.tip_amount` / `trips.tip_amount`. Payment, refunds and cash on delivery
+read the total, so they include it. On a delivered order or trip the rider
+earning adds the whole tip (`rider_earnings.tip_amount`); a failed delivery pays
+no tip. Admin money summary keeps tips out of rider pay (`riderTips`).
 
 Validation: `npm test` and `npx tsc --noEmit` in backend; customer TypeScript and
 focused lint. Quote tests cover extra shops, two variants at one shop, free

@@ -265,6 +265,7 @@ export default function OrderDetailPage() {
               <Row label="Delivery fee">{formatCurrency(order.deliveryFee)}</Row>
               <Row label="Handling fee">{formatCurrency(order.handlingFee)}</Row>
               {order.discountAmount > 0 && <Row label={`Discount${order.promo ? ` (${order.promo.code})` : ''}`}>− {formatCurrency(order.discountAmount)}</Row>}
+              {order.tipAmount > 0 && <Row label={order.trip ? 'Rider tip (whole trip)' : 'Rider tip'}>{formatCurrency(order.tipAmount)}</Row>}
               <Row label="Total"><strong>{formatCurrency(order.total)}</strong></Row>
               <Row label="Commission">{formatCurrency(order.commissionAmount)}</Row>
             </div>

@@ -12,7 +12,7 @@ import { AppError } from '../lib/errors.js';
 import { requireActivePartner, requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { getStoreCommissions } from '../lib/commission.js';
 import { confirmCheckoutQuote } from '../lib/checkoutQuoteService.js';
-import { rejectUnsupportedTip } from '../lib/checkoutQuote.js';
+import { parseTip } from '../lib/checkoutQuote.js';
 import { checkoutTransactionError } from '../lib/checkoutItems.js';
 import type { CartItem } from '../lib/orderValidation.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
@@ -72,7 +72,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     }
 
     if (body.payment_method != null && !['cod', 'online'].includes(body.payment_method)) throw new AppError(400, 'INVALID_PAYMENT_METHOD', 'Choose a valid payment method.');
-    rejectUnsupportedTip(req.body);
+    const tip = parseTip(req.body);
     const identity = checkoutAttemptIdentity(req.body, 'order');
     // Independent reads run together; each step only waits on what it needs.
     // Admin checkout settings (migration 117) with the env as hard kill. A
@@ -82,7 +82,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     const previous = await findCheckoutAttempt(req.user!.id, identity.id, identity.fingerprint);
     if (previous) { res.status(200).json(previous.result); return; }
     await methodOpen;
-    const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, body.store_id, body.address_id);
+    const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, body.store_id, body.address_id, tip);
     const pricedItems = quote.items;
     const { itemTotal, deliveryFee, discountAmount, handlingFee, total } = quote.bill;
     const promoCodeId = quote.promoCodeId;
@@ -114,6 +114,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       p_discount_amount: discountAmount,
       p_payment_method: body.payment_method ?? 'cod',
       p_handling_fee: handlingFee,
+      p_tip_amount: quote.bill.tipAmount,
       ...(preorder ? { p_deliver_from: preorder.deliver_from, p_deliver_until: preorder.deliver_until } : {}),
     });
     if (rpcErr) throw checkoutTransactionError(rpcErr.code);

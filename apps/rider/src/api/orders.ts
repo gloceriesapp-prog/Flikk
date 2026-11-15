@@ -10,8 +10,9 @@ import { readyAtOf } from '../utils/storePacking';
 // Payout comes from the backend (rider_payout, backend/src/lib/
 // riderDeliveryMoney.ts): what this order — or, on a trip leg, the whole
 // trip — pays the rider under the admin pay settings, or the earning already
-// recorded once delivered. No surge or tips exist in the schema, so surge
-// stays 0.
+// recorded once delivered. rider_payout includes the customer's tip
+// (rider_tip); RiderOrder keeps them apart (payout + tip), as every screen
+// shows the tip as its own line. No surge exists, so surge stays 0.
 
 type BackendOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
 
@@ -46,6 +47,10 @@ interface RawAssignment {
   rider_payout: number;
   rider_payout_base: number;
   rider_payout_extra_stop: number;
+  // Tip inside rider_payout, and the road km the pay was priced on (absent
+  // from an older backend).
+  rider_tip?: number;
+  road_km?: number | null;
 }
 
 // client (and its auth-store → RN chain) is imported lazily so this module's
@@ -112,7 +117,8 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
   // Trip legs all share the one trip-level payout (same value on every
   // leg's card, not multiplied per leg) — MultiStopJobCard's own note on
   // why it doesn't sum this across legs.
-  const payout = Number(row.rider_payout) || 0;
+  const tip = Number(row.rider_tip) || 0;
+  const payout = Math.round(((Number(row.rider_payout) || 0) - tip) * 100) / 100;
 
   const storeCoords =
     row.stores?.lat != null && row.stores?.lng != null ? { latitude: row.stores.lat, longitude: row.stores.lng } : null;
@@ -152,8 +158,10 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     payout,
     baseFare: Number(row.rider_payout_base) || 0,
     extraStopFare: Number(row.rider_payout_extra_stop) || 0,
+    ...(tip > 0 ? { tip } : {}),
     surge: 0,
-    distanceKm: storeCoords && customerCoords ? distanceKm(storeCoords, customerCoords) : 0,
+    // Road km the per-km pay used when the server sent it, else straight line.
+    distanceKm: row.road_km != null ? Number(row.road_km) : storeCoords && customerCoords ? distanceKm(storeCoords, customerCoords) : 0,
     status,
     placedAt: row.placed_at,
     deliveredAt: row.delivered_at ?? undefined,

@@ -764,6 +764,10 @@
     {
       "file": "20261114160000_home_section_category_source.sql",
       "sha256": "2389dbc9b51a0935e10b906d0cc5ceb0c2d8417f42be06bfb8bf1fd2f73f6167"
+    },
+    {
+      "file": "20261115090000_rider_per_km_pay_and_tips.sql",
+      "sha256": "5d7c9a99aa0bbd56183b9b7de37178811a2ef57cdab9f35376077dd21e0c76c2"
     }
   ]
 }

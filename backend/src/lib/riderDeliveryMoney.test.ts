@@ -28,7 +28,7 @@ const settings = { riderBasePayout: 30, riderExtraStopPayout: 10, extraStopFee: 
 describe('deliveryMoney', () => {
   it('asks a COD rider to collect the order total and pays the minimum on free delivery', () => {
     expect(deliveryMoney({ id: 'o', trip_id: null, payment_method: 'cod', total: '212.5', delivery_fee: '0' }, [], settings))
-      .toEqual({ payment_method: 'cod', cash_to_collect: 212.5, rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0 });
+      .toEqual({ payment_method: 'cod', cash_to_collect: 212.5, rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0, rider_tip: 0, road_km: null });
   });
   it('collects nothing on a prepaid order and pays the set rider pay, not the whole fee', () => {
     expect(deliveryMoney({ id: 'o', trip_id: null, payment_method: 'online', total: 500, delivery_fee: 40 }, [], settings))
@@ -42,7 +42,17 @@ describe('deliveryMoney', () => {
       { trip_id: 'other', store_id: 'd', status: 'cancelled', total: 999 },
     ];
     expect(deliveryMoney({ id: 'o', trip_id: 't', payment_method: 'cod', trips: { delivery_fee: 0, total: 300 } }, legs, settings))
-      .toEqual({ payment_method: 'cod', cash_to_collect: 220, rider_payout: 40, rider_payout_base: 30, rider_payout_extra_stop: 10 });
+      .toEqual({ payment_method: 'cod', cash_to_collect: 220, rider_payout: 40, rider_payout_base: 30, rider_payout_extra_stop: 10, rider_tip: 0, road_km: null });
+  });
+  it('shows the database preview (per-km pay) with the tip added', () => {
+    expect(deliveryMoney({ id: 'o', trip_id: null, payment_method: 'online', total: 500, delivery_fee: 40 }, [], settings, null,
+      { road_km: '4.3', tip_amount: '20', amount: '35.8', base_amount: '35.8', extra_stop_amount: '0' }))
+      .toMatchObject({ rider_payout: 55.8, rider_payout_base: 35.8, rider_tip: 20, road_km: 4.3 });
+  });
+  it('reports the tip inside a recorded earning', () => {
+    expect(deliveryMoney({ id: 'o', trip_id: null, payment_method: 'cod', total: 100, delivery_fee: 0 }, [], settings,
+      { amount: '45', base_amount: '25', extra_stop_amount: '0', tip_amount: '20', road_km: '2.1' }))
+      .toMatchObject({ rider_payout: 45, rider_payout_base: 25, rider_tip: 20, road_km: 2.1 });
   });
   it('reports the recorded earning once the delivery is paid', () => {
     expect(deliveryMoney({ id: 'o', trip_id: null, payment_method: 'cod', total: 100, delivery_fee: 0 }, [], settings,

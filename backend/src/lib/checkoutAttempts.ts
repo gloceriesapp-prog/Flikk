@@ -20,6 +20,8 @@ export function checkoutAttemptIdentity(body: Record<string, unknown>, kind: 'or
     items: [...quantities.entries()].sort(([a], [b]) => a.localeCompare(b)),
     // Only present for pre-orders, so older fingerprints are unchanged.
     ...(body.preorder != null ? { preorder: body.preorder } : {}),
+    // Only present with a tip, for the same reason.
+    ...(body.tip_amount ? { tip: body.tip_amount } : {}),
   })).digest('hex');
   return { id, fingerprint };
 }

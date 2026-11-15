@@ -92,6 +92,9 @@ interface CartState {
   lastAddedItemId: string | null;
   recentItemIds: string[];
   appliedPromo: AppliedPromo | null;
+  // Rider tip in whole rupees (0 = none). Priced by the server quote and paid
+  // to the rider in full; not saved with the cart draft.
+  tipAmount: number;
   // A pre-order cart's delivery day + slot; null for a quick-delivery cart.
   preorder: CartPreorder | null;
   // A pre-order line needs the day + slot; it applies to the whole cart.
@@ -102,6 +105,7 @@ interface CartState {
   decrementItem: (id: string) => void;
   removeItem: (id: string) => void;
   setAppliedPromo: (promo: AppliedPromo | null) => void;
+  setTipAmount: (tip: number) => void;
   clear: () => void;
 }
 
@@ -146,6 +150,7 @@ export const useCartStore = create<CartState>()(
       lastAddedItemId: null,
       recentItemIds: [],
       appliedPromo: null,
+      tipAmount: 0,
       preorder: null,
 
       addItem: (product, preorder) => {
@@ -211,9 +216,11 @@ export const useCartStore = create<CartState>()(
 
       setAppliedPromo: (promo) => set({ appliedPromo: promo }),
 
+      setTipAmount: (tip) => set({ tipAmount: tip }),
+
       setPreorder: (preorder) => set((state) => (state.preorder ? { preorder } : {})),
 
-      clear: () => set({ items: [], appliedPromo: null, lastAddedItemId: null, recentItemIds: [], preorder: null }),
+      clear: () => set({ items: [], appliedPromo: null, tipAmount: 0, lastAddedItemId: null, recentItemIds: [], preorder: null }),
     }),
     {
       name: 'gloceries-cart',

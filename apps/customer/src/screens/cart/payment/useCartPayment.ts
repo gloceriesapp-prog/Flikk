@@ -49,6 +49,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   const isMultiStore = storeCount > 1;
   const appliedPromo = useCartStore((state) => state.appliedPromo);
   const promoCode = appliedPromo?.code;
+  const tipAmount = useCartStore((state) => state.tipAmount);
   const grandTotal = quote?.bill.total ?? null;
   const clear = useCartStore((state) => state.clear);
 
@@ -148,7 +149,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
           if (!stillOwner() || !email) return;
         }
       }
-      const cartKey = JSON.stringify({ items: checkoutItems(items), promo: promoCode ?? null });
+      const cartKey = JSON.stringify({ items: checkoutItems(items), promo: promoCode ?? null, tip: tipAmount });
       let saved = await readAttempt();
       if (saved) {
         const committed = await findAttempt(saved.id);
@@ -179,7 +180,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       // Always recheck before creation. An alert is explicit consent; cancelling
       // refreshes the bill without placing an order or starting payment.
       const input = checkoutItems(items);
-      const freshQuote = await fetchCheckoutQuote(input, promoCode, selectedAddress.id);
+      const freshQuote = await fetchCheckoutQuote(input, promoCode, selectedAddress.id, tipAmount);
       onQuoteChanged();
       if (freshQuote.version !== quote.version || quoteHasPriceChanges(items, freshQuote)) {
         const changes = freshQuote.items.flatMap((line) => {
@@ -198,6 +199,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       // invalidate this attempt rather than ordering an earlier selection.
       if (JSON.stringify(checkoutItems(useCartStore.getState().items)) !== JSON.stringify(input)
         || useCartStore.getState().appliedPromo?.code !== promoCode
+        || useCartStore.getState().tipAmount !== tipAmount
         || latestSelection.current.addressId !== selectedAddress.id
         || latestSelection.current.paymentMethod !== paymentMethod
         || latestSelection.current.bankCode !== selectedNetbankingBank?.code
@@ -211,7 +213,8 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       const attemptId = saved?.id ?? await newAttemptId();
       if (!stillOwner()) return;
       const common = { attempt_id: attemptId, address_id: selectedAddress.id, items: checkoutItems(orderedItems),
-        quote_token: freshQuote.token, promo_code: promoCode, payment_method: intendedPaymentMethod };
+        quote_token: freshQuote.token, promo_code: promoCode, payment_method: intendedPaymentMethod,
+        ...(tipAmount > 0 ? { tip_amount: tipAmount } : {}) };
       const cartSlot = useCartStore.getState().preorder;
       const orderInput = { ...common, store_id: items[0]!.storeId,
         ...(cartSlot ? { preorder: { date: cartSlot.date, slot_id: cartSlot.slotId } } : {}) };

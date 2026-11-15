@@ -29,6 +29,10 @@ interface RawDispatchOffer {
   preparation_deadline_at?: string | null;
   // What the rider earns for this order or whole trip (admin pay rule).
   rider_payout: number;
+  // Customer tip inside rider_payout, and the road km per-km pay used
+  // (absent from an older backend).
+  rider_tip?: number;
+  road_km?: number | null;
   stores: { name: string; lat: number | null; lng: number | null } | null;
   addresses: { line1: string; landmark: string | null; latitude: number | null; longitude: number | null } | null;
   order_items: { quantity: number }[] | null;
@@ -47,6 +51,8 @@ export interface DispatchOffer {
   orderNumber: string;
   storeName: string;
   payout: number;
+  // The customer's tip inside payout (0 = none).
+  tip: number;
   // Rider → store (from the RPC's own distance_m). storeToDropKm is the
   // store → customer leg (straight-line from the two coords). totalKm is
   // the sum — the whole job the rider signs up for, what the offer's
@@ -101,6 +107,7 @@ function toDispatchOffer(row: RawDispatchOffer): DispatchOffer {
     storeName: row.stores?.name ?? 'Store',
     // Backend-computed rider payout (whole trip on a trip leg).
     payout: Number(row.rider_payout) || 0,
+    tip: Number(row.rider_tip) || 0,
     pickupKm,
     storeToDropKm,
     totalKm: Math.round((pickupKm + storeToDropKm) * 10) / 10,

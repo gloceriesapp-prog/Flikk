@@ -12,7 +12,9 @@ export const QUOTE_TTL_MS = 5 * 60 * 1000;
 // is priced by road distance to the farthest shop (delivery_settings tiers);
 // a null distance charges the flat fee. Each shop after the first adds
 // delivery_settings.extra_stop_fee (migration 108).
-export function calculateCheckoutBill(items: PricedCheckoutItem[], settings: DeliverySettings, discountAmount: number, deliveryDistanceKm: number | null = null) {
+// tipAmount (parseTip) goes to the rider in full and is added after the
+// discount, so a coupon never eats into it.
+export function calculateCheckoutBill(items: PricedCheckoutItem[], settings: DeliverySettings, discountAmount: number, deliveryDistanceKm: number | null = null, tipAmount = 0) {
   const storeCount = new Set(items.map((item) => item.store_id)).size;
   const itemTotal = calcItemTotal(items.map((item) => ({ unitPrice: item.unit_price_at_order, quantity: item.quantity })));
   const originalItemTotal = calcItemTotal(items.map((item) => ({ unitPrice: item.variant_mrp_at_order, quantity: item.quantity })));
@@ -22,8 +24,8 @@ export function calculateCheckoutBill(items: PricedCheckoutItem[], settings: Del
   const deliveryFee = round2(baseDeliveryFee + additionalShopFee);
   return { storeCount, itemTotal, originalItemTotal, baseDeliveryFee, additionalShopFee, deliveryFee,
     deliveryDistanceKm: deliveryDistanceKm == null ? null : Math.round(deliveryDistanceKm * 10) / 10,
-    handlingFee: settings.handlingFee, discountAmount,
-    total: calcOrderTotal(itemTotal, deliveryFee, discountAmount, settings.handlingFee) };
+    handlingFee: settings.handlingFee, discountAmount, tipAmount,
+    total: round2(calcOrderTotal(itemTotal, deliveryFee, discountAmount, settings.handlingFee) + tipAmount) };
 }
 
 export interface QuoteSnapshot {
@@ -68,8 +70,13 @@ export function requireConfirmedQuote(token: unknown, snapshot: QuoteSnapshot, c
   }
 }
 
-export function rejectUnsupportedTip(body: Record<string, unknown>) {
-  if ([body.tip, body.tip_amount, body.rider_tip].some((value) => value != null && value !== 0)) {
-    throw new AppError(400, 'TIPS_UNAVAILABLE', 'Rider tips are not available yet.');
+export const MAX_TIP = 500;
+// The rider tip in whole rupees (body.tip_amount), 0 when absent. The
+// database caps it at MAX_TIP too (orders/trips.tip_amount).
+export function parseTip(body: Record<string, unknown>): number {
+  const value = body.tip_amount ?? 0;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > MAX_TIP) {
+    throw new AppError(400, 'INVALID_TIP', `Choose a tip between ₹0 and ₹${MAX_TIP}.`);
   }
+  return value;
 }

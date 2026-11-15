@@ -64,6 +64,7 @@ export default function SettingsPage() {
     estimatedDeliveryMinutes: string;
     riderBasePayout: string;
     riderExtraStopPayout: string;
+    riderPerKmPayout: string;
     extraStopFee: string;
     defaultDeliveryRadiusKm: string;
     roadDistanceFactor: string;
@@ -90,6 +91,7 @@ export default function SettingsPage() {
         estimatedDeliveryMinutes: String(settings.estimatedDeliveryMinutes),
         riderBasePayout: String(settings.riderBasePayout),
         riderExtraStopPayout: String(settings.riderExtraStopPayout),
+        riderPerKmPayout: String(settings.riderPerKmPayout),
         extraStopFee: String(settings.extraStopFee),
         defaultDeliveryRadiusKm: String(settings.defaultDeliveryRadiusKm),
         roadDistanceFactor: String(settings.roadDistanceFactor),
@@ -116,6 +118,7 @@ export default function SettingsPage() {
       Number(draft.estimatedDeliveryMinutes) !== saved.estimatedDeliveryMinutes ||
       Number(draft.riderBasePayout) !== saved.riderBasePayout ||
       Number(draft.riderExtraStopPayout) !== saved.riderExtraStopPayout ||
+      Number(draft.riderPerKmPayout) !== saved.riderPerKmPayout ||
       Number(draft.extraStopFee) !== saved.extraStopFee ||
       Number(draft.defaultDeliveryRadiusKm) !== saved.defaultDeliveryRadiusKm ||
       Number(draft.roadDistanceFactor) !== saved.roadDistanceFactor ||
@@ -169,6 +172,7 @@ export default function SettingsPage() {
           estimatedDeliveryMinutes: Number(draft.estimatedDeliveryMinutes),
           riderBasePayout: Number(draft.riderBasePayout),
           riderExtraStopPayout: Number(draft.riderExtraStopPayout),
+          riderPerKmPayout: Number(draft.riderPerKmPayout),
           extraStopFee: Number(draft.extraStopFee),
           defaultDeliveryRadiusKm: Number(draft.defaultDeliveryRadiusKm),
           roadDistanceFactor: Number(draft.roadDistanceFactor),
@@ -501,7 +505,7 @@ export default function SettingsPage() {
                 <label htmlFor="riderExtraStopPayout" className="text-sm font-medium text-ink">Rider payout per extra store</label>
                 <p className="text-xs text-muted">
                   Added on top of the rider pay for each store after the first on a multi-store trip. Leave at 0 to pass the
-                  customer&apos;s extra-store fee to the rider instead. Applies only when rider pay per delivery is above 0.
+                  customer&apos;s extra-store fee to the rider instead. Applies only when rider pay per delivery or per km is above 0.
                 </p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
@@ -515,6 +519,34 @@ export default function SettingsPage() {
                   onChange={(e) => setDraft({ ...draft, riderExtraStopPayout: e.target.value })}
                   className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
                 />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+              <div>
+                <label htmlFor="riderPerKmPayout" className="text-sm font-medium text-ink">Rider pay per km</label>
+                <p className="text-xs text-muted">
+                  When above 0 the rider earns rider pay per delivery plus this much for each road km from the farthest shop to the
+                  customer, whatever delivery fee the customer paid (free delivery included). Tips always go to the rider in full on
+                  top. Set to 0 to use only the rules above.
+                  {Number(draft.riderPerKmPayout) > 0 && (
+                    <> A 3 km delivery pays ₹{Math.round((Number(draft.riderBasePayout) + Number(draft.riderPerKmPayout) * 3) * 100) / 100}.</>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                <span className="text-sm text-muted">₹</span>
+                <input
+                  id="riderPerKmPayout"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.5"
+                  value={draft.riderPerKmPayout}
+                  onChange={(e) => setDraft({ ...draft, riderPerKmPayout: e.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
+                />
+                <span className="text-sm text-muted">/km</span>
               </div>
             </div>
 

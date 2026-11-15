@@ -97,6 +97,7 @@ export function BillDetailsCard({ quote, itemCount }: Props) {
         {bill.additionalShopFee > 0 && <BillRow label={`Extra shop pickup (${bill.storeCount - 1} ${bill.storeCount === 2 ? 'shop' : 'shops'})`} amount={bill.additionalShopFee} />}
         <BillRow label="Handling fee" amount={bill.handlingFee} onInfo={() => setOpenFee('handling')} />
         {bill.discountAmount > 0 && <BillRow label="Coupon discount" amount={bill.discountAmount} discount />}
+        {(bill.tipAmount ?? 0) > 0 && <BillRow label="Tip for your rider" amount={bill.tipAmount!} />}
       </View>
       <View className="flex-row items-center justify-between border-t border-gray-100 pt-4">
         <Text className="text-[16px] font-semibold text-ink">Amount to pay</Text>

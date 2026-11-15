@@ -19,6 +19,8 @@ export interface DeliverySettingsRow {
   // Applied by rider_delivery_payout (migration 108) when an earning is written.
   rider_base_payout?: number | string | null;
   rider_extra_stop_payout?: number | string | null;
+  // migration 20261115090000 — rider pay per road km (0 = off).
+  rider_per_km_payout?: number | string | null;
   // migration 108 — customer fee per store after the first.
   extra_stop_fee?: number | string | null;
   // migration 104 — delivery reach and distance pricing.
@@ -51,6 +53,7 @@ export interface DeliverySettings {
   estimatedDeliveryMinutes: number;
   riderBasePayout: number;
   riderExtraStopPayout: number;
+  riderPerKmPayout: number;
   extraStopFee: number;
   defaultDeliveryRadiusKm: number;
   roadDistanceFactor: number;
@@ -107,6 +110,7 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     estimatedDeliveryMinutes: Number(row.estimated_delivery_minutes ?? 35),
     riderBasePayout: Number(row.rider_base_payout ?? 0),
     riderExtraStopPayout: Number(row.rider_extra_stop_payout ?? 0),
+    riderPerKmPayout: Number(row.rider_per_km_payout ?? 0),
     extraStopFee: Number(row.extra_stop_fee ?? 15),
     defaultDeliveryRadiusKm: Number(row.default_delivery_radius_km ?? 12),
     roadDistanceFactor: Number(row.road_distance_factor ?? 1.4),
