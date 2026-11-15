@@ -5,6 +5,7 @@ import { createItem, type HomeContentSection, type HomeContentItem } from '@/lib
 import { Field, inputClass, Toggle } from './Fields';
 import { PopularBrandPicker } from './PopularBrandPicker';
 import { SelectionEditor } from './SelectionEditor';
+import { SECTION_KIND_LABELS } from './sectionInsertion';
 
 export function SectionEditor({
   value: section,
@@ -30,7 +31,7 @@ export function SectionEditor({
             {section.title || 'Untitled section'}
           </h2>
           <p className="mt-1 text-xs text-slate-400">
-            {section.kind} · {section.id}
+            {SECTION_KIND_LABELS[section.kind]} · {section.id}
           </p>
         </div>
         <Toggle
@@ -141,7 +142,9 @@ export function SectionEditor({
               className={inputClass}
             />
           </Field>
-          <Field label="Image aspect ratio" hint="Width divided by height; 2 gives a 2:1 banner.">
+          <Field label="Image aspect ratio" hint={section.kind === 'hero'
+            ? 'Width divided by height. Use 1 for a square image.'
+            : 'Width divided by height; 2 gives a 2:1 banner.'}>
             <input
               type="number"
               min={0.3}
