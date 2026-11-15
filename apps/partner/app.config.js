@@ -106,6 +106,8 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
+      // iOS 27 refuses to launch an app without the scene life cycle.
+      './plugins/withSceneLifecycle',
       './plugins/withAndroidReleaseQuality.cjs',
       ...sentryPlugin,
       'expo-asset',
