@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useCollectionCategories } from './useCollectionCategories';
 import { CategoryDetailContent } from '../../category-detail/CategoryDetailScreen';
 import { catalogueParent, filterCollectionCategory } from './collectionSidebar';
 import { categoryTileProducts } from './categoryTileProducts';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../../components/ScreenStatusBar';
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -58,6 +58,17 @@ function CollectionContent({ route, navigation }: Props) {
   const scopedCategories = categoryQuery.data ?? [];
   const categoryProducts = isCatalogueTile ? filterCollectionCategory(raw, selectedCategoryId) : raw;
   const products = categoryProducts.map(mapContentProduct);
+  const { fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isFetchNextPageError } = inventory;
+  const loadMore = useCallback(() => {
+    if (!hasNextPage || isFetching || isFetchNextPageError) return;
+    void fetchNextPage({ cancelRefetch: false });
+  }, [fetchNextPage, hasNextPage, isFetching, isFetchNextPageError]);
+  const parentCategoryId = isCatalogueTile ? catalogueParent(scopedCategories) : undefined;
+  useEffect(() => {
+    // An empty page has nothing to scroll. Keep looking until items appear or
+    // the last store cursor is exhausted.
+    if (!parentCategoryId && products.length === 0) loadMore();
+  }, [loadMore, parentCategoryId, products.length]);
   const title = selected?.title || section?.title || content?.tabTitle || 'Products';
   const unavailable = !query.isPending && !query.isError && !accessible;
   const displayItems = items.map((item) => ({
@@ -72,7 +83,6 @@ function CollectionContent({ route, navigation }: Props) {
   const sidebarItems = isCatalogueTile
     ? [{ id: 'all', title: selected?.title ?? 'All', imageUrl: selected?.imageUrl }, ...scopedCategories.map(category => ({ id: category.id, title: category.label, imageUrl: category.imageUrl }))]
     : displayItems;
-  const parentCategoryId = isCatalogueTile ? catalogueParent(scopedCategories) : undefined;
   if (parentCategoryId) {
     return <CategoryDetailContent
       key={parentCategoryId}
@@ -116,16 +126,27 @@ function CollectionContent({ route, navigation }: Props) {
         <View className="min-w-0 flex-1 overflow-hidden">
           {isCatalogueTile && categoryQuery.isPending && raw.length > 0 ? (
             <ContentState hasLocation={inventory.hasLocation} isLoading isError={false} retry={inventory.retry} emptyMessage="" />
-          ) : products.length ? (
+          ) : products.length > 0 || hasNextPage ? (
             <FlashList
               key={isProductCollection ? 'custom-products' : 'catalogue-products'}
               data={products}
               numColumns={3}
-              ListFooterComponent={inventory.hasNextPage ? (
-                <Pressable accessibilityRole="button" disabled={inventory.isFetchingNextPage} onPress={() => { void inventory.fetchNextPage(); }} className="items-center py-4">
-                  <Text className="font-semibold text-[#155DFC]">{inventory.isFetchingNextPage ? 'Loading…' : inventory.isFetchNextPageError ? 'Retry loading more' : 'Load more products'}</Text>
-                </Pressable>
-              ) : null}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                isFetchingNextPage ? (
+                  <ActivityIndicator accessibilityLabel="Loading more products" color="#155DFC" className="py-4" />
+                ) : isFetchNextPageError ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={isFetching}
+                    onPress={() => { void fetchNextPage({ cancelRefetch: false }); }}
+                    className="items-center py-4"
+                  >
+                    <Text className="font-semibold text-[#155DFC]">Retry loading more</Text>
+                  </Pressable>
+                ) : null
+              }
               keyExtractor={(product) => product.id}
               contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom }}
               renderItem={({ item }) => (
@@ -134,13 +155,6 @@ function CollectionContent({ route, navigation }: Props) {
                 </View>
               )}
             />
-          ) : inventory.hasNextPage ? (
-            <View className="items-center py-6">
-              <Text className="text-center text-sm text-ink/60">No matches in the loaded products.</Text>
-              <Pressable accessibilityRole="button" disabled={inventory.isFetchingNextPage} onPress={() => { void inventory.fetchNextPage(); }} className="items-center py-4">
-                <Text className="font-semibold text-[#155DFC]">{inventory.isFetchingNextPage ? 'Loading…' : 'Load more products'}</Text>
-              </Pressable>
-            </View>
           ) : (
             <View className="flex-1 justify-center py-6">
               <ContentState
