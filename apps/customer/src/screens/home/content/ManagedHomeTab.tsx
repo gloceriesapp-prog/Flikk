@@ -16,6 +16,7 @@ import {
 } from './contracts';
 import { ContentState } from './ContentState';
 import { ContentImage } from './ContentImage';
+import { ContentHeroHeader } from './ContentHeroHeader';
 import { ContentProducts } from './ContentProducts';
 import { ContentPopularBrands } from './ContentPopularBrands';
 import { ContentTiles } from './ContentTiles';
@@ -161,21 +162,7 @@ function ManagedSection({
         {section.id === 'home-grown-nearby' && (
           <HomeGrownBackground color={section.backgroundColor || '#FFFFFF'} />
         )}
-        <View className="relative mb-2 min-h-[128px] items-end">
-          <ContentImage section={section} side={section.id === 'home-grown-nearby'} />
-          <Text
-            accessibilityRole="header"
-            numberOfLines={3}
-            adjustsFontSizeToFit
-            minimumFontScale={0.75}
-            className="absolute left-0 right-0 top-0 z-10 px-6 pt-5 text-[26px] font-bold leading-[32px] tracking-[-0.8px] text-[#34452A]"
-          >
-            {section.title}
-          </Text>
-        </View>
-        {section.subtitle && (
-          <Text className="mb-4 px-5 text-[13px] text-ink/60">{section.subtitle}</Text>
-        )}
+        <ContentHeroHeader section={section} />
         {products.length ? <ContentProducts products={products} section={section} /> : state}
         {button}
       </View>

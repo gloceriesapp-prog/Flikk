@@ -2,7 +2,7 @@ import type { HomeContentSection, SectionKind } from '@/lib/homeContent';
 
 export const SECTION_KIND_LABELS: Record<SectionKind, string> = {
   products: 'Products', categories: 'Category tiles', brands: 'Brands', stores: 'Shops',
-  banner: 'Image ad / banner', hero: 'Hero', festival: 'Festival shelf', footer: 'Footer',
+  banner: 'Image ad / banner', hero: 'Split banner + products', festival: 'Festival shelf', footer: 'Footer',
 };
 export type SectionPlacement = 'before' | 'after' | 'end';
 

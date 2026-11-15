@@ -19,6 +19,13 @@ export function SectionComposer({ sections, selectedId, onAdd }: {
     if (full) return;
     const heading = nextKind === 'banner' ? (nextKind === kind ? title.trim() : '') : title.trim() || 'New section';
     const section = createSection(nextKind, `section-${crypto.randomUUID()}`, heading);
+    if (nextKind === 'hero') {
+      section.backgroundColor = '#F3EBD9';
+      section.imageAspectRatio = 1;
+      section.imageFade = true;
+      section.limit = 4;
+      section.selection.mode = 'manual';
+    }
     onAdd(section, effectivePlacement);
     setTitle('');
   }
@@ -29,6 +36,9 @@ export function SectionComposer({ sections, selectedId, onAdd }: {
         {SECTION_KINDS.map(value => <option key={value} value={value}>{SECTION_KIND_LABELS[value]}</option>)}
       </select>
     </Field>
+    {kind === 'hero' && (
+      <p className="text-xs leading-5 text-slate-600">Text on the left, a faded image on the right, and selected products below.</p>
+    )}
     <Field label={kind === 'banner' ? 'Ad heading (optional)' : 'Section title'}>
       <input value={title} maxLength={120} onChange={event => setTitle(event.target.value)} placeholder={kind === 'banner' ? 'Leave blank for image only' : 'e.g. Udupi favourites'} className={inputClass} />
     </Field>
