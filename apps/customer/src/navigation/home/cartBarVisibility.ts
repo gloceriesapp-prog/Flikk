@@ -4,6 +4,12 @@ const SCREEN_NAVIGATION = new Set<keyof AppStackParamList>(['Categories', 'Purch
 // Checkout owns its footer and recovery controls. A second cart entry could
 // interrupt an in-flight payment, so it must not cover those controls.
 const CHECKOUT_SCREENS = new Set<keyof AppStackParamList>(['Cart', 'PaymentMethod', 'PaymentProcessing', 'PaymentStatus', 'OrderPlaced', 'CheckoutAttemptRecovery', 'PaymentRecovery']);
+export const STANDALONE_CART_CLEARANCE = 68;
+
+export function usesFloatingCollectionCart(route: keyof AppStackParamList) {
+  return route === 'HomeContentCollection' || route === 'HomeSectionCollection';
+}
+
 export function showStandaloneCart(route: keyof AppStackParamList, shellNavigationVisible: boolean, quantity: number) {
   return quantity > 0 && !shellNavigationVisible && !SCREEN_NAVIGATION.has(route) && !CHECKOUT_SCREENS.has(route);
 }

@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { View, useWindowDimensions } from 'react-native';
 import { ScreenStatusBar } from '../../../components/ScreenStatusBar';
 import type { AppStackParamList } from '../../../navigation/types';
+import { useCollectionBottomPadding } from '../../../navigation/home/useCollectionBottomPadding';
 import { CategoryDetailHeader } from '../../category-detail/components/CategoryDetailHeader';
 import { StoreTileCard } from '../components/StoreTileCard';
 import { ProductCard } from '../products/ProductCard';
@@ -12,6 +13,7 @@ export function HomeSectionCollectionScreen({
 }: NativeStackScreenProps<AppStackParamList, 'HomeSectionCollection'>) {
   const collection = route.params;
   const { width } = useWindowDimensions();
+  const paddingBottom = useCollectionBottomPadding();
 
   return (
     <View className="flex-1 bg-white pt-safe">
@@ -26,7 +28,7 @@ export function HomeSectionCollectionScreen({
           data={collection.products}
           numColumns={3}
           keyExtractor={(product) => product.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 48 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom }}
           renderItem={({ item }) => (
             <View className="flex-1 px-1 pb-5">
               <ProductCard product={item} widthClassName="w-full" showDiscountBadge={collection.showDiscountBadge} />
@@ -37,7 +39,7 @@ export function HomeSectionCollectionScreen({
         <FlashList
           data={collection.stores}
           keyExtractor={(store) => store.id}
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 48 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom }}
           renderItem={({ item }) => (
             <View className="items-center pb-4">
               <StoreTileCard

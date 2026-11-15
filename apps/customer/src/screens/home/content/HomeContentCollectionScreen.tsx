@@ -8,17 +8,9 @@ import { ScreenStatusBar as StatusBar } from '../../../components/ScreenStatusBa
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../../navigation/types';
+import { useCollectionBottomPadding } from '../../../navigation/home/useCollectionBottomPadding';
 import { CategoryDetailHeader } from '../../category-detail/components/CategoryDetailHeader';
 import { SubCategorySidebarItem } from '../../category-detail/components/SubCategorySidebarItem';
-import { CategoryFilterBar } from '../../category-detail/filters/CategoryFilterBar';
-import { CategoryFilterSheet } from '../../category-detail/filters/CategoryFilterSheet';
-import {
-  DEFAULT_FILTERS,
-  filterProducts,
-  getTypeOptions,
-  type FilterPanel,
-  type ProductFilters,
-} from '../../category-detail/filters/productFilters';
 import { GroceryProductTile } from '../groceries/components/GroceryProductTile';
 import { useCollectionInventory } from './useCollectionInventory';
 import { selectContentProducts } from './contracts';
@@ -34,10 +26,9 @@ export function HomeContentCollectionScreen(props: Props) {
 function CollectionContent({ route, navigation }: Props) {
   const { tabKey, sectionId, itemId } = route.params;
   const query = useHomeContent();
+  const paddingBottom = useCollectionBottomPadding();
   const [selectedId, setSelectedId] = useState(itemId);
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
-  const [filters, setFilters] = useState<ProductFilters>({ ...DEFAULT_FILTERS });
-  const [panel, setPanel] = useState<FilterPanel | null>(null);
   const content = query.data?.find((row) => row.tabKey === tabKey)?.content;
   const section = content?.enabled
     ? content.sections.find((s) => s.id === sectionId && s.enabled)
@@ -66,22 +57,7 @@ function CollectionContent({ route, navigation }: Props) {
   const categoryQuery = useCollectionCategories(isCatalogueTile ? raw : [], selected?.selection.categoryIds ?? []);
   const scopedCategories = categoryQuery.data ?? [];
   const categoryProducts = isCatalogueTile ? filterCollectionCategory(raw, selectedCategoryId) : raw;
-  const baseProducts = categoryProducts.map(mapContentProduct);
-  const brands =
-    content?.sections
-      .filter((s) => s.enabled && s.kind === 'brands')
-      .flatMap((s) =>
-        s.items
-          .filter((item) => item.enabled)
-          .map((item) => ({
-            id: item.id,
-            name: item.title,
-            productIds: selectContentProducts(inventory.visibleProducts, item.selection).map(
-              (product) => product.id,
-            ),
-          })),
-      ) ?? [];
-  const products = filterProducts(baseProducts, filters, brands);
+  const products = categoryProducts.map(mapContentProduct);
   const title = selected?.title || section?.title || content?.tabTitle || 'Products';
   const unavailable = !query.isPending && !query.isError && !accessible;
   const displayItems = items.map((item) => ({
@@ -102,6 +78,8 @@ function CollectionContent({ route, navigation }: Props) {
       key={parentCategoryId}
       categoryId={parentCategoryId}
       label={title}
+      showFilters={false}
+      productBottomPadding={paddingBottom}
       onBack={() => navigation.goBack()}
       onSearch={() => navigation.navigate('Search')}
     />;
@@ -120,7 +98,7 @@ function CollectionContent({ route, navigation }: Props) {
             <FlatList
               data={sidebarItems}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingTop: 12, paddingBottom: 32, gap: 24 }}
+              contentContainerStyle={{ paddingTop: 12, paddingBottom, gap: 24 }}
               renderItem={({ item }) => (
                 <SubCategorySidebarItem
                   subCategory={{ id: item.id, label: item.title, imageUrl: item.imageUrl }}
@@ -128,7 +106,6 @@ function CollectionContent({ route, navigation }: Props) {
                   onPress={() => {
                     if (isCatalogueTile) setSelectedCategoryId(item.id);
                     else setSelectedId(item.id);
-                    setFilters({ ...DEFAULT_FILTERS });
                   }}
                 />
               )}
@@ -136,7 +113,6 @@ function CollectionContent({ route, navigation }: Props) {
           </View>
         )}
         <View className="min-w-0 flex-1 overflow-hidden">
-          {accessible && <CategoryFilterBar filters={filters} onOpen={setPanel} />}
           {isCatalogueTile && categoryQuery.isPending && raw.length > 0 ? (
             <ContentState hasLocation={inventory.hasLocation} isLoading isError={false} retry={inventory.retry} emptyMessage="" />
           ) : products.length ? (
@@ -150,7 +126,7 @@ function CollectionContent({ route, navigation }: Props) {
                 </Pressable>
               ) : null}
               keyExtractor={(product) => product.id}
-              contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom: 48 }}
+              contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom }}
               renderItem={({ item }) => (
                 <View className="px-1 pb-6" style={isProductCollection ? { width: '33.333333%' } : { flex: 1 }}>
                   <GroceryProductTile product={item} previewOnly={false} />
@@ -166,49 +142,24 @@ function CollectionContent({ route, navigation }: Props) {
             </View>
           ) : (
             <View className="flex-1 justify-center py-6">
-              {baseProducts.length ? (
-                <View className="items-center gap-3 px-5">
-                  <Text className="text-center text-sm text-ink/60">
-                    No products match these filters.
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => setFilters({ ...DEFAULT_FILTERS })}
-                    className="min-h-11 justify-center px-4"
-                  >
-                    <Text className="font-semibold text-[#155DFC]">Reset filters</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <ContentState
-                  hasLocation={unavailable ? true : inventory.hasLocation}
-                  isLoading={query.isPending || inventory.isLoading}
-                  isError={query.isError || inventory.isError}
-                  retry={() => {
-                    void query.refetch();
-                    inventory.retry();
-                  }}
-                  emptyMessage={
-                    unavailable
-                      ? 'This collection is no longer available.'
-                      : 'No available products in this collection nearby right now.'
-                  }
-                />
-              )}
+              <ContentState
+                hasLocation={unavailable ? true : inventory.hasLocation}
+                isLoading={query.isPending || inventory.isLoading}
+                isError={query.isError || inventory.isError}
+                retry={() => {
+                  void query.refetch();
+                  inventory.retry();
+                }}
+                emptyMessage={
+                  unavailable
+                    ? 'This collection is no longer available.'
+                    : 'No available products in this collection nearby right now.'
+                }
+              />
             </View>
           )}
         </View>
       </View>
-      <CategoryFilterSheet
-        panel={panel}
-        filters={filters}
-        types={getTypeOptions(baseProducts)}
-        brands={brands.filter((brand) =>
-          brand.productIds.some((id) => raw.some((product) => product.id === id)),
-        )}
-        onChange={setFilters}
-        onClose={() => setPanel(null)}
-      />
     </View>
   );
 }
