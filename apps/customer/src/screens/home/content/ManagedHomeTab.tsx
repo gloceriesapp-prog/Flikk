@@ -35,7 +35,7 @@ function ManagedSection({
   inventory: Inventory;
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  if (section.kind === 'brands') return <ContentPopularBrands section={section} />;
+  if (section.kind === 'brands') return <ContentPopularBrands section={section} tabKey={tabKey} />;
   const products = selectContentProducts(
     inventory.visibleProducts,
     section.selection,
