@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { ShoppingBasket01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage } from '../../../components/AppImage';
@@ -26,8 +27,11 @@ export function PhotoCategoryRail({ items, imageForItem, onOpen }: Props) {
                 <AppIcon icon={ShoppingBasket01Icon} size={32} color="#526A36" />
               </View>
             )}
-            <View className="absolute bottom-0 left-0 right-0 min-h-[44px] items-center justify-center px-2 pt-2">
-              <View pointerEvents="none" style={styles.labelCurve} />
+            <View className="absolute bottom-0 left-0 right-0 min-h-7 items-center justify-center bg-white px-2 pb-1">
+              <Svg pointerEvents="none" width="100%" height={17} viewBox="0 0 112 17"
+                preserveAspectRatio="none" style={styles.labelCurve}>
+                <Path d="M0 16 Q56 -16 112 16 V17 H0 Z" fill="#FFFFFF" />
+              </Svg>
               <Text numberOfLines={2} className="text-center text-[13px] font-bold leading-[16px] text-ink">
                 {item.title}
               </Text>
@@ -42,12 +46,7 @@ export function PhotoCategoryRail({ items, imageForItem, onOpen }: Props) {
 const styles = StyleSheet.create({
   labelCurve: {
     position: 'absolute',
-    top: 0,
-    left: '50%',
-    width: 156,
-    height: 100,
-    marginLeft: -78,
-    borderRadius: 78,
-    backgroundColor: '#FFFFFF',
+    top: -16,
+    left: 0,
   },
 });
