@@ -24,39 +24,12 @@ export function ContentTiles({
   const items = section.items.filter((item) => item.enabled).slice(0, section.limit);
   const imageForItem = (item: HomeContentItem) =>
     item.imageUrl ||
-    (section.kind !== 'categories' || hasContentSelection(item.selection) ? selectContentProducts(products, item.selection) : []).find((product) => product.image_url)?.image_url || undefined;
-  if (featuredCategories && section.kind === 'categories') {
+    (hasContentSelection(item.selection) ? selectContentProducts(products, item.selection) : []).find((product) => product.image_url)?.image_url || undefined;
+  if (featuredCategories) {
     return <GroceryCategoryGrid items={items} imageForItem={imageForItem} onOpen={onOpen} columns={section.columns} layout={section.layout} />;
   }
   const tile = (item: HomeContentItem) => {
     const image = imageForItem(item);
-    if (section.kind === 'brands')
-      return (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Explore ${item.title}`}
-          onPress={() => onOpen(item)}
-          className="min-h-20 items-center justify-center rounded-[22px] border border-ink/80 px-2 py-3 active:opacity-70"
-          style={{ backgroundColor: item.backgroundColor || '#FFFFFF' }}
-        >
-          {image && (
-            <AppImage source={{ uri: image }} className="mb-2 h-8 w-full" resizeMode="contain" />
-          )}
-          <Text numberOfLines={2} className="text-center text-[13px] font-bold text-ink">
-            {item.title}
-          </Text>
-          {item.origin && (
-            <Text numberOfLines={1} className="mt-1 text-center text-[10px] text-ink/50">
-              {item.origin}
-            </Text>
-          )}
-          {item.description && (
-            <Text numberOfLines={2} className="mt-1 text-center text-[10px] text-ink/50">
-              {item.description}
-            </Text>
-          )}
-        </Pressable>
-      );
     const arched = freshCategories || archedCategories || section.id === 'shop-fresh';
     return (
       <Pressable

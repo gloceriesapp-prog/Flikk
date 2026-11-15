@@ -27,6 +27,27 @@ categoriesRouter.get('/popular-brands', async (_req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Resolve the saved category-page selection from the current Popular Brands directory.
+categoriesRouter.get('/popular-brands/selection', async (req, res, next) => {
+  try {
+    const raw = req.query.ids;
+    const ids = typeof raw === 'string' && raw.length <= 1480 ? raw.split(',') : [];
+    if (!ids.length || ids.length > 40 || ids.some(id => !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/.test(id))) {
+      throw new AppError(400, 'INVALID_BRANDS', 'Choose up to 40 valid brand IDs.');
+    }
+    const { data, error } = await supabase.from('brands')
+      .select('id, name, logo_url, popular_image_url')
+      .in('id', ids).eq('is_active', true).not('popular_position', 'is', null);
+    if (error) throw error;
+    const byId = new Map((data ?? []).map(brand => [brand.id, brand]));
+    res.json([...new Set(ids)].flatMap(id => {
+      const brand = byId.get(id);
+      const imageUrl = brand?.popular_image_url || brand?.logo_url;
+      return brand && imageUrl ? [{ id, name: brand.name, imageUrl }] : [];
+    }));
+  } catch (error) { next(error); }
+});
+
 // Keyset pagination keeps the directory bounded and preserves administrator order.
 categoriesRouter.get('/popular-brands/all', async (req, res, next) => {
   try {

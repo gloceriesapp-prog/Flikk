@@ -29,3 +29,10 @@ export function fetchAllPopularBrands(cursor: string | null, signal: AbortSignal
   return apiRequest<{ brands: PopularBrand[]; nextCursor: string | null }>(
     '/categories/popular-brands/all' + after, { auth: false, signal });
 }
+
+export function fetchSelectedPopularBrands(ids: string[], signal: AbortSignal) {
+  return apiRequest<PopularBrand[]>(
+    '/categories/popular-brands/selection?ids=' + encodeURIComponent(ids.join(',')),
+    { auth: false, signal },
+  );
+}

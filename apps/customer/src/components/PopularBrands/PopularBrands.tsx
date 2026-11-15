@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { fetchPopularBrands, type PopularBrand } from '../../api/brands';
-import { AppImage } from '../AppImage';
+import { PopularBrandTiles } from './PopularBrandTiles';
 
 interface Props {
   onSelect: (brand: PopularBrand) => void;
@@ -40,20 +40,7 @@ export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, alwaysSho
         onPress={() => void query.refetch()} className="mx-5 mb-3 min-h-11 justify-center rounded-xl bg-gray-100 px-3 py-2">
         <Text className="text-sm text-ink/70">Couldn’t refresh brands. Tap to retry.</Text>
       </Pressable>}
-      <View className="flex-row flex-wrap gap-y-2 px-4">
-        {brands.slice(0, previewLimit).map(brand => (
-          <View key={brand.id} style={styles.tile}>
-            <Pressable accessibilityRole="button" accessibilityLabel={brand.name}
-              onPress={() => onSelect(brand)} className="aspect-square overflow-hidden rounded-2xl bg-gray-100 active:opacity-75">
-              <AppImage source={{ uri: brand.imageUrl }} style={StyleSheet.absoluteFill} contentFit="contain" />
-            </Pressable>
-          </View>
-        ))}
-      </View>
+      <PopularBrandTiles brands={brands.slice(0, previewLimit)} onSelect={onSelect} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  tile: { width: '20%', paddingHorizontal: 4 },
-});
