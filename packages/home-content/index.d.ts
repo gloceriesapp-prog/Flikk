@@ -5,6 +5,8 @@ export function customContentKey(homeTabId: string): HomeContentKey;
 export function createCustomContent(title: string, enabled?: boolean): HomeContentDocument;
 export type SectionKind =
   'products' | 'categories' | 'brands' | 'stores' | 'banner' | 'hero' | 'festival' | 'footer';
+export type CategoryCardStyle = 'standard' | 'photo';
+export function categoryCardStyle(section: HomeContentSection, tabKey?: HomeContentKey): CategoryCardStyle;
 export interface ContentSelection {
   mode: 'automatic' | 'manual';
   productIds: string[];
@@ -31,6 +33,7 @@ export interface HomeContentSection {
   subtitle: string;
   enabled: boolean;
   layout: 'horizontal' | 'grid';
+  categoryCardStyle?: CategoryCardStyle;
   columns: 2 | 3 | 4;
   limit: number;
   backgroundColor: string;

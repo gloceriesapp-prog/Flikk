@@ -3,11 +3,13 @@ import { ShoppingBasket01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage } from '../../../components/AppImage';
 import type { ApiProduct } from '../../../api/products';
-import { hasContentSelection, selectContentProducts, type HomeContentSection, type HomeContentItem } from './contracts';
+import { categoryCardStyle, hasContentSelection, selectContentProducts, type HomeContentKey, type HomeContentSection, type HomeContentItem } from './contracts';
+import { PhotoCategoryRail } from './PhotoCategoryRail';
 import { GroceryCategoryGrid } from '../groceries/shop-by-category/GroceryCategoryGrid';
 
 export function ContentTiles({
   section,
+  tabKey,
   products,
   onOpen,
   featuredCategories = false,
@@ -15,6 +17,7 @@ export function ContentTiles({
   freshCategories = false,
 }: {
   section: HomeContentSection;
+  tabKey?: HomeContentKey;
   products: ApiProduct[];
   onOpen: (item: HomeContentItem) => void;
   featuredCategories?: boolean;
@@ -25,6 +28,9 @@ export function ContentTiles({
   const imageForItem = (item: HomeContentItem) =>
     item.imageUrl ||
     (hasContentSelection(item.selection) ? selectContentProducts(products, item.selection) : []).find((product) => product.image_url)?.image_url || undefined;
+  if (section.kind === 'categories' && categoryCardStyle(section, tabKey) === 'photo') {
+    return <PhotoCategoryRail items={items} imageForItem={imageForItem} onOpen={onOpen} />;
+  }
   if (featuredCategories) {
     return <GroceryCategoryGrid items={items} imageForItem={imageForItem} onOpen={onOpen} columns={section.columns} layout={section.layout} />;
   }

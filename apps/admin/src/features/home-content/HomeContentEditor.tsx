@@ -408,6 +408,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
                 <SectionEditor
                   key={`${tab}-${selected.id}-${record.revision}`}
                   value={selected}
+                  tabKey={tab}
                   onChange={(value) =>
                     setDraft({
                       ...draft,
