@@ -7,7 +7,7 @@ const CHECKOUT_SCREENS = new Set<keyof AppStackParamList>(['Cart', 'PaymentMetho
 export const STANDALONE_CART_CLEARANCE = 68;
 
 export function usesFloatingCollectionCart(route: keyof AppStackParamList) {
-  return route === 'HomeContentCollection' || route === 'HomeSectionCollection';
+  return route === 'CategoryDetail' || route === 'HomeContentCollection' || route === 'HomeSectionCollection';
 }
 
 export function showStandaloneCart(route: keyof AppStackParamList, shellNavigationVisible: boolean, quantity: number) {

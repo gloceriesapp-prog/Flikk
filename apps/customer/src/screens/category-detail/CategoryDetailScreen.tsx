@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useCollectionBottomPadding } from '../../navigation/home/useCollectionBottomPadding';
 import { CategoryDetailHeader } from './components/CategoryDetailHeader';
 import { SubCategorySidebar } from './components/SubCategorySidebar';
 import { CategoryProductPane } from './components/CategoryProductPane';
@@ -15,12 +16,14 @@ const ALL_TAB: DetailSubCategory = { id: 'all', label: 'All' };
 type Props = NativeStackScreenProps<AppStackParamList, 'CategoryDetail'>;
 
 export function CategoryDetailScreen({ navigation, route }: Props) {
+  const productBottomPadding = useCollectionBottomPadding(64);
   return (
     <CategoryDetailContent
       key={`${route.params.categoryId}:${route.params.subcategoryId ?? 'all'}`}
       categoryId={route.params.categoryId}
       label={route.params.label}
       initialSubcategoryId={route.params.subcategoryId}
+      productBottomPadding={productBottomPadding}
       onBack={() => navigation.goBack()}
       onSearch={() => navigation.navigate('Search')}
     />
