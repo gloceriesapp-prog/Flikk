@@ -1,4 +1,5 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useState } from 'react';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppImage } from '../../../../components/AppImage';
@@ -13,7 +14,8 @@ const festivalEdge = `M0 2 ${Array.from({ length: 40 }, (_, index) =>
   `L${index * 10 + 5} 7 L${(index + 1) * 10} 2`).join(' ')} L400 16 L0 16 Z`;
 const regionalEdge = 'M0 9 C65 0 105 0 170 7 S285 15 340 7 S380 3 400 5 L400 24 L0 24 Z';
 export function HomeCategoryBanner({
-  imageUri = DEFAULT_BANNER_URI,
+  imageUri,
+  fallbackImageUri = DEFAULT_BANNER_URI,
   imageAsset,
   backgroundColor = '#F3F4F6',
   imageFit = 'cover',
@@ -21,12 +23,14 @@ export function HomeCategoryBanner({
   bottomEdge,
 }: {
   imageUri?: string;
+  fallbackImageUri?: string;
   imageAsset?: number;
   backgroundColor?: string;
   imageFit?: 'cover' | 'contain';
   seamless?: boolean;
   bottomEdge?: 'festival' | 'regional';
 }) {
+  const [failedUri, setFailedUri] = useState<string>();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   return (
@@ -38,7 +42,8 @@ export function HomeCategoryBanner({
       borderBottomRightRadius: seamless || bottomEdge ? 0 : 24,
     }}>
       <AppImage
-        source={imageAsset ?? { uri: imageUri }}
+        source={imageUri && imageUri !== failedUri ? { uri: imageUri } : imageAsset ?? { uri: fallbackImageUri }}
+        onError={() => { if (imageUri) setFailedUri(imageUri); }}
         style={{ width: '100%', height: '100%' }}
         resizeMode={imageFit}
         contentPosition={imageFit === 'contain' ? 'bottom center' : 'center'}

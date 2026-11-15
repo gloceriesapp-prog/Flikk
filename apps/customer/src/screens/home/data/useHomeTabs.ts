@@ -37,6 +37,7 @@ export interface RemoteHomeTabBanner {
 }
 
 export interface RemoteHomeTab {
+  headerImageUrl?: string;
   quickCategory?: { visible: boolean | null; order: number | null; configured: boolean; link?: HomeTabTileLink };
   id: string;
   name: string;

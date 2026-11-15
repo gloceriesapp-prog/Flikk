@@ -44,12 +44,14 @@ export interface HomeContentSection {
   items: HomeContentItem[];
 }
 export interface HomeContentDocument {
+  headerImageUrl?: string;
   schemaVersion: 1;
   tabTitle: string;
   enabled: boolean;
   sections: HomeContentSection[];
 }
 export interface HomeContentRecord {
+  headerImageUrl?: string;
   tabKey: HomeContentKey;
   homeTabId: string | null;
   revision: number;

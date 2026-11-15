@@ -19,13 +19,14 @@ export function mergeManagedTabs(
     if (seen.has(config.tabKey)) continue;
     seen.add(config.tabKey);
     if (config.content.enabled)
-      result.push({ ...tab, contentKey: config.tabKey, label: config.content.tabTitle });
+      result.push({ ...tab, contentKey: config.tabKey, label: config.content.tabTitle, headerImageUrl: config.headerImageUrl || config.content.headerImageUrl || undefined });
   }
   for (const config of content) {
     if (!config.tabKey.startsWith('custom-') && !seen.has(config.tabKey) && config.content.enabled)
       result.push({
         id: config.homeTabId ?? `home-content-${config.tabKey}`,
         name: SYNTHETIC_TAB_NAME[config.tabKey] ?? config.content.tabTitle,
+        headerImageUrl: config.headerImageUrl || config.content.headerImageUrl || undefined,
         contentKey: config.tabKey,
         label: config.content.tabTitle,
         tiles: [],

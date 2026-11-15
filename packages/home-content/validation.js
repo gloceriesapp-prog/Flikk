@@ -75,7 +75,7 @@ function validateSelection(raw, path) {
   };
 }
 export function validateContent(raw) {
-  const doc = object(raw, 'content', ['schemaVersion', 'tabTitle', 'enabled', 'sections']);
+  const doc = object(raw, 'content', ['schemaVersion', 'tabTitle', 'headerImageUrl', 'enabled', 'sections']);
   if (doc.schemaVersion !== 1) fail('schemaVersion', 'unsupported version');
   const sections = unique(
     list(doc.sections, 'sections', 40).map((rawSection, index) => {
@@ -139,6 +139,7 @@ export function validateContent(raw) {
   return {
     schemaVersion: 1,
     tabTitle: text(doc.tabTitle, 'tabTitle', 32, true),
+    ...(doc.headerImageUrl === undefined ? {} : { headerImageUrl: url(doc.headerImageUrl, 'headerImageUrl') }),
     enabled: boolean(doc.enabled, 'enabled'),
     sections,
   };

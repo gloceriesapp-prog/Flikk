@@ -34,9 +34,10 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
     <View className="flex-1 bg-white">
       {isFocused && <StatusBar style="dark" />}
       <Animated.ScrollView className="flex-1" contentContainerClassName="pb-28" contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} onScroll={scrollHandler} scrollEventThrottle={16} bounces={false} overScrollMode="never">
-        {isMeat ? <MeatCategoryBanner /> : <HomeCategoryBanner
+        {isMeat ? <MeatCategoryBanner imageUri={tab?.headerImageUrl} /> : <HomeCategoryBanner
           imageAsset={isFestival ? require('../../../../assets/illustrations/diwali-section.png') : categoryKind === 'regional' ? require('../../../../assets/illustrations/Village-section.png') : undefined}
-          imageUri={isFestival ? tab?.festival?.headerImageUri ?? undefined : categoryKind === 'groceries' ? groceryHeaderImage : undefined}
+          imageUri={tab?.headerImageUrl || (isFestival ? tab?.festival?.headerImageUri ?? undefined : categoryKind === 'groceries' ? groceryHeaderImage : undefined)}
+          fallbackImageUri={categoryKind === 'groceries' ? groceryHeaderImage : undefined}
           backgroundColor={isFestival ? tab?.festival?.backgroundColor : undefined}
           imageFit={isFestival ? 'contain' : 'cover'}
           seamless={isFestival}

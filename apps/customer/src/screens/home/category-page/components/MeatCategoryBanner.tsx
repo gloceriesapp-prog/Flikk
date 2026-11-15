@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { AppImage } from '../../../../components/AppImage';
@@ -7,12 +8,14 @@ import { AppImage } from '../../../../components/AppImage';
 const edge = `M0 3 ${Array.from({ length: 20 }, (_, index) =>
   `Q${index * 20 + 10} 10 ${(index + 1) * 20} 3`).join(' ')} L400 10 L0 10 Z`;
 
-export function MeatCategoryBanner() {
+export function MeatCategoryBanner({ imageUri }: { imageUri?: string }) {
+  const [failedUri, setFailedUri] = useState<string>();
   const insets = useSafeAreaInsets();
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: '#D37A35' }}>
       <AppImage
-        source={require('../../../../../assets/illustrations/meat-section-banner.png')}
+        source={imageUri && imageUri !== failedUri ? { uri: imageUri } : require('../../../../../assets/illustrations/meat-section-banner.png')}
+        onError={() => { if (imageUri) setFailedUri(imageUri); }}
         style={{ width: '100%', aspectRatio: 1672 / 941 }}
         contentFit="cover"
         priority="high"

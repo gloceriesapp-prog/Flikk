@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 import { ArrowUp, ArrowDown } from '@/components/icons';
 import {
   addMissingFestivalSections,
@@ -292,6 +293,20 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
                 Version {record.revision}<br />
                 Published {new Date(record.updatedAt).toLocaleString()}
               </>}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="text-base font-semibold text-slate-900">Quick-category page header image</h2>
+            <p className="mt-1 text-sm text-slate-600">The full-width image at the top after opening this quick category. This is separate from its small Home card image. Publish to apply; leave blank to keep the default.</p>
+            <div className="mt-4 max-w-xl space-y-3">
+              <ProductImageUpload imageUrl={draft.headerImageUrl || undefined} bucket="banners"
+                onChange={(headerImageUrl) => setDraft({ ...draft, headerImageUrl })} />
+              <Field label="Header image URL">
+                <input type="url" value={draft.headerImageUrl ?? ''} maxLength={2048} placeholder="https://images.gloceries.com/…"
+                  onChange={(event) => setDraft({ ...draft, headerImageUrl: event.target.value })} className={inputClass} />
+              </Field>
+              {draft.headerImageUrl && <button type="button" className="text-sm font-medium text-blue-600"
+                onClick={() => setDraft({ ...draft, headerImageUrl: '' })}>Use default header image</button>}
             </div>
           </div>
           {tab === 'festivals' && (
