@@ -68,6 +68,8 @@ module.exports = {
       // iPad and require iPad screenshots for layouts never designed for it.
       supportsTablet: false,
       bundleIdentifier: 'com.gloceries.rider',
+      // Local `xcodebuild` / `expo run:ios` signing team; EAS uses its own credentials.
+      ...(process.env.APPLE_TEAM_ID ? { appleTeamId: process.env.APPLE_TEAM_ID } : {}),
       infoPlist: {
         NSLocationWhenInUseUsageDescription: 'Gloceries uses your location to show your live position to the customer while delivering their order.',
         // Background ("Always") grant — lets presence keep pinging dispatch
@@ -92,7 +94,7 @@ module.exports = {
       package: 'com.gloceries.rider',
       googleServicesFile,
       adaptiveIcon: {
-        backgroundColor: '#101C10',
+        backgroundColor: '#0158E0',
         foregroundImage: './assets/android-icon-foreground.png',
         backgroundImage: './assets/android-icon-background.png',
         monochromeImage: './assets/android-icon-monochrome.png',
@@ -119,6 +121,8 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
+      // iOS 27 refuses to launch an app without the scene life cycle.
+      './plugins/withSceneLifecycle',
       ...sentryPlugin,
       'expo-secure-store',
       'expo-notifications',
