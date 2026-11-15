@@ -6,6 +6,7 @@ import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
 import { stockLabel } from '../../../components/stockLabel';
 import { ProductPriceRow } from '../../../components/ProductPriceRow';
+import { discountPercentLabel } from '../../../components/priceComparison';
 import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
@@ -20,6 +21,7 @@ interface Props {
   product: Product;
   widthClassName?: string;
   showDiscountBadge?: boolean;
+  showImage?: boolean;
   // Festival-rail variant: ADD button is a bold + icon (not text).
   // Every other Home row leaves this off and keeps the full card.
   compact?: boolean;
@@ -42,7 +44,7 @@ interface Props {
   availabilityLabel?: string;
 }
 
-function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', compact = false, onDark = false, onPress, onAdd, isAvailable, availabilityLabel }: Props) {
+function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = true, compact = false, onDark = false, onPress, onAdd, isAvailable, availabilityLabel }: Props) {
   const {
     id,
     name,
@@ -61,6 +63,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', compact = fa
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize] = useState(chips[0]);
 
+  const discount = discountPercentLabel(price, originalPrice);
   const stockStatus = isAvailable
     ? stockLabel(product.availableQuantity, (product.availableQuantity ?? 0) < 5)
     : availabilityLabel ?? 'Unavailable';
@@ -70,78 +73,83 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', compact = fa
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
+  const cartControl = !isAvailable ? null : quantity === 0 || !!product.options?.length ? (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
+      onPress={(event) => {
+        event.stopPropagation();
+        if (product.options?.length && onAdd) { onAdd(); return; }
+        if (mustPickInDetail(product)) {
+          onPress?.();
+          return;
+        }
+        addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
+      }}
+      className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
+    >
+      {compact ? (
+        <AppIcon icon={Add01Icon} size={18} color="#241712" fill="#155dfc" strokeWidth={3.5} />
+      ) : (
+        <AppIcon icon={Add01Icon} size={20} color="#155dfc" fill="#155dfc" strokeWidth={3} />
+      )}
+    </Pressable>
+  ) : (
+    <View className="flex-row items-center gap-2.5 rounded-[8px] border border-[#155dfc] bg-white px-3 py-2">
+      <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`} onPress={() => decrementItem(lineId)} hitSlop={12}>
+        <AppIcon icon={MinusSignIcon} size={20} color="#155dfc" strokeWidth={2.5} />
+      </Pressable>
+      <Text className="min-w-[12px] text-center text-[13px] font-extrabold text-[#155dfc]">{quantity}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`} onPress={() => incrementItem(lineId)} hitSlop={12}>
+        <AppIcon icon={Add01Icon} size={20} color="#155dfc" strokeWidth={2.5} />
+      </Pressable>
+    </View>
+  );
+
   return (
     <Pressable onPress={onPress} className={`${widthClassName} gap-0`}>
 
-      {/* Image card with the ADD button pinned to its bottom-right corner. */}
-      <View className="relative mb-2">
-        <View className="aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
-          <ProductImageGallery images={product.imageUrls ?? (imageUrl ? [imageUrl] : [])} />
-        </View>
-
-        {freshnessTag && (
-          <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
-            <Text className="text-[9px] font-semibold text-ink">{freshnessTag}</Text>
+      {/* Pin the cart control to the image when it is visible. */}
+      {showImage && (
+        <View className="relative mb-2">
+          <View className="aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+            <ProductImageGallery images={product.imageUrls ?? (imageUrl ? [imageUrl] : [])} />
           </View>
-        )}
 
-        {/* ADD / stepper — flush to the image's bottom-right corner (no inset,
-            no outer gap). */}
-        <View
-          className="absolute bottom-0 right-0 z-10"
-        >
-          {!isAvailable ? null : quantity === 0 || !!product.options?.length ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
-              onPress={(event) => {
-                event.stopPropagation();
-                if (product.options?.length && onAdd) { onAdd(); return; }
-                mustPickInDetail(product)
-                  ? onPress?.()
-                  : addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
-              }}
-              className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
-            >
-              {compact ? (
-                <AppIcon icon={Add01Icon} size={18} color="#241712" fill="#155dfc" strokeWidth={3.5} />
-              ) : (
-                <AppIcon icon={Add01Icon} size={20} color="#155dfc" fill="#155dfc" strokeWidth={3} />
-              )}
-            </Pressable>
-          ) : (
-            <View className="flex-row items-center gap-2.5 rounded-[8px] border border-[#155dfc] bg-white px-3 py-2">
-              <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`} onPress={() => decrementItem(lineId)} hitSlop={12}>
-                <AppIcon icon={MinusSignIcon} size={20} color="#155dfc" strokeWidth={2.5} />
-              </Pressable>
-              <Text className="min-w-[12px] text-center text-[13px] font-extrabold text-[#155dfc]">{quantity}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`} onPress={() => incrementItem(lineId)} hitSlop={12}>
-                <AppIcon icon={Add01Icon} size={20} color="#155dfc" strokeWidth={2.5} />
-              </Pressable>
+          {freshnessTag && (
+            <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
+              <Text className="text-[9px] font-semibold text-ink">{freshnessTag}</Text>
             </View>
           )}
+
+          <View className="absolute bottom-0 right-0 z-10">{cartControl}</View>
         </View>
-      </View>
+      )}
 
       {/* Pack, price and product name, followed by confirmed low stock. */}
       <View className="gap-1 px-0.5 pt-0">
-        {/* Compact pack size and dietary mark. */}
+        {/* Dietary mark in its own tile on the left; the pack size fills the
+            rest of the row, centred. Both tiles share one height and tint. */}
         <View className="mb-0.5 flex-row items-center gap-1.5">
           {/* Veg / non-veg mark — square outline + center dot, standard Indian
               food-label convention. isVeg defaults true (types.ts), only
               fish/meat set it false. */}
-          <View
-            className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border"
-            style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
-          >
-            <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+          <View className="h-[22px] w-[26px] items-center justify-center rounded-[6px] bg-[#F1F1F4]">
+            <View
+              className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border bg-white"
+              style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
+            >
+              <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+            </View>
           </View>
-          {/* Pack size: soft grey chip, no border, about the veg mark's height. */}
-          <View className="justify-center rounded-[4px] bg-[#F1F1F4] px-1.5 py-[1px]">
-            <Text className="text-[9.5px] font-semibold leading-[12px] text-black/60">{weight}</Text>
+          <View className="h-[22px] flex-1 items-center justify-center rounded-[6px] bg-[#F1F1F4] px-1.5">
+            <Text numberOfLines={1} className="text-[11px] font-semibold text-black/65">{weight}</Text>
           </View>
-
         </View>
 
-        <ProductPriceRow price={price} originalPrice={originalPrice} size={17} onDark={onDark} />
+        <ProductPriceRow price={price} originalPrice={originalPrice} size={17} onDark={onDark} showDiscount={false} />
+        {/* Discount on its own line under the price, so the price row never shrinks to fit it. */}
+        {discount ? (
+          <Text className={`text-[12px] font-bold leading-[15px] ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discount}% off</Text>
+        ) : null}
 
         {/* Per-kg/litre price, right under the amount. */}
         {product.unitPriceLabel && (
@@ -161,6 +169,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', compact = fa
           </View>
         ) : null}
       </View>
+      {!showImage && cartControl && <View className="mt-2 self-start">{cartControl}</View>}
     </Pressable>
   );
 }

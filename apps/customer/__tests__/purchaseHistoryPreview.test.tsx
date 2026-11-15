@@ -90,7 +90,7 @@ it('previews four real orders and exposes the remaining history only after See a
     await waitFor(() => expect(view.queryByText('Store 6')).toBeNull());
 
     await fireEvent.press(view.getByRole('tab', { name: 'Cancelled' }));
-    await view.findByText('No matching orders');
+    await view.findByText(/No orders in this view yet/);
     expect(view.getByText('Picked Just For You')).toBeTruthy();
     expect(view.getByRole('tab', { name: 'Cancelled', selected: true })).toBeTruthy();
     expect(jest.mocked(fetchOrderHistory).mock.lastCall?.[0].get('status')).toBe('cancelled');

@@ -128,7 +128,7 @@ function ManagedSection({
         products={products}
         sectionTitle={section.title || 'products'}
         label={section.buttonLabel}
-        avatarCount={section.kind === 'hero' ? 2 : 3}
+        avatarCount={section.showProductImages === false ? 0 : section.kind === 'hero' ? 2 : 3}
         onPress={() => openCollection()}
       />
     </View>

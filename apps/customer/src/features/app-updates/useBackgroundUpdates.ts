@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import * as Updates from 'expo-updates';
 import { onlineStore } from '../../network/online';
-import { createBackgroundUpdates } from './backgroundUpdates';
+import { CHECK_INTERVAL_MS, createBackgroundUpdates } from './backgroundUpdates';
 
 const download = createBackgroundUpdates({
   check: () => Updates.checkForUpdateAsync(),
@@ -23,7 +23,9 @@ export function useBackgroundUpdates() {
     };
     const foreground = AppState.addEventListener('change', schedule);
     const network = onlineStore.subscribe(schedule);
+    // Also recheck while the app stays open, so a push shows without a relaunch.
+    const periodic = setInterval(schedule, CHECK_INTERVAL_MS);
     schedule();
-    return () => { mounted = false; clearTimeout(timer); foreground.remove(); network(); };
+    return () => { mounted = false; clearTimeout(timer); clearInterval(periodic); foreground.remove(); network(); };
   }, []);
 }

@@ -83,13 +83,14 @@ function CollectionContent({ route, navigation }: Props) {
   const sidebarItems = isCatalogueTile
     ? [{ id: 'all', title: selected?.title ?? 'All', imageUrl: selected?.imageUrl }, ...scopedCategories.map(category => ({ id: category.id, title: category.label, imageUrl: category.imageUrl }))]
     : displayItems;
+  const showSidebar = accessible && !isProductCollection && sidebarItems.length > 0;
+  const columns = showSidebar ? 2 : 3;
   if (parentCategoryId) {
     return <CategoryDetailContent
       key={parentCategoryId}
       categoryId={parentCategoryId}
       label={title}
       showFilters={false}
-      productColumns={3}
       productBottomPadding={paddingBottom}
       onBack={() => navigation.goBack()}
       onSearch={() => navigation.navigate('Search')}
@@ -104,7 +105,7 @@ function CollectionContent({ route, navigation }: Props) {
         onSearch={() => navigation.navigate('Search')}
       />
       <View className="min-h-0 flex-1 flex-row">
-        {accessible && !isProductCollection && items.length > 0 && (
+        {showSidebar && (
           <View className="w-[86px] border-r border-ink/5">
             <FlatList
               data={sidebarItems}
@@ -128,9 +129,9 @@ function CollectionContent({ route, navigation }: Props) {
             <ContentState hasLocation={inventory.hasLocation} isLoading isError={false} retry={inventory.retry} emptyMessage="" />
           ) : products.length > 0 || hasNextPage ? (
             <FlashList
-              key={isProductCollection ? 'custom-products' : 'catalogue-products'}
+              key={columns}
               data={products}
-              numColumns={3}
+              numColumns={columns}
               onEndReached={loadMore}
               onEndReachedThreshold={0.5}
               ListFooterComponent={

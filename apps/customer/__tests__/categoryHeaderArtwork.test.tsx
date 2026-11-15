@@ -1,6 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { HomeCategoryBanner } from '../src/screens/home/category-page/components/HomeCategoryBanner';
-import { MeatCategoryBanner } from '../src/screens/home/category-page/components/MeatCategoryBanner';
 jest.mock('../src/components/AppImage', () => ({ AppImage: (props: object) => {
   const renderImage = require('react').createElement;
   return renderImage(require('react-native').Image, { ...props, testID: 'header-artwork' });
@@ -19,8 +18,11 @@ it('resets to the existing default when the override is removed', async () => {
   expect(view.getByTestId('header-artwork', { includeHiddenElements: true }).props.source).toBe(1);
 });
 it('allows a Meat header override and preserves its bundled fallback', async () => {
-  const view = await render(<MeatCategoryBanner imageUri={imageUri} />);
+  const bundledMeatArtwork = require('../assets/illustrations/meat-section-banner.png');
+  const view = await render(
+    <HomeCategoryBanner imageUri={imageUri} imageAsset={bundledMeatArtwork} bottomEdge="straight" />,
+  );
   expect(view.getByTestId('header-artwork', { includeHiddenElements: true }).props.source).toEqual({ uri: imageUri });
   await fireEvent(view.getByTestId('header-artwork', { includeHiddenElements: true }), 'error');
-  expect(view.getByTestId('header-artwork', { includeHiddenElements: true }).props.source).not.toEqual({ uri: imageUri });
+  expect(view.getByTestId('header-artwork', { includeHiddenElements: true }).props.source).toEqual(bundledMeatArtwork);
 });

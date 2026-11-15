@@ -37,7 +37,24 @@ export function useHomeContent() {
         if (!Number.isSafeInteger(row.revision) || row.revision < 1) continue;
         if (row.tabKey.startsWith('custom-') && row.homeTabId !== row.tabKey.slice(7)) continue;
         try {
-          result.push({ ...row, content: validateContent(row.content) });
+          const content = validateContent(row.content);
+          if (Array.isArray(row.productImagesHiddenSectionIds) && row.productImagesHiddenSectionIds.length > 0) {
+            const hidden = new Set(row.productImagesHiddenSectionIds);
+            content.sections = content.sections.map((section) =>
+              section.kind === 'hero' && hidden.has(section.id)
+                ? { ...section, showProductImages: false }
+                : section,
+            );
+          }
+          if (row.categoryCardStyles) {
+            content.sections = content.sections.map((section) => {
+              const style = row.categoryCardStyles?.[section.id];
+              return section.kind === 'categories' && (style === 'standard' || style === 'photo')
+                ? { ...section, categoryCardStyle: style }
+                : section;
+            });
+          }
+          result.push({ ...row, content });
           seen.add(row.tabKey);
         } catch {
           // Malformed tab content — drop just this tab, keep the rest.

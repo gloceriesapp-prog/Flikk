@@ -26,8 +26,8 @@ it('blocks ordering for a closed store even if other checkout inputs are ready',
 
 it('explains closed-shop cart behavior in a single notice', async () => {
   const view = await render(<StoreClosedNotice />);
-  expect(view.getByText('Ordering is paused')).toBeTruthy();
-  expect(view.getByText('A store in your cart is closed. Keep adding items and place your order when it reopens.')).toBeTruthy();
+  expect(view.getByText('Store is closed')).toBeTruthy();
+  expect(view.getByText('Your cart is saved. You can keep adding items and place your order when the store reopens.')).toBeTruthy();
 });
 
 it('keeps stocked products addable and quantities editable while their shop is closed', () => {

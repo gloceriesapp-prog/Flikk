@@ -12,7 +12,7 @@ export function ContentProducts({
 }) {
   const productCard = (product: Product) => (
     <>
-      <GroceryProductTile product={product} previewOnly={false} />
+      <GroceryProductTile product={product} showImage={section.showProductImages !== false} />
       {section.id === 'something-new' && product.description && (
         <Text numberOfLines={3} className="mt-2 text-[11px] leading-4 text-ink/60">
           {product.description}

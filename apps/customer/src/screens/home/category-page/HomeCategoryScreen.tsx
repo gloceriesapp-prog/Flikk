@@ -10,13 +10,19 @@ import { useHomeTabs } from '../data/useHomeTabs';
 import { HomeCategoryContent, homeCategoryKind } from './HomeCategoryContent';
 import { useHomeBrowseScroll } from './useHomeBrowseScroll';
 import { HomeCategoryBanner } from './components/HomeCategoryBanner';
-import { MeatCategoryBanner } from './components/MeatCategoryBanner';
 import { storageUrl } from '../../../utils/storageUrl';
 import { useCopyImage } from '../../../api/appConfig';
 import { IconlyArrowLeft } from '../../../components/icons/iconly';
+import type { ComponentProps } from 'react';
 
 const GROCERY_HEADER_IMAGE_URI =
   storageUrl('Images/Royal%20Blue%20Tote%20of%20Indian%20Groceries.png');
+const CATEGORY_BANNERS: Partial<Record<string, Pick<ComponentProps<typeof HomeCategoryBanner>, 'imageAsset' | 'bottomEdge'>>> = {
+  festival: { imageAsset: require('../../../../assets/illustrations/diwali-section.png'), bottomEdge: 'festival' },
+  regional: { imageAsset: require('../../../../assets/illustrations/Village-section.png'), bottomEdge: 'regional' },
+  meat: { imageAsset: require('../../../../assets/illustrations/meat-section-banner.png'), bottomEdge: 'straight' },
+  fresh: { bottomEdge: 'straight' },
+};
 
 export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps<AppStackParamList, 'HomeCategory'>) {
   const isFocused = useIsFocused();
@@ -26,6 +32,10 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
   const categoryKind = tab ? homeCategoryKind(tab) : undefined;
   const isFestival = categoryKind === 'festival';
   const isMeat = categoryKind === 'meat' || categoryKind === 'meat-fish';
+  const banner = CATEGORY_BANNERS[isMeat ? 'meat' : categoryKind ?? ''];
+  const hasStraightHeader = [tab?.name, tab?.label].some((name) =>
+    ['chicken', 'dairy'].includes(name?.trim().toLowerCase() ?? ''),
+  );
   const { scrollHandler } = useHomeBrowseScroll();
   // Admin App content: home.groceries.headerImageUrl.
   const groceryHeaderImage = useCopyImage('home.groceries.headerImageUrl', GROCERY_HEADER_IMAGE_URI);
@@ -34,15 +44,15 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
     <View className="flex-1 bg-white">
       {isFocused && <StatusBar style="dark" />}
       <Animated.ScrollView className="flex-1" contentContainerClassName="pb-28" contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} onScroll={scrollHandler} scrollEventThrottle={16} bounces={false} overScrollMode="never">
-        {isMeat ? <MeatCategoryBanner imageUri={tab?.headerImageUrl} /> : <HomeCategoryBanner
-          imageAsset={isFestival ? require('../../../../assets/illustrations/diwali-section.png') : categoryKind === 'regional' ? require('../../../../assets/illustrations/Village-section.png') : undefined}
+        <HomeCategoryBanner
+          imageAsset={banner?.imageAsset}
+          bottomEdge={hasStraightHeader ? 'straight' : banner?.bottomEdge}
           imageUri={tab?.headerImageUrl || (isFestival ? tab?.festival?.headerImageUri ?? undefined : categoryKind === 'groceries' ? groceryHeaderImage : undefined)}
           fallbackImageUri={categoryKind === 'groceries' ? groceryHeaderImage : undefined}
           backgroundColor={isFestival ? tab?.festival?.backgroundColor : undefined}
           imageFit={isFestival ? 'contain' : 'cover'}
           seamless={isFestival}
-          bottomEdge={isFestival ? 'festival' : categoryKind === 'regional' ? 'regional' : undefined}
-        />}
+        />
         {tab ? (
           <HomeCategoryContent key={tab.id} tab={tab} />
         ) : (

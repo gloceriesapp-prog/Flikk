@@ -32,6 +32,7 @@ interface Props {
   product: Product;
   widthClassName?: string;
   showDiscountBadge?: boolean;
+  showImage?: boolean;
   compact?: boolean;
   onDark?: boolean;
   // Perf (issue #22): a parent section can compute the shared delivery
@@ -53,6 +54,7 @@ const ProductCardShell = memo(function ProductCardShell({
   product,
   widthClassName,
   showDiscountBadge,
+  showImage,
   compact,
   onDark,
   isAvailable,
@@ -61,6 +63,7 @@ const ProductCardShell = memo(function ProductCardShell({
   product: Product;
   widthClassName?: string;
   showDiscountBadge?: boolean;
+  showImage?: boolean;
   compact?: boolean;
   onDark?: boolean;
   isAvailable: boolean;
@@ -92,6 +95,7 @@ const ProductCardShell = memo(function ProductCardShell({
         product={searchProductDisplay(product)}
         widthClassName={widthClassName}
         showDiscountBadge={showDiscountBadge}
+        showImage={showImage}
         compact={compact}
         onDark={onDark}
         onPress={onPress}
@@ -108,13 +112,14 @@ const ProductCardShell = memo(function ProductCardShell({
 // Self-subscribing variant: one clock + delivery-settings subscription PER
 // card. Used wherever a section didn't lift them (hook rules forbid calling
 // these conditionally inside ProductCard, hence the separate component).
-function SelfSubscribedProductCard({ product, widthClassName, showDiscountBadge, compact, onDark }: Props) {
+function SelfSubscribedProductCard({ product, widthClassName, showDiscountBadge, showImage, compact, onDark }: Props) {
   const availability = useProductAvailability(product);
   return (
     <ProductCardShell
       product={product}
       widthClassName={widthClassName}
       showDiscountBadge={showDiscountBadge}
+      showImage={showImage}
       compact={compact}
       onDark={onDark}
       isAvailable={availability.isAvailable}
@@ -133,6 +138,7 @@ export function ProductCard(props: Props) {
         product={props.product}
         widthClassName={props.widthClassName}
         showDiscountBadge={props.showDiscountBadge}
+        showImage={props.showImage}
         compact={props.compact}
         onDark={props.onDark}
         isAvailable={props.isAvailable}

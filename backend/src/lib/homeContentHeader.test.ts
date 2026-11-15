@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_CONTENT, validateContent } from '../../../packages/home-content/index.js';
+import { createSection, DEFAULT_CONTENT, validateContent } from '../../../packages/home-content/index.js';
 import { mergeManagedTabs } from '../../../apps/customer/src/screens/home/content/mergeTabs';
-import { publicHomeHeader } from './homeContentHeader.js';
+import { publicHomeContent } from './publicHomeContent.js';
 const image = 'https://images.gloceries.com/appsui/udupi-header.webp';
 describe('editable quick-category headers', () => {
   it('accepts a public image and preserves old documents and reset-to-default', () => {
@@ -16,10 +16,10 @@ describe('editable quick-category headers', () => {
     }
   });
   it('keeps the public version-1 document free of new keys for old installed clients', () => {
-    const { content, headerImageUrl } = publicHomeHeader({ ...DEFAULT_CONTENT.regional, headerImageUrl: image });
+    const { content, headerImageUrl } = publicHomeContent({ ...DEFAULT_CONTENT.regional, headerImageUrl: image });
     expect(content).toEqual(DEFAULT_CONTENT.regional);
     expect(headerImageUrl).toBe(image);
-    expect(publicHomeHeader(DEFAULT_CONTENT.regional)).toEqual({ content: DEFAULT_CONTENT.regional });
+    expect(publicHomeContent(DEFAULT_CONTENT.regional)).toEqual({ content: DEFAULT_CONTENT.regional });
   });
   it('maps the header separately from the quick-category card artwork, including custom tabs', () => {
     const id = '00000000-0000-4000-8000-000000000001';
@@ -28,5 +28,32 @@ describe('editable quick-category headers', () => {
     expect(mergeManagedTabs(tabs, [record])[0]).toMatchObject({ imageUrl: 'card.webp', headerImageUrl: image });
     expect(mergeManagedTabs(tabs, [{ ...record, tabKey: `custom-${id}` as const }])[0]?.headerImageUrl).toBe(image);
     expect(mergeManagedTabs([], [record])[0]?.headerImageUrl).toBe(image);
+  });
+});
+
+it('stores the split-banner choice and sends it outside the legacy content document', () => {
+  const hero = { ...createSection('hero', 'split-banner'), imageUrl: image };
+  const original = { ...DEFAULT_CONTENT.regional, sections: [hero] };
+  const saved = validateContent({ ...original, sections: [{ ...hero, showProductImages: false }] });
+  expect(saved.sections[0]?.showProductImages).toBe(false);
+  expect(publicHomeContent(saved)).toEqual({
+    content: original,
+    productImagesHiddenSectionIds: [hero.id],
+  });
+  expect(publicHomeContent(original)).toEqual({ content: original });
+
+  for (const section of [{ ...hero, showProductImages: 'false' }, { ...hero, kind: 'products', showProductImages: false }]) {
+    expect(() => validateContent({ ...original, sections: [section] })).toThrow('showProductImages');
+  }
+});
+
+it('keeps category card styling out of the strict version-1 content document', () => {
+  const section = createSection('categories', 'aisles', 'Aisles');
+  const document = { ...DEFAULT_CONTENT.regional, sections: [section] };
+  const styled = { ...document, sections: [{ ...section, categoryCardStyle: 'photo' }] };
+
+  expect(publicHomeContent(styled)).toEqual({
+    content: document,
+    categoryCardStyles: { aisles: 'photo' },
   });
 });

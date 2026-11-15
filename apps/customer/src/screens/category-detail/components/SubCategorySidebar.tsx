@@ -1,4 +1,5 @@
 import { ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SubCategorySidebarItem } from './SubCategorySidebarItem';
 import type { DetailSubCategory } from '../types';
 
@@ -8,21 +9,18 @@ interface Props {
   onSelect: (id: string) => void;
 }
 
+// A grey rail inset from the screen edge, rounded on every corner; the active
+// sub-category lifts out of it as a white card. The rail runs the full height
+// and stops just above the bottom safe area, so its rounded bottom shows; the
+// entries scroll inside it. Width lives on
+// the outer View: a ScrollView's width class doesn't reliably constrain it
+// inside a flex-row.
 export function SubCategorySidebar({ items, selectedId, onSelect }: Props) {
+  const { bottom } = useSafeAreaInsets();
   return (
-    // Width lives on this fixed-size outer View, not the ScrollView's
-    // className — a ScrollView's width class doesn't reliably constrain it
-    // inside a flex-row sibling, the same class of gotcha as LinearGradient/
-    // BlurView elsewhere in this app needing style instead of className.
-    // No border-r divider line — the sidebar/grid split already reads
-    // clearly from the plain-white/mist-tinted background contrast alone,
-    // per an explicit ask to drop the hairline.
-    // Width/tile size bumped up slightly (84 -> 96, tile 56 -> 64 in
-    // SubCategorySidebarItem.tsx) per an explicit "make it look even
-    // better" ask — bigger, easier-to-tap tiles read more premium than the
-    // earlier compact rail.
-    <View style={{ width: 86 }} className="bg-white">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="gap-6 py-5">
+    <View style={{ width: 84, marginLeft: 10, marginBottom: Math.max(bottom - 12, 8) }}
+      className="overflow-hidden rounded-[22px] bg-[#F3F4F6]">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="gap-3 px-1.5 pb-6 pt-2">
         {items.map((item) => (
           <SubCategorySidebarItem
             key={item.id}

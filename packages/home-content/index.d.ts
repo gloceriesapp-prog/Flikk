@@ -40,6 +40,7 @@ export interface HomeContentSection {
   imageUrl: string;
   imageAspectRatio: number;
   imageFade: boolean;
+  showProductImages?: boolean;
   buttonEnabled: boolean;
   buttonLabel: string;
   hideWhenEmpty: boolean;
@@ -54,6 +55,8 @@ export interface HomeContentDocument {
   sections: HomeContentSection[];
 }
 export interface HomeContentRecord {
+  productImagesHiddenSectionIds?: string[];
+  categoryCardStyles?: Record<string, CategoryCardStyle>;
   tabKey: HomeContentKey;
   homeTabId: string | null;
   revision: number;

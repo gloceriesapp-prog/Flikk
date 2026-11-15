@@ -145,7 +145,7 @@ export function StoreListScreen({ navigation }: Props) {
               onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
               onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
             />
-            <PopularBrands previewLimit={5} cardBackground="white" alwaysShowSeeAll showPreviewBrand={__DEV__}
+            <PopularBrands previewLimit={5} cardBackground="white" alwaysShowSeeAll
               onSelect={brand => navigation.navigate('BrandProducts', { brand })}
               onSeeAll={() => navigation.navigate('AllBrands')} />
             <NearestToYouSection />

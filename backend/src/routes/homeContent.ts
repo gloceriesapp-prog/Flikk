@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import { publicHomeHeader } from '../lib/homeContentHeader.js';
+import { publicHomeContent } from '../lib/publicHomeContent.js';
 import { supabase } from '../db/supabase.js';
 import { logger } from '../lib/logger.js';
 import { invalidateInventoryCache, invalidateShortCache } from '../middleware/shortCache.js';
@@ -180,7 +180,7 @@ homeContentRouter.get('/', async (_req, res, next) => {
         homeTabId: row.home_tab_id,
         revision: row.revision,
         updatedAt: row.updated_at,
-        ...publicHomeHeader(row.content),
+        ...publicHomeContent(row.content),
       })),
     );
   } catch (err) {

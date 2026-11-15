@@ -11,14 +11,10 @@ interface Props {
   previewLimit?: 5 | 10;
   titleSpacing?: number;
   alwaysShowSeeAll?: boolean;
-  showPreviewBrand?: boolean;
   cardBackground?: 'gray' | 'white';
 }
 
-const SAMPLE_PREFIX = 'design-preview-brand-';
-const isSampleBrand = (brand: PopularBrand) => brand.id.startsWith(SAMPLE_PREFIX);
-
-export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, titleSpacing = 8, alwaysShowSeeAll = false, showPreviewBrand = false, cardBackground = 'gray' }: Props) {
+export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, titleSpacing = 8, alwaysShowSeeAll = false, cardBackground = 'gray' }: Props) {
   const isFocused = useIsFocused();
   const query = useQuery({
     queryKey: ['popular-brands', 'preview'],
@@ -30,16 +26,9 @@ export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, titleSpac
     retry: 1,
   });
   const brands = query.data ?? [];
-  // A design sample never enters API/cache data or a release build.
-  const showSample = __DEV__ && showPreviewBrand;
-  const realBrands = brands.slice(0, previewLimit);
-  const visibleBrands = showSample
-    ? [...realBrands, ...Array.from({ length: previewLimit - realBrands.length }, (_, index) => ({
-      id: `${SAMPLE_PREFIX}${index}`, name: `Sample Brand ${index + 1}`, imageUrl: '',
-    }))]
-    : realBrands;
+  const visibleBrands = brands.slice(0, previewLimit);
 
-  if (!brands.length && !query.isPending && !query.isError && !showSample) return null;
+  if (!brands.length && !query.isPending && !query.isError) return null;
 
   return (
     <View className="pt-3">
@@ -59,15 +48,9 @@ export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, titleSpac
         {visibleBrands.map(brand => (
           <View key={brand.id} style={styles.tile}>
             <Pressable accessibilityRole="button" accessibilityLabel={brand.name}
-              accessibilityState={{ disabled: isSampleBrand(brand) }} disabled={isSampleBrand(brand)}
-              onPress={() => { if (!isSampleBrand(brand)) onSelect(brand); }}
+              onPress={() => onSelect(brand)}
               style={[styles.surface, cardBackground === 'white' && styles.whiteSurface]} className="aspect-square overflow-hidden rounded-2xl active:opacity-75">
-              {isSampleBrand(brand) ? (
-                <View className="flex-1 items-center justify-center px-1">
-                  <Text className="text-center text-[10px] font-bold text-ink/70">SAMPLE</Text>
-                  <Text className="mt-1 text-[9px] text-ink/50">Preview</Text>
-                </View>
-              ) : <AppImage source={{ uri: brand.imageUrl }} style={styles.image} contentFit="contain" />}
+              <AppImage source={{ uri: brand.imageUrl }} style={styles.image} contentFit="contain" />
             </Pressable>
           </View>
         ))}

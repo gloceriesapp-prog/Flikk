@@ -164,6 +164,13 @@ export function SectionEditor({
       )}
       {section.kind !== 'footer' && section.kind !== 'brands' && (
         <div className="flex flex-wrap gap-4">
+          {section.kind === 'hero' && (
+            <Toggle
+              label="Show product images"
+              checked={section.showProductImages !== false}
+              onChange={(showProductImages) => update({ showProductImages: showProductImages ? undefined : false })}
+            />
+          )}
           <Toggle
             label="Hide when there are no available items"
             checked={section.hideWhenEmpty}

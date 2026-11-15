@@ -18,6 +18,11 @@ const regionalEdge = `M0 3 ${Array.from({ length: regionalScallopCount }, (_, in
   const x = index * regionalScallopWidth;
   return `C${x + 4} 15 ${x + 14} 10 ${x + 18} 21 C${x + 22} 10 ${x + 32} 15 ${x + 36} 3`;
 }).join(' ')} L${regionalEdgeWidth} 24 H0 Z`;
+const bannerEdges = {
+  festival: { height: 10, viewBox: '0 0 400 16', path: festivalEdge },
+  regional: { height: 20, viewBox: `0 0 ${regionalEdgeWidth} 24`, path: regionalEdge },
+};
+
 export function HomeCategoryBanner({
   imageUri,
   fallbackImageUri = DEFAULT_BANNER_URI,
@@ -33,11 +38,12 @@ export function HomeCategoryBanner({
   backgroundColor?: string;
   imageFit?: 'cover' | 'contain';
   seamless?: boolean;
-  bottomEdge?: 'festival' | 'regional';
+  bottomEdge?: keyof typeof bannerEdges | 'straight';
 }) {
   const [failedUri, setFailedUri] = useState<string>();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const edge = bottomEdge && bottomEdge !== 'straight' ? bannerEdges[bottomEdge] : undefined;
   return (
     <View className="overflow-hidden" style={{
       height: Math.max(width * 7 / 16, 60) + insets.top,
@@ -56,11 +62,10 @@ export function HomeCategoryBanner({
         transition={0}
         accessible={false}
       />
-      {bottomEdge ? (
-        <Svg pointerEvents="none" width="100%" height={bottomEdge === 'festival' ? 10 : 20}
-          viewBox={bottomEdge === 'festival' ? '0 0 400 16' : `0 0 ${regionalEdgeWidth} 24`}
+      {edge ? (
+        <Svg pointerEvents="none" width="100%" height={edge.height} viewBox={edge.viewBox}
           preserveAspectRatio="none" style={styles.edge} accessible={false}>
-          <Path d={bottomEdge === 'festival' ? festivalEdge : regionalEdge} fill="#FFFFFF" />
+          <Path d={edge.path} fill="#FFFFFF" />
         </Svg>
       ) : null}
     </View>
