@@ -3,6 +3,7 @@
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 import { createItem, type HomeContentSection, type HomeContentItem } from '@/lib/homeContent';
 import { Field, inputClass, Toggle } from './Fields';
+import { PopularBrandPicker } from './PopularBrandPicker';
 import { SelectionEditor } from './SelectionEditor';
 
 export function SectionEditor({
@@ -66,7 +67,7 @@ export function SectionEditor({
             className={inputClass}
           />
         </Field>
-        {section.kind !== 'footer' && section.kind !== 'festival' && (
+        {section.kind !== 'footer' && section.kind !== 'festival' && section.kind !== 'brands' && (
           <Field label="Visible items" hint="Maximum 24 products, shops or tiles per section.">
             <input
               type="number"
@@ -78,7 +79,7 @@ export function SectionEditor({
             />
           </Field>
         )}
-        {['products', 'hero', 'categories', 'brands'].includes(section.kind) && (
+        {['products', 'hero', 'categories'].includes(section.kind) && (
           <>
             <Field label="Layout">
               <select
@@ -158,7 +159,7 @@ export function SectionEditor({
           />
         </div>
       )}
-      {section.kind !== 'footer' && (
+      {section.kind !== 'footer' && section.kind !== 'brands' && (
         <div className="flex flex-wrap gap-4">
           <Toggle
             label="Hide when there are no available items"
@@ -172,7 +173,7 @@ export function SectionEditor({
           />
         </div>
       )}
-      {section.kind !== 'footer' && section.buttonEnabled && (
+      {section.kind !== 'footer' && section.kind !== 'brands' && section.buttonEnabled && (
         <Field label="Button text">
           <input
             value={section.buttonLabel}
@@ -188,11 +189,12 @@ export function SectionEditor({
           onChange={(selection) => update({ selection })}
         />
       )}
-      {['categories', 'brands'].includes(section.kind) && (
+      {section.kind === 'brands' && <PopularBrandPicker key={section.id} items={section.items} onChange={items => update({ items })} />}
+      {section.kind === 'categories' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-slate-800">
-              {section.kind === 'brands' ? 'Brands' : 'Category tiles'} · {section.items.length}/40
+              Category tiles · {section.items.length}/40
             </h3>
             <button
               type="button"
@@ -200,22 +202,16 @@ export function SectionEditor({
               onClick={() => {
                 const item = createItem(
                   `item-${crypto.randomUUID()}`,
-                  section.kind === 'brands' ? 'New brand' : 'New category',
+                  'New category',
                 );
                 item.selection.mode = 'manual';
                 update({ items: [...section.items, item] });
               }}
               className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-30"
             >
-              + Add {section.kind === 'brands' ? 'brand' : 'category'}
+              + Add category
             </button>
           </div>
-          {section.kind === 'brands' && (
-            <p className="text-xs leading-5 text-slate-500">
-              Only add brands and origins you have verified. Choose their real catalogue products;
-              the app does not infer a producer’s origin from product names.
-            </p>
-          )}
           {section.items.map((item, index) => (
             <div key={item.id} className="rounded-xl border border-slate-200 p-4">
               <div className="mb-3 flex justify-end">
@@ -269,7 +265,7 @@ export function SectionEditor({
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Tile title" hint={section.kind === 'categories' ? 'Custom label, for example Rice & Atta. Choose its catalogue contents below.' : undefined}>
+                  <Field label="Tile title" hint="Custom label, for example Rice & Atta. Choose its catalogue contents below.">
                     <input
                       value={item.title}
                       maxLength={120}
@@ -279,10 +275,10 @@ export function SectionEditor({
                   </Field>
                   <div className="space-y-1.5 sm:col-span-2">
                     <span className="text-xs font-semibold text-slate-600">
-                      {section.kind === 'brands' ? 'Brand logo or image' : 'Tile image'}
+                      Tile image
                     </span>
                     <div className="flex items-center gap-4">
-                      <ProductImageUpload imageUrl={item.imageUrl} bucket={section.kind === 'categories' ? 'categories' : 'appsui'} onChange={(url) => updateItem(index, { imageUrl: url })} />
+                      <ProductImageUpload imageUrl={item.imageUrl} bucket="categories" onChange={(url) => updateItem(index, { imageUrl: url })} />
                       <span className="text-xs leading-5 text-slate-500">
                         Click the box to upload a JPG, PNG or WebP (up to 5 MB). It appears on this card in the app after you publish.
                         {!item.imageUrl && ' Until then the app uses a product photo from this tile, or just the name.'}
@@ -307,16 +303,6 @@ export function SectionEditor({
                       className={inputClass}
                     />
                   </Field>
-                  {section.kind === 'brands' && (
-                    <Field label="Place of origin">
-                      <input
-                        value={item.origin}
-                        maxLength={120}
-                        onChange={(event) => updateItem(index, { origin: event.target.value })}
-                        className={inputClass}
-                      />
-                    </Field>
-                  )}
                   <Field label="Short description">
                     <input
                       value={item.description}
@@ -327,7 +313,7 @@ export function SectionEditor({
                   </Field>
                 </div>
                 <SelectionEditor
-                  categoryTile={section.kind === 'categories'}
+                  categoryTile
                   value={item.selection}
                   onChange={(selection) => updateItem(index, { selection })}
                 />

@@ -17,6 +17,7 @@ import {
 import { ContentState } from './ContentState';
 import { ContentImage } from './ContentImage';
 import { ContentProducts } from './ContentProducts';
+import { ContentPopularBrands } from './ContentPopularBrands';
 import { ContentTiles } from './ContentTiles';
 import { mapContentProduct } from './productMapping';
 import { HomeGrownBackground } from '../fresh/home-grown-nearby/HomeGrownBackground';
@@ -34,6 +35,7 @@ function ManagedSection({
   inventory: Inventory;
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  if (section.kind === 'brands') return <ContentPopularBrands section={section} />;
   const products = selectContentProducts(
     inventory.visibleProducts,
     section.selection,
@@ -63,7 +65,7 @@ function ManagedSection({
   const hasItems =
     section.kind === 'stores'
       ? shops.length > 0
-      : ['categories', 'brands'].includes(section.kind)
+      : section.kind === 'categories'
         ? items.length > 0
         : products.length > 0;
   if (
@@ -113,11 +115,9 @@ function ManagedSection({
     <ContentState
       {...inventory}
       emptyMessage={
-        section.kind === 'brands'
-          ? 'Local brands will appear here soon.'
-          : section.kind === 'stores'
-            ? 'No nearby shops have these products available right now.'
-            : 'No available products nearby right now.'
+        section.kind === 'stores'
+          ? 'No nearby shops have these products available right now.'
+          : 'No available products nearby right now.'
       }
     />
   );
@@ -189,7 +189,7 @@ function ManagedSection({
           {button}
         </>
       )}
-      {(section.kind === 'categories' || section.kind === 'brands') && (
+      {section.kind === 'categories' && (
         <>
           {items.length ? (
             <ContentTiles

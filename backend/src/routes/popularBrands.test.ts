@@ -6,7 +6,7 @@ vi.mock('../customer-experience/browse.js', () => ({ deliveryStores: vi.fn() }))
 import { categoriesRouter } from './categories.js';
 let query: Record<string, ReturnType<typeof vi.fn>>;
 beforeEach(() => {
-  query = Object.fromEntries(['select', 'eq', 'not', 'order', 'limit', 'gt'].map(key => [key, vi.fn().mockReturnThis()]));
+  query = Object.fromEntries(['select', 'eq', 'not', 'order', 'limit', 'gt', 'in'].map(key => [key, vi.fn().mockReturnThis()]));
   Object.assign(query, { then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: mock.rows, error: null }).then(resolve) });
   mock.query = query;
   mock.rows = Array.from({ length: 51 }, (_, i) => ({ id: String(i), name: `Brand ${i}`, logo_url: 'https://example.com/logo.png', popular_image_url: null, popular_position: i + 1 }));
@@ -41,4 +41,17 @@ it.each(['0', '-1', '1.5', '1001', ['1'], 'invalid'])('rejects malformed directo
   const { next, result } = await request('/popular-brands/all', { after });
   expect(result).toBeUndefined();
   expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+});
+
+it('resolves selected brands in section order, skipping removed brands and duplicate IDs', async () => {
+  const first = 'ad241650-486b-4d6a-9891-feb2576dee01';
+  const second = 'ad241650-486b-4d6a-9891-feb2576dee02';
+  const removed = 'ad241650-486b-4d6a-9891-feb2576dee03';
+  mock.rows = [{ ...mock.rows[0], id: second }, { ...mock.rows[1], id: first }];
+  const { result } = await request('/popular-brands/selection', { ids: [first, removed, second, first].join(',') });
+  expect(query.eq).toHaveBeenCalledWith('is_active', true);
+  expect(query.not).toHaveBeenCalledWith('popular_position', 'is', null);
+  expect(result.map((brand: { id: string }) => brand.id)).toEqual([first, second]);
+  const invalid = await request('/popular-brands/selection', { ids: 'invalid' });
+  expect(invalid.next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
 });
