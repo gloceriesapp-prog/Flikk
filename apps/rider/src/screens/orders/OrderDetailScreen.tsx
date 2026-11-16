@@ -487,8 +487,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           // (DeliveryNavigation). Primary (blue) CTA.
           <Pressable
             onPress={() => navigation.navigate('DeliveryNavigation', { orderId })}
-            className="h-14 items-center justify-center rounded-2xl"
-            style={({ pressed }) => ({ backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 })}
+            className="h-14 items-center justify-center rounded-2xl active:opacity-85"
+            style={{ backgroundColor: colors.primary }}
           >
             <Text className="text-[15px] font-bold text-white">Continue to customer</Text>
           </Pressable>

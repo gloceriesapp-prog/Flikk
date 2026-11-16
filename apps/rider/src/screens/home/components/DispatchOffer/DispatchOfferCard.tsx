@@ -123,8 +123,10 @@ export const DispatchOfferCard = memo(function DispatchOfferCard({ offer, onAcce
         <Pressable
           onPress={handleAccept}
           disabled={state === 'accepting'}
-          className="h-14 flex-row items-center justify-center gap-2 rounded-full"
-          style={({ pressed }) => ({ backgroundColor: colors.lime, opacity: pressed || state === 'accepting' ? 0.7 : 1 })}
+          // Static style: NativeWind drops a function style next to className,
+          // which left the button with no fill (ink text on the ink card).
+          className="h-14 flex-row items-center justify-center gap-2 rounded-full active:opacity-70"
+          style={{ backgroundColor: colors.lime, opacity: state === 'accepting' ? 0.7 : 1 }}
         >
           {state === 'accepting' ? (
             <ActivityIndicator size="small" color={colors.ink} />
