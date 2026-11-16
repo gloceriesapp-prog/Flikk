@@ -1,4 +1,4 @@
-// Rider card remains visible for active orders, including assignment pending.
+// Show the delivery partner during tracking and in completed order details.
 import { Call02Icon } from '@hugeicons/core-free-icons';
 import { Alert, Linking, Pressable, Text, View } from 'react-native';
 import type { ApiOrder } from '../../../api/orders';
@@ -13,8 +13,9 @@ interface Props {
 // Fixed generic rider avatar — deliberately NOT the rider's real photo:
 // riders.photo_url is an unvalidated path in the private rider-documents
 // bucket (also holds Aadhaar/DL scans), so it's never surfaced to customers.
-// Same image for every assigned rider; the real identity is name + phone
-// below. No rider rating source exists either, so the card shows no rating.
+// Same image for every assigned rider; the real identity is the name below.
+// The rider's number is never shown: Call hands it straight to the dialer.
+// No rider rating source exists either, so the card shows no rating.
 const RIDER_AVATAR =
   'https://images.gloceries.com/appsui/rider-profile.png';
 
@@ -28,12 +29,12 @@ function riderDialNumber(phone: string | undefined): string | null {
 
 export function DeliveryRiderCard({ order }: Props) {
   const rider = order.riders;
-  if (!['placed', 'packed', 'out_for_delivery'].includes(order.status)) return null;
+  const delivered = order.status === 'delivered';
+  if (!delivered && !['placed', 'packed', 'out_for_delivery'].includes(order.status)) return null;
 
   const hasArrived = order.status === 'out_for_delivery' && !!order.rider_arrived_at;
   const storeName = order.stores?.name ?? 'The store';
   const dialNumber = riderDialNumber(rider?.phone);
-  const displayNumber = dialNumber?.replace(/^(\+91)(\d{5})(\d{5})$/, '$1 $2 $3');
 
   function callRider() {
     if (!dialNumber) return;
@@ -45,15 +46,17 @@ export function DeliveryRiderCard({ order }: Props) {
   return (
     <View className="w-full rounded-3xl bg-white p-5">
       <Text className="text-[14.5px] font-medium leading-6 text-ink/90">
-        {rider
-          ? hasArrived
-            ? `${rider.name} picked up your order from ${storeName}.`
-            : order.status === 'out_for_delivery'
-              ? `${rider.name} picked up your order from ${storeName} and is headed your way.`
-              : order.status === 'packed'
-                ? `${rider.name} will pick up your order from ${storeName}.`
-                : `${rider.name} will pick up your order from ${storeName} once it’s ready.`
-          : 'We’ll show your delivery partner here once a rider is assigned.'}
+        {delivered
+          ? (rider ? 'Delivered by' : 'Delivery partner')
+          : rider
+            ? hasArrived
+              ? `${rider.name} picked up your order from ${storeName}.`
+              : order.status === 'out_for_delivery'
+                ? `${rider.name} picked up your order from ${storeName} and is headed your way.`
+                : order.status === 'packed'
+                  ? `${rider.name} will pick up your order from ${storeName}.`
+                  : `${rider.name} will pick up your order from ${storeName} once it’s ready.`
+            : 'We’ll show your delivery partner here once a rider is assigned.'}
       </Text>
 
       <View className="mt-4 flex-row items-center gap-3">
@@ -75,28 +78,21 @@ export function DeliveryRiderCard({ order }: Props) {
           <Text className="mt-0.5 text-[12.5px] font-medium text-ink/60">
             {rider
               ? `${rider.deliveries.toLocaleString('en-IN')} ${rider.deliveries === 1 ? 'delivery' : 'deliveries'}`
-              : 'Rider assignment pending'}
+              : delivered ? 'Rider details unavailable' : 'Rider assignment pending'}
           </Text>
         </View>
 
-        {rider ? (
+        {rider && !delivered ? (
           <Pressable
             onPress={callRider}
             disabled={!dialNumber}
             accessibilityRole="button"
-            accessibilityLabel={displayNumber ? `Call rider at ${displayNumber}` : 'Call rider'}
+            accessibilityLabel="Call rider"
             accessibilityState={{ disabled: !dialNumber }}
-            className={`min-h-11 shrink-0 items-center justify-center rounded-2xl bg-gray-100 px-3 py-2 ${dialNumber ? '' : 'opacity-50'}`}
+            className={`min-h-11 shrink-0 flex-row items-center justify-center gap-1.5 rounded-2xl bg-gray-100 px-4 py-2 active:opacity-70 ${dialNumber ? '' : 'opacity-50'}`}
           >
-            <View className="flex-row items-center gap-1.5">
-              <AppIcon icon={Call02Icon} size={15} color={colors.ink} />
-              <Text className="text-[13px] font-semibold text-ink">Call</Text>
-            </View>
-            {displayNumber ? (
-              <Text numberOfLines={1} className="mt-0.5 text-[11px] font-medium tabular-nums text-ink/70">
-                {displayNumber}
-              </Text>
-            ) : null}
+            <AppIcon icon={Call02Icon} size={15} color={colors.ink} />
+            <Text className="text-[13px] font-semibold text-ink">Call</Text>
           </Pressable>
         ) : null}
       </View>
