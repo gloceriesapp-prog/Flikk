@@ -25,7 +25,9 @@ export function OfferPopup() {
   if (!offer) return null;
   return (
     <Modal visible transparent animationType="slide" statusBarTranslucent onRequestClose={close}>
-      <View className="flex-1 justify-center bg-black/60 px-4">
+      {/* Near-opaque: the same offer is also listed on Home, and at 60% its
+          card read through as a second ACCEPT under this one. */}
+      <View className="flex-1 justify-center bg-black/90 px-4">
         <DispatchOfferCard key={offer.orderId} offer={offer} onAccept={acceptOffer} onClose={close} />
         <Pressable accessibilityRole="button" onPress={close} hitSlop={12} className="mt-4 self-center px-6 py-2">
           <Text className="text-[15px] font-semibold text-white">Close</Text>
