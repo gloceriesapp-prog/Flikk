@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 import { BrandHeader } from '../src/screens/categories/components/BrandHeader';
-jest.mock('../src/components/AppImage', () => ({ AppImage: require('react-native').Image }));
+jest.mock('../src/components/AppImage', () => ({ AppImage: jest.requireActual('react-native').Image }));
 it('uses the separate banner without replacing the category logo', async () => {
   const brand = { name: 'Brand', imageUrl: 'https://example.com/logo.png', bannerUrl: 'https://example.com/banner.png' };
   await render(<BrandHeader brand={brand} />);

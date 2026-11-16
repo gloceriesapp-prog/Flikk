@@ -1,8 +1,8 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { HomeCategoryBanner } from '../src/screens/home/category-page/components/HomeCategoryBanner';
 jest.mock('../src/components/AppImage', () => ({ AppImage: (props: object) => {
-  const renderImage = require('react').createElement;
-  return renderImage(require('react-native').Image, { ...props, testID: 'header-artwork' });
+  const renderImage = jest.requireActual('react').createElement;
+  return renderImage(jest.requireActual('react-native').Image, { ...props, testID: 'header-artwork' });
 } }));
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 const imageUri = 'https://images.gloceries.com/appsui/udupi-header.webp';
