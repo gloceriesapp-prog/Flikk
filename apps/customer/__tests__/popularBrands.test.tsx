@@ -5,7 +5,7 @@ import { fetchPopularBrands } from '../src/api/brands';
 
 let mockFocused = true;
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => mockFocused }));
-jest.mock('../src/components/AppImage', () => ({ AppImage: require('react-native').Image }));
+jest.mock('../src/components/AppImage', () => ({ AppImage: jest.requireActual('react-native').Image }));
 jest.mock('../src/api/brands', () => ({ fetchPopularBrands: jest.fn() }));
 const brands = Array.from({ length: 11 }, (_, i) => ({ id: String(i), name: `Brand ${i}`, imageUrl: `https://example.com/${i}.png` }));
 let client: QueryClient;
