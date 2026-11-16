@@ -18,7 +18,7 @@ it('resets to the existing default when the override is removed', async () => {
   expect(view.getByTestId('header-artwork', { includeHiddenElements: true }).props.source).toBe(1);
 });
 it('allows a Meat header override and preserves its bundled fallback', async () => {
-  const bundledMeatArtwork = require('../assets/illustrations/meat-section-banner.png');
+  const bundledMeatArtwork = require('../assets/illustrations/meat-section-banner.webp');
   const view = await render(
     <HomeCategoryBanner imageUri={imageUri} imageAsset={bundledMeatArtwork} bottomEdge="straight" />,
   );
