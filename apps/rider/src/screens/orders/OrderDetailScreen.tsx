@@ -46,7 +46,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'OrderDetail'>;
 // no external dependency and nothing to re-download.
 
 const NEXT_ACTION_LABEL: Record<Exclude<RiderOrder['status'], 'delivered' | 'cancelled'>, string> = {
-  assigned: 'Slide to start delivery',
+  assigned: 'Slide when you arrive at the store',
   picked_up: "I've arrived at the customer",
   arrived_at_customer: 'Verify OTP',
 };
@@ -97,6 +97,13 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   const unpickedSiblings = siblingLegs.filter((leg) => leg.status === 'assigned');
   // Drop-off is one shared event for the entire trip.
   async function handlePrimaryAction() {
+    // Arriving at the store only opens the pickup checklist. The checklist is
+    // the one place that marks the order out for delivery, so the customer
+    // never sees "on the way" while the rider is still heading to the store.
+    if (order!.status === 'assigned') {
+      navigation.navigate('PickupVerification', { orderId: order!.id });
+      return;
+    }
     if (order!.status === 'arrived_at_customer') {
       setOtpVisible(true);
       return;
@@ -477,10 +484,10 @@ export function OrderDetailScreen({ route, navigation }: Props) {
               <Text className="text-center text-[13px] font-semibold text-ink/60">
                 {packingText}. Head to the store.
               </Text>
-              <SlideToConfirmButton label="Waiting for the store to pack" successLabel="Heading to customer" disabled onConfirm={handlePrimaryAction} />
+              <SlideToConfirmButton label="Waiting for the store to pack" successLabel="At the store" disabled onConfirm={handlePrimaryAction} />
             </View>
           ) : (
-            <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="Heading to customer" onConfirm={handlePrimaryAction} />
+            <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="At the store" onConfirm={handlePrimaryAction} />
           )
         ) : allLegsPickedUp ? (
           // Whole trip picked up — the real next step is the drop-leg map
