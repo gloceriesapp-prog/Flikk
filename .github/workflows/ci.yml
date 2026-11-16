@@ -79,11 +79,11 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # 22, was 20 — undici@8 (backend/src/db/supabase.ts's own Agent/
           # fetch import) throws `webidl.util.markAsUncloneable is not a
@@ -148,7 +148,7 @@ jobs:
       PGUSER: postgres
       PGPASSWORD: postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify checkout and real API-role permissions
         run: >-
           psql -X -v ON_ERROR_STOP=1
@@ -190,8 +190,8 @@ jobs:
       EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
       CI: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -218,8 +218,8 @@ jobs:
       EXPO_PUBLIC_API_URL: https://api.example.com
       CI: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -237,7 +237,7 @@ jobs:
         working-directory: apps/${{ matrix.app }}
       - name: Set up Java for Partner release policy checks
         if: matrix.app == 'partner'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
@@ -288,11 +288,11 @@ jobs:
       ADMIN_USERNAME: ci
       ADMIN_LOGIN_EMAIL: ci@example.com
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -307,7 +307,12 @@ jobs:
       # --ignore-workspace mirrors the install step: admin/partner-dashboard have a
       # pnpm-workspace.yaml with no `packages:` key, which `pnpm build` otherwise
       # rejects ("packages field missing or empty").
-      - run: pnpm --ignore-workspace build
+      # Landing builds without a database: the placeholder URL only made its
+      # catalogue fetch fail and log an error, while an unset URL makes it skip
+      # the catalogue on purpose (catalogueConfig returns null outside prod).
+      - run: |
+          if [ "${{ matrix.app }}" = landing ]; then unset NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; fi
+          pnpm --ignore-workspace build
 
 
   # One stable check: filtering failures or unexpected skips cannot look green.
@@ -317,7 +322,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify CI result aggregation and regression scenarios
         run: node --test scripts/ci-gate.test.mjs
       - name: Require all selected checks to pass
