@@ -65,14 +65,11 @@ export function applyCustomerPrices<T>(rows: T): T {
   if (!rows || typeof rows !== 'object') return rows;
   const row = rows as Record<string, unknown>;
   if (row.products && typeof row.products === 'object') return { ...row, products: applyCustomerPrices(row.products) } as T;
-  const product = customerProduct(row as PricedProduct) as Record<string, unknown>;
+  const product = { ...customerProduct(row as PricedProduct) } as Record<string, unknown>;
   // Not set (null) is omitted: app builds from before optional veg treat a
   // null as non-veg (red mark), while a missing field falls back to their old
   // veg default. Current builds hide the mark either way.
-  if (product.is_veg === null) {
-    const { is_veg: _unset, ...rest } = product;
-    return rest as T;
-  }
+  if (product.is_veg === null) delete product.is_veg;
   return product as T;
 }
 
