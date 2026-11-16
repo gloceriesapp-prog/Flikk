@@ -18,9 +18,9 @@ import type { ComponentProps } from 'react';
 const GROCERY_HEADER_IMAGE_URI =
   storageUrl('Images/Royal%20Blue%20Tote%20of%20Indian%20Groceries.png');
 const CATEGORY_BANNERS: Partial<Record<string, Pick<ComponentProps<typeof HomeCategoryBanner>, 'imageAsset' | 'bottomEdge'>>> = {
-  festival: { imageAsset: require('../../../../assets/illustrations/diwali-section.png'), bottomEdge: 'festival' },
-  regional: { imageAsset: require('../../../../assets/illustrations/Village-section.png'), bottomEdge: 'regional' },
-  meat: { imageAsset: require('../../../../assets/illustrations/meat-section-banner.png'), bottomEdge: 'straight' },
+  festival: { imageAsset: require('../../../../assets/illustrations/diwali-section.webp'), bottomEdge: 'festival' },
+  regional: { imageAsset: require('../../../../assets/illustrations/Village-section.webp'), bottomEdge: 'regional' },
+  meat: { imageAsset: require('../../../../assets/illustrations/meat-section-banner.webp'), bottomEdge: 'straight' },
   fresh: { bottomEdge: 'straight' },
 };
 

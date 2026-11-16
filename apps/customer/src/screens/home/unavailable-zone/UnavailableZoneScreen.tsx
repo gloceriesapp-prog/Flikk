@@ -28,7 +28,7 @@ import type { AppStackParamList } from '../../../navigation/types';
 import { ScreenStatusBar as StatusBar } from '../../../components/ScreenStatusBar';
 
 const SKY_BG = '#025FFA';
-const ILLUSTRATION = require('../../../../assets/illustrations/unavailable-area.png');
+const ILLUSTRATION = require('../../../../assets/illustrations/unavailable-area.webp');
 const ILLUSTRATION_RATIO = 1122 / 1402;
 
 export function UnavailableZoneScreen() {
