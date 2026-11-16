@@ -768,6 +768,10 @@
     {
       "file": "20261115090000_rider_per_km_pay_and_tips.sql",
       "sha256": "5d7c9a99aa0bbd56183b9b7de37178811a2ef57cdab9f35376077dd21e0c76c2"
+    },
+    {
+      "file": "20261116120000_optional_veg_marker.sql",
+      "sha256": "585def36af3aab210131f161118ce696fe3c65b3867a6fdf694582e0ae849125"
     }
   ]
 }

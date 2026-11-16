@@ -54,7 +54,7 @@ function VariantPrices({ product }: { product: PartnerProduct }) {
 
 // Small filled-square + dot, the standard Indian food-app veg/non-veg mark
 // (green = veg, red = non-veg) — real per-product data (`is_veg`), not
-// decorative.
+// decorative. Not shown when the product has no veg/non-veg set (null).
 function VegMark({ isVeg }: { isVeg: boolean }) {
   return (
     <span
@@ -121,7 +121,7 @@ function ProductName({ product }: { product: PartnerProduct }) {
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-1.5">
-        <VegMark isVeg={product.is_veg} />
+        {product.is_veg != null && <VegMark isVeg={product.is_veg} />}
         <p className="truncate text-[15px] font-semibold text-gray-950" title={product.name}>
           {product.name}
         </p>

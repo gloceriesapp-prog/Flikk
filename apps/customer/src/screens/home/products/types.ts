@@ -66,9 +66,8 @@ export interface Product {
   // for this product (products.show_unit_price; api/products.ts).
   unitPriceLabel?: string;
   bulkMinKg?: number;
-  // Optional, defaults to true in ProductCard — most of a kirana grocery
-  // catalog is veg by default, only fish/meat entries need to set this
-  // explicitly false, rather than touching every other data.ts file.
+  // Veg (true) / non-veg (false) as set in Admin. Absent when not set: the
+  // cards then show no veg/non-veg mark at all.
   isVeg?: boolean;
   // Only set on same-day-only perishables (dairy, etc.) — a ribbon badge,
   // not present on shelf-stable goods where it'd be meaningless.

@@ -265,7 +265,7 @@ export interface PartnerProduct {
   // (migration 115). Customers keep seeing the approved values above until
   // admin approves. Null when nothing is queued; absent on older backends.
   pending_changes?: PendingProductChanges | null;
-  is_veg: boolean;
+  is_veg: boolean | null;
   freshness_tag: string | null;
   // Kept in sync with stock_status by a DB trigger (backend/src/lib/
   // products.ts's own note) — never write this directly, write
@@ -335,7 +335,7 @@ export interface ProductInput {
   stockQuantity?: number;
   imageUrl?: string | null;
   localName?: string | null;
-  isVeg?: boolean;
+  isVeg?: boolean | null;
   freshnessTag?: string | null;
   description?: string | null;
   variants: VariantInput[];

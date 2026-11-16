@@ -139,8 +139,8 @@ describe('toProductRow', () => {
     expect(toProductRow(validInput({ variants: [validVariant({ price: 100, originalPrice: 120 })] })).original_price).toBe(120);
   });
 
-  it('defaults isVeg to true when unset', () => {
-    expect(toProductRow(validInput()).is_veg).toBe(true);
+  it('leaves isVeg unset (null) when not chosen', () => {
+    expect(toProductRow(validInput()).is_veg).toBeNull();
   });
 
   it('turns empty optional strings into null, not empty strings', () => {
@@ -254,6 +254,7 @@ describe('partial product updates', () => {
   it('clears a text field only when the request explicitly sends it empty', () => {
     expect(toProductPatchRow({ description: '  ' })).toEqual({ description: null });
     expect(toProductPatchRow({ isVeg: false })).toEqual({ is_veg: false });
+    expect(toProductPatchRow({ isVeg: null })).toEqual({ is_veg: null });
   });
 
   it('leaves denormalized price/unit alone when sizes are not sent', () => {

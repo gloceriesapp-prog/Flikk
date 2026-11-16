@@ -69,7 +69,8 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '');
   const [category, setCategory] = useState(initial?.category ?? '');
   const [imageUrl, setImageUrl] = useState(initial?.image_url ?? '');
-  const [isVeg, setIsVeg] = useState(initial?.is_veg ?? true);
+  // null = not set: the customer app shows no veg/non-veg mark.
+  const [isVeg, setIsVeg] = useState<boolean | null>(initial?.is_veg ?? null);
   const [variants, setVariants] = useState<VariantRow[]>(() => variantRowsFromProduct(initial));
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -181,10 +182,13 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
         <Field label="Veg / non-veg">
           <div className="flex h-[42px] items-center gap-4">
             <label className="flex items-center gap-1.5 text-sm font-normal text-slate-700">
-              <input type="radio" checked={isVeg} onChange={() => setIsVeg(true)} className="accent-accent" /> Veg
+              <input type="radio" checked={isVeg === null} onChange={() => setIsVeg(null)} className="accent-accent" /> Not set
             </label>
             <label className="flex items-center gap-1.5 text-sm font-normal text-slate-700">
-              <input type="radio" checked={!isVeg} onChange={() => setIsVeg(false)} className="accent-accent" /> Non-veg
+              <input type="radio" checked={isVeg === true} onChange={() => setIsVeg(true)} className="accent-accent" /> Veg
+            </label>
+            <label className="flex items-center gap-1.5 text-sm font-normal text-slate-700">
+              <input type="radio" checked={isVeg === false} onChange={() => setIsVeg(false)} className="accent-accent" /> Non-veg
             </label>
           </div>
         </Field>

@@ -55,7 +55,7 @@ export interface ApiProduct {
   preorder_enabled?: boolean | null;
   preorder_min_qty?: number | null;
   preorder_lead_days?: number | null;
-  is_veg: boolean;
+  is_veg: boolean | null;
   freshness_tag: string | null;
   product_variants: ApiVariant[];
   // Real FK, present on every row regardless of the stores join below —
@@ -145,7 +145,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     bgColor: row.bg_color ?? undefined,
     cutOptions: row.cut_options_enabled === true || undefined,
     bulkMinKg: row.cut_options_enabled && row.bulk_min_kg != null && Number(row.bulk_min_kg) > 0 ? Number(row.bulk_min_kg) : undefined,
-    isVeg: row.is_veg,
+    isVeg: row.is_veg ?? undefined,
     freshnessTag: row.freshness_tag ?? undefined,
     sizeOptions: variants.length > 0 ? variants.map(formatVariant) : undefined,
     // Only set when there's genuinely more than one real size to choose

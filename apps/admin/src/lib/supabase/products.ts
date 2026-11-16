@@ -43,7 +43,7 @@ export interface ProductRow {
   bulk_min_kg: number | string | null;
   bg_color: string | null;
   local_name: string | null;
-  is_veg: boolean;
+  is_veg: boolean | null;
   freshness_tag: string | null;
   description: string | null;
   sub_category_id: string | null;
