@@ -618,10 +618,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   acceptOffer: async (orderId) => {
     const result = await acceptDispatchOffer(orderId);
     if (result.ok) {
-      // Optimistic removal — the next GET /assignments poll (already
-      // running via startSync) picks this up into activeOrders on its own
-      // within POLL_INTERVAL_MS; no need to duplicate that fetch here.
+      // Optimistic removal, then pull the won order into activeOrders now
+      // instead of waiting up to POLL_INTERVAL_MS for the next poll.
       set((state) => ({ nearbyOffers: state.nearbyOffers.filter((o) => o.orderId !== orderId), popupOfferId: state.popupOfferId === orderId ? null : state.popupOfferId }));
+      get().syncNow();
     } else if (result.alreadyTaken) {
       // Lost the race — this offer is gone regardless of who got it. The popup
       // stays open on its own copy to say so until the rider closes it.

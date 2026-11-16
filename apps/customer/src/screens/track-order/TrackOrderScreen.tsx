@@ -1,5 +1,5 @@
 import { useAuthStore } from '../../store/useAuthStore';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cancel01Icon, CustomerService01Icon, EllipsisVerticalIcon } from '@hugeicons/core-free-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
@@ -24,6 +24,7 @@ import { DeliveryDetailsSection } from './sections/delivery-details/DeliveryDeta
 import { OrderSummarySection } from './sections/order-summary/OrderSummarySection';
 import type { AppStackParamList } from '../../navigation/types';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
+import { registerNotifications } from '../../features/notifications/native';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrder'>;
 
@@ -198,5 +199,8 @@ function TrackingDetails({ navigation, route }: Props) {
 }
 
 export function TrackOrderScreen(props: Props) {
+  // The first order is when status alerts start to matter, so ask for push
+  // permission here. iOS only shows its prompt once; later visits are no-ops.
+  useEffect(() => { void registerNotifications(true).catch(() => { }); }, []);
  return <TrackingDetails key={`${props.route.params.isTrip ? 'trip' : 'order'}:${props.route.params.orderId}`} {...props} />;
 }

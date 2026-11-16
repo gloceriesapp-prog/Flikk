@@ -11,6 +11,7 @@ export interface OrderItemLine {
   name: string;
   quantity: number;
   unit?: string;
+  imageUrl?: string;
 }
 
 export interface RiderOrder {
