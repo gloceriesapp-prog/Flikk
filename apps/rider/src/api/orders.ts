@@ -19,7 +19,7 @@ type BackendOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered'
 interface RawOrderItem {
   quantity: number;
   unit_at_order?: string | null;
-  products: { name: string; unit: string } | null;
+  products: { name: string; unit: string; image_url?: string | null } | null;
 }
 
 interface RawAssignment {
@@ -112,6 +112,7 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     name: oi.products?.name ?? 'Item',
     quantity: oi.quantity,
     unit: oi.unit_at_order ?? oi.products?.unit ?? undefined,
+    imageUrl: oi.products?.image_url ?? undefined,
   }));
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   // Trip legs all share the one trip-level payout (same value on every

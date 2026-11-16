@@ -185,8 +185,8 @@ export function AvailabilityScreen() {
         <Pressable
           onPress={onSave}
           disabled={saving}
-          className="h-[52px] items-center justify-center rounded-[13px]"
-          style={({ pressed }) => ({ backgroundColor: colors.primary, opacity: saving ? 0.6 : pressed ? 0.85 : 1 })}
+          className="h-[52px] items-center justify-center rounded-[13px] active:opacity-85"
+          style={{ backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 }}
         >
           {saving ? (
             <ActivityIndicator color="#FFFFFF" />

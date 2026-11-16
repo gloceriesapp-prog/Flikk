@@ -21,6 +21,7 @@ import {
   Store01Icon,
 } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
+import { AppImage } from '../../components/AppImage';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
@@ -42,8 +43,8 @@ type CheckKey = (typeof CHECKS)[number]['key'];
 // "Amul Milk 500ml") — split the trailing unit off so the row can show the
 // product name bold with the pack size as a quieter subtitle. Emoji stands in
 // for a real product image (no catalog thumbnails on the mock — see header).
-// ponytail: emoji avatar + regex unit split are placeholders; swap for real
-// product image + unit fields when order_items carries them.
+// The product photo shows when the order carries one; the emoji is the
+// fallback for items without an image.
 const UNIT_RE = /\s+(\d+\s?(?:kg|g|l|ml)|\(dozen\)|\(6 pack\))$/i;
 function splitItem(name: string) {
   const m = name.match(UNIT_RE);
@@ -178,8 +179,10 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
                 key={`${it.name}-${i}`}
                 className={`flex-row items-center gap-3 py-2.5 ${i > 0 ? 'border-t border-ink/[0.06]' : ''}`}
               >
-                <View className="h-11 w-11 items-center justify-center rounded-xl bg-[#F1F1F4]">
-                  <Text className="text-[22px]">{itemEmoji(it.name)}</Text>
+                <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-[#F1F1F4]">
+                  {it.imageUrl
+                    ? <AppImage source={{ uri: it.imageUrl }} style={{ width: 40, height: 40 }} contentFit="contain" />
+                    : <Text className="text-[22px]">{itemEmoji(it.name)}</Text>}
                 </View>
                 <View className="flex-1">
                   <Text className="text-[15px] font-semibold text-ink" numberOfLines={1}>{label}</Text>
