@@ -102,3 +102,12 @@ describe('checkout with a markup', () => {
     expect(shown).not.toHaveProperty('waive_commission');
   });
 });
+
+describe('applyCustomerPrices veg mark', () => {
+  it('omits an unset (null) is_veg so older apps do not read it as non-veg', () => {
+    const out = applyCustomerPrices({ id: 'p', price: 10, original_price: null, is_veg: null, product_variants: [] }) as Record<string, unknown>;
+    expect('is_veg' in out).toBe(false);
+    const veg = applyCustomerPrices({ id: 'p', price: 10, original_price: null, is_veg: false, product_variants: [] }) as Record<string, unknown>;
+    expect(veg.is_veg).toBe(false);
+  });
+});
