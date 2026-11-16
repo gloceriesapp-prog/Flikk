@@ -13,16 +13,16 @@ const order = {
 
 afterEach(() => jest.restoreAllMocks());
 
-it('shows the assigned rider’s number and opens the native dialer', async () => {
+it('hides the rider’s number and opens the native dialer on Call', async () => {
   const dial = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
   const view = await render(<DeliveryRiderCard order={order} />);
 
   expect(view.getByText('Aarav')).toBeTruthy();
   expect(view.getByText('128 deliveries')).toBeTruthy();
-  expect(view.getByText('+91 12345 67890')).toBeTruthy();
+  expect(view.queryByText('+91 12345 67890')).toBeNull();
   expect(view.queryByText('Chat')).toBeNull();
 
-  await fireEvent.press(view.getByRole('button', { name: 'Call rider at +91 12345 67890' }));
+  await fireEvent.press(view.getByRole('button', { name: 'Call rider' }));
   expect(dial).toHaveBeenCalledWith('tel:+911234567890');
 });
 
