@@ -8,7 +8,7 @@
 //
 // Real health, not a fabricated always-green dot:
 //  - db: app/api/health's own Supabase reachability check
-//  - realtime: this browser's live EventSource connection (useAdminRealtime)
+//  - realtime: useAdminRealtime's sync signal (a visible-tab poll; always on)
 // Both fine -> green "All systems live". db down -> red "Systems down", the
 // one failure mode that actually breaks the dashboard. No live sync ->
 // amber "Some systems degraded", since the rest still works.
