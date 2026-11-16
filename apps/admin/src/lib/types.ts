@@ -422,7 +422,7 @@ export interface Product {
   // (mock-data.ts) rather than free text, so the customer app doesn't end
   // up with a dozen near-duplicate ribbon strings across stores.
   localName?: string;
-  isVeg?: boolean;
+  isVeg?: boolean | null;
   freshnessTag?: string;
   // Shown on the customer app's ProductDetailSheet (that Product's own
   // description field) — a short paragraph, not required for a card to be

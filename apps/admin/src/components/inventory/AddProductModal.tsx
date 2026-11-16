@@ -19,7 +19,7 @@ import { X } from '@/components/icons';
 import type { NewProductInput, Product, ProductOption, Serving, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
-import { categoryHasVegToggle } from '@/lib/product-options';
+import { VegChoice } from './VegChoice';
 import { BrandPicker } from './BrandPicker';
 import { CatalogueNameInput } from './CatalogueNameInput';
 import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
@@ -67,7 +67,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     subCategoryId: undefined as string | undefined,
     brandId: undefined as string | undefined,
     catalogueItemId: undefined as string | undefined,
-    isVeg: true,
+    isVeg: null as boolean | null,
     freshnessTag: '',
   };
 }
@@ -277,30 +277,10 @@ export function AddProductModal({
             Show price per kg / L / piece on the card (e.g. ₹63.6/kg)
           </label>
 
-          {/* Same field the customer app's ProductCard reads — see
-              Product's own note in lib/types.ts. Only shown for
-              categories where veg/non-veg is a real distinction (meat/
-              fish, dairy/eggs) — per an explicit ask, every other
-              category (Vegetables & Fruits, Personal Care, etc.) has no
-              real non-veg variant to distinguish from. */}
-          {categoryHasVegToggle(draft.category) && (
-            <div className="flex items-center gap-2 rounded-xl border border-border p-1">
-              <button
-                type="button"
-                onClick={() => setDraft({ ...draft, isVeg: true })}
-                className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${draft.isVeg ? 'bg-success/10 text-success' : 'text-muted'}`}
-              >
-                Veg
-              </button>
-              <button
-                type="button"
-                onClick={() => setDraft({ ...draft, isVeg: false })}
-                className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${!draft.isVeg ? 'bg-danger/10 text-danger' : 'text-muted'}`}
-              >
-                Non-veg
-              </button>
-            </div>
-          )}
+          {/* Same field the customer app's ProductCard reads. Optional for
+              every category: left as "Not set", the product shows no
+              veg/non-veg mark. */}
+          <VegChoice value={draft.isVeg} onChange={(isVeg) => setDraft({ ...draft, isVeg })} />
 
           <select
             value={draft.freshnessTag}

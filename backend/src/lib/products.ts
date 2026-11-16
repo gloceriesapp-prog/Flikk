@@ -74,7 +74,8 @@ export interface ProductInput {
   stockQuantity?: number;
   imageUrl?: string | null;
   localName?: string | null;
-  isVeg?: boolean;
+  // null = not set: the apps show no veg/non-veg mark.
+  isVeg?: boolean | null;
   freshnessTag?: string | null;
   description?: string | null;
   variants: VariantInput[];
@@ -102,7 +103,7 @@ export interface ProductRow {
   // consent". Absent on create (a pending product's image goes live directly).
   pending_image_url?: string | null;
   local_name: string | null;
-  is_veg: boolean;
+  is_veg: boolean | null;
   freshness_tag: string | null;
   description: string | null;
 }
@@ -183,7 +184,7 @@ export function validateProductPatch(input: unknown): asserts input is ProductPa
   if (patch.stockQuantity != null && (!Number.isSafeInteger(patch.stockQuantity) || (patch.stockQuantity as number) < 0)) {
     throw new Error('stockQuantity must be a non-negative whole number when set.');
   }
-  if ('isVeg' in patch && typeof patch.isVeg !== 'boolean') throw new Error('isVeg must be true or false.');
+  if ('isVeg' in patch && patch.isVeg !== null && typeof patch.isVeg !== 'boolean') throw new Error('isVeg must be true, false or null.');
   for (const field of OPTIONAL_TEXT_FIELDS) {
     if (patch[field] != null && typeof patch[field] !== 'string') throw new Error(`${field} must be text when set.`);
   }
@@ -236,7 +237,7 @@ export function toProductRow(input: ProductInput): ProductRow {
     stock_status: input.stockStatus,
     image_url: input.imageUrl?.trim() || null,
     local_name: input.localName?.trim() || null,
-    is_veg: input.isVeg ?? true,
+    is_veg: input.isVeg ?? null,
     freshness_tag: input.freshnessTag?.trim() || null,
     description: input.description?.trim() || null,
   };

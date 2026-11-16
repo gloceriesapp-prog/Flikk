@@ -56,7 +56,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
     sizeOptions,
     storeId,
     storeName,
-    isVeg = true,
+    isVeg,
   } = product;
 
 
@@ -130,16 +130,18 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
             rest of the row, centred. Both tiles share one height and tint. */}
         <View className="mb-0.5 flex-row items-center gap-1.5">
           {/* Veg / non-veg mark — square outline + center dot, standard Indian
-              food-label convention. isVeg defaults true (types.ts), only
-              fish/meat set it false. */}
-          <View className="h-[22px] w-[26px] items-center justify-center rounded-[6px] bg-[#F1F1F4]">
-            <View
-              className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border bg-white"
-              style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
-            >
-              <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+              food-label convention. Only when set in Admin; otherwise the
+              pack-size tile takes the whole row. */}
+          {isVeg !== undefined && (
+            <View className="h-[22px] w-[26px] items-center justify-center rounded-[6px] bg-[#F1F1F4]">
+              <View
+                className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border bg-white"
+                style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
+              >
+                <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+              </View>
             </View>
-          </View>
+          )}
           <View className="h-[22px] flex-1 items-center justify-center rounded-[6px] bg-[#F1F1F4] px-1.5">
             <Text numberOfLines={1} className="text-[11px] font-semibold text-black/65">{weight}</Text>
           </View>

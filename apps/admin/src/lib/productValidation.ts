@@ -59,7 +59,8 @@ export interface ProductWriteInput {
   // is where the category-tint/mist fallback steps of that chain run.
   bgColor?: string | null;
   localName?: string | null;
-  isVeg?: boolean;
+  // null = not set: the apps show no veg/non-veg mark.
+  isVeg?: boolean | null;
   freshnessTag?: string | null;
   description?: string | null;
   // Real sub_categories.id — powers CategoryDetailScreen's own product grid
@@ -304,7 +305,7 @@ export interface ProductRow {
   image_url: string | null;
   bg_color: string;
   local_name: string | null;
-  is_veg: boolean;
+  is_veg: boolean | null;
   freshness_tag: string | null;
   description: string | null;
   sub_category_id: string | null;
@@ -335,7 +336,7 @@ export function toProductRow(input: ProductWriteInput): ProductRow {
     image_url: input.imageUrl?.trim() || null,
     bg_color: resolveBgColor(input.bgColor, input.category),
     local_name: input.localName?.trim() || null,
-    is_veg: input.isVeg ?? true,
+    is_veg: input.isVeg ?? null,
     freshness_tag: input.freshnessTag?.trim() || null,
     description: input.description?.trim() || null,
     sub_category_id: input.subCategoryId || null,

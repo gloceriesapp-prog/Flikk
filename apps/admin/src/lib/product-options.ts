@@ -14,12 +14,6 @@
 // --mist token every other surface in this dashboard already uses.
 export const MIST_FALLBACK = '#F6FAF0';
 
-// Veg/non-veg only makes sense where an animal-origin option exists. The
-// category names are the admin's own, so match on the words, not a list.
-export function categoryHasVegToggle(category: string): boolean {
-  return /meat|chicken|mutton|fish|egg|dairy|non.?veg/i.test(category);
-}
-
 // Cut sizes and bulk orders are for chicken (meat) products only; the per-
 // product toggle is the real switch, this just decides where it is offered.
 export function categoryAllowsCutOptions(category: string | null | undefined): boolean {

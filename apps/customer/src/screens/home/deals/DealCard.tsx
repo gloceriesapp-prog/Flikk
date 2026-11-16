@@ -57,7 +57,7 @@ function PriceTicket({ price }: { price: number }) {
 }
 
 export function DealCard({ product }: { product: Product }) {
-  const { id, name, weight, price, originalPrice, imageUrl, storeId, storeName, isVeg = true } = product;
+  const { id, name, weight, price, originalPrice, imageUrl, storeId, storeName, isVeg } = product;
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const { mrp } = priceComparison(price, originalPrice);
@@ -96,11 +96,14 @@ export function DealCard({ product }: { product: Product }) {
             <View className="overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB]"
               style={{ height: PANEL_HEIGHT, borderTopLeftRadius: PANEL_TOP_RADIUS, borderTopRightRadius: PANEL_TOP_RADIUS, borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS }}>
               <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} style={{ position: 'absolute', top: 10, right: 10, bottom: 10, left: 10 }} contentFit="contain" />
-              {/* Veg / non-veg mark, standard Indian food-label convention. */}
-              <View className="absolute bottom-2.5 left-2.5 h-[16px] w-[16px] items-center justify-center rounded-[3px] border-[1.5px] bg-white"
-                style={{ borderColor: isVeg ? SAVING_GREEN : NON_VEG_RED }}>
-                <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? SAVING_GREEN : NON_VEG_RED }} />
-              </View>
+              {/* Veg / non-veg mark, standard Indian food-label convention.
+                  Only when set in Admin. */}
+              {isVeg !== undefined && (
+                <View className="absolute bottom-2.5 left-2.5 h-[16px] w-[16px] items-center justify-center rounded-[3px] border-[1.5px] bg-white"
+                  style={{ borderColor: isVeg ? SAVING_GREEN : NON_VEG_RED }}>
+                  <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? SAVING_GREEN : NON_VEG_RED }} />
+                </View>
+              )}
             </View>
           </View>
           {/* Add control on the panel's bottom-right corner, sitting on its border.
