@@ -183,6 +183,7 @@ jobs:
       - name: Generate production Android project and configure signing
         working-directory: apps/customer
         run: |
+          node scripts/exclude-dev-client.cjs
           npx expo prebuild --platform android --no-install --clean
           node scripts/direct-android-release.cjs prepare-signing
       - name: Build production AAB for all configured ABIs

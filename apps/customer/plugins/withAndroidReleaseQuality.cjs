@@ -88,8 +88,42 @@ function configureMainActivity(manifest) {
   return manifest;
 }
 
-function withAndroidReleaseQuality(config) {
-  config = withAndroidManifest(config, mod => { mod.modResults = configureMainActivity(mod.modResults); return mod; });
+// Release builds: HTTPS only, system CAs only (a user-installed CA cannot read
+// traffic). No pinning: api.gloceries.com sits behind Cloudflare, whose edge
+// certificate CA rotates, so a pin would eventually lock every user out.
+// Development builds keep cleartext for Metro on the LAN.
+const NETWORK_SECURITY_CONFIG = `<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>
+`;
+
+function configureNetworkSecurity(manifest) {
+  const app = manifest.manifest.application?.[0];
+  if (!app) throw new Error('Android manifest has no application element.');
+  app.$['android:networkSecurityConfig'] = '@xml/network_security_config';
+  app.$['android:usesCleartextTraffic'] = 'false';
+  return manifest;
+}
+
+function withAndroidReleaseQuality(config, { releaseBuild = false } = {}) {
+  config = withAndroidManifest(config, mod => {
+    mod.modResults = configureMainActivity(mod.modResults);
+    if (releaseBuild) mod.modResults = configureNetworkSecurity(mod.modResults);
+    return mod;
+  });
+  if (releaseBuild) {
+    config = withDangerousMod(config, ['android', async mod => {
+      const dir = path.join(mod.modRequest.platformProjectRoot, 'app/src/main/res/xml');
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, 'network_security_config.xml'), NETWORK_SECURITY_CONFIG);
+      return mod;
+    }]);
+  }
   config = withSettingsGradle(config, mod => { mod.modResults.contents = configureSettingsGradle(mod.modResults.contents); return mod; });
   config = withGradleProperties(config, mod => { mod.modResults = configureProperties(mod.modResults); return mod; });
   config = withAppBuildGradle(config, mod => { mod.modResults.contents = configureBuildGradle(mod.modResults.contents); return mod; });
@@ -106,3 +140,4 @@ module.exports.configureBuildGradle = configureBuildGradle;
 module.exports.configureProguardRules = configureProguardRules;
 module.exports.configureSettingsGradle = configureSettingsGradle;
 module.exports.configureMainActivity = configureMainActivity;
+module.exports.configureNetworkSecurity = configureNetworkSecurity;
