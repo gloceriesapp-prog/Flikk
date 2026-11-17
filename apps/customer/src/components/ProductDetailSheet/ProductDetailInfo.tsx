@@ -59,6 +59,8 @@ interface Props {
   onSelectVariant?: (id: string) => void;
   // Opens a tapped similar product (in the same detail page).
   onSelectProduct?: (product: Product) => void;
+  // Opens the seller's store page from the store row.
+  onOpenStore?: () => void;
   // Chicken cut size, lifted to the sheet like the variant (the footer adds it).
   selectedCut?: CutSize;
   onSelectCut?: (cut: CutSize) => void;
@@ -73,7 +75,7 @@ interface Props {
   onSelectPreorder?: (preorder: CartPreorder | undefined) => void;
 }
 
-export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder, onSelectProduct }: Props) {
+export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder, onSelectProduct, onOpenStore }: Props) {
   const { name, localName, weight, storeName, sellerDetails } = product;
   const option = product.options?.find(o => o.id === selectedOptionId);
   const { price, originalPrice, unitPriceLabel } = flavourPrice(product, option);
@@ -141,7 +143,13 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
         {storeName && (
           <>
             <View className="h-px bg-mist" />
-            <Pressable className="flex-row items-center gap-3">
+            <Pressable
+              onPress={onOpenStore}
+              disabled={!onOpenStore}
+              accessibilityRole="button"
+              accessibilityLabel={`Explore all products from ${storeName}`}
+              className="flex-row items-center gap-3 active:opacity-70"
+            >
               <Image source={{ uri: product.storePhotoUrl || PLACEHOLDER_IMAGE_URI }} className="h-10 w-10 rounded-xl" resizeMode="cover" />
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-ink">{storeName}</Text>
