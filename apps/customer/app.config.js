@@ -86,8 +86,13 @@ module.exports = {
         ? require('./scripts/release-config.cjs').productionVersionCode(process.env)
         : 11,
       googleServicesFile,
+      // Adaptive icon layers: launchers crop/mask the 108dp canvas differently,
+      // so the logo (transparent foreground) stays inside the 66dp safe circle
+      // and the blue lives in its own background layer. Monochrome = same logo
+      // shape for Android 13+ themed icons.
       adaptiveIcon: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#0A47F5',
+        backgroundImage: './assets/android-icon-background.png',
         foregroundImage: './assets/android-icon-foreground.png',
         monochromeImage: './assets/android-icon-monochrome.png',
       },
