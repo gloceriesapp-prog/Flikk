@@ -41,6 +41,8 @@ jest.mock('../src/screens/purchase/components/PurchaseRecommendations', () => ({
   },
 }));
 
+const arrived = (number: number) => `Arrived in ${10 + number} minutes`;
+
 function order(number: number): ApiOrder {
   return {
     id: `order-${number}`, order_number: `GLO-${number}`, store_id: `store-${number}`,
@@ -50,7 +52,8 @@ function order(number: number): ApiOrder {
     cancel_reason: null, refund_status: 'none', provider_refund_id: null, refunded_at: null,
     packed_at: null, picked_up_at: null, delivery_otp: null,
     placed_at: `2026-11-10T0${9 - number}:00:00Z`,
-    delivered_at: `2026-11-10T0${9 - number}:30:00Z`,
+    // A distinct duration per order: delivered cards show "Arrived in N minutes".
+    delivered_at: `2026-11-10T0${9 - number}:${10 + number}:00Z`,
     stores: { name: `Store ${number}`, avg_prep_minutes: null },
   };
 }
@@ -69,25 +72,25 @@ it('previews four real orders and exposes the remaining history only after See a
   const props = { navigation: { navigate: jest.fn() } } as unknown as NativeStackScreenProps<AppStackParamList, 'Purchase'>;
   const view = await render(<QueryClientProvider client={client}><PurchaseScreen {...props} /></QueryClientProvider>);
   try {
-    await view.findByText('Store 4');
+    await view.findByText(arrived(4));
     expect(view.getByText('Picked Just For You')).toBeTruthy();
-    expect(view.queryByText('Store 5')).toBeNull();
+    expect(view.queryByText(arrived(5))).toBeNull();
     expect(view.queryByText('Sample order')).toBeNull();
     expect(fetchOrderHistory).toHaveBeenCalledTimes(1);
 
     await fireEvent.press(view.getByRole('button', { name: 'See all orders' }));
-    expect(view.getByText('Store 5')).toBeTruthy();
+    expect(view.getByText(arrived(5))).toBeTruthy();
     expect(view.queryByRole('button', { name: 'See all orders' })).toBeNull();
 
     await fireEvent.press(view.getByRole('button', { name: 'Load more orders' }));
-    await view.findByText('Store 6');
+    await view.findByText(arrived(6));
     await waitFor(() => expect(view.queryByRole('button', { name: 'Load more orders' })).toBeNull());
 
     await fireEvent.press(view.getByRole('tab', { name: 'Delivered' }));
-    expect(view.getByText('Store 1')).toBeTruthy();
+    expect(view.getByText(arrived(1))).toBeTruthy();
     expect(view.queryByText('Loading orders…')).toBeNull();
     await act(async () => { finishDelivered({ items: [order(1)], nextCursor: null }); });
-    await waitFor(() => expect(view.queryByText('Store 6')).toBeNull());
+    await waitFor(() => expect(view.queryByText(arrived(6))).toBeNull());
 
     await fireEvent.press(view.getByRole('tab', { name: 'Cancelled' }));
     await view.findByText(/No orders in this view yet/);
@@ -96,7 +99,7 @@ it('previews four real orders and exposes the remaining history only after See a
     expect(jest.mocked(fetchOrderHistory).mock.lastCall?.[0].get('status')).toBe('cancelled');
 
     await fireEvent.press(view.getByRole('tab', { name: 'History' }));
-    await view.findByText('Store 6');
+    await view.findByText(arrived(6));
   } finally {
     await view.unmount();
     client.clear();
