@@ -90,6 +90,12 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
   const toggleWishlist = useWishlistStore((state) => state.toggle);
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   // Close the sheet first so Search opens on top, not behind the modal.
+  // Store row → that store's page; close the sheet first, like Search.
+  const storeId = product.storeId ?? product.browseStoreId;
+  const storeName = product.storeName;
+  const openStore = storeId && storeName
+    ? () => { onClose(); navigation.navigate('StoreDetail', { storeId, storeName }); }
+    : undefined;
   const openSearch = () => { onClose(); navigation.navigate('Search', product.browseStoreId ? { storeId: product.browseStoreId, storeName: product.storeName } : undefined); };
 
   // Lifted here (not local to ProductDetailInfo) — ProductDetailFooter is
@@ -156,6 +162,7 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
               onSelectPreorder={selectPreorder}
               onSelectVariant={setSelectedVariantId}
               onSelectProduct={onOpenProduct}
+              onOpenStore={openStore}
             />
           </View>
           {cartTotalQuantity > 0 && (

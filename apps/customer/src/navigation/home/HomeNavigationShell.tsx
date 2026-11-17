@@ -39,7 +39,10 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
   return (
     <HomeNavigationProgressContext.Provider value={hidden}>
       <View className="flex-1">
-        <View style={{ flex: 1, paddingBottom: reserveCartSpace ? insets.bottom + STANDALONE_CART_CLEARANCE : 0 }}>{children}</View>
+        {/* The space reserved under the content for the floating cart must be
+            painted: unpainted, the root window colour (the blue splash colour)
+            showed as a full-width blue strip behind the Cart pill. */}
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingBottom: reserveCartSpace ? insets.bottom + STANDALONE_CART_CLEARANCE : 0 }}>{children}</View>
         {showCart && (
           <NavigationContext.Provider value={navigation}>
             <NavigationRouteContext.Provider value={route}>
