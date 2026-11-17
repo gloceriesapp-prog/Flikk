@@ -25,6 +25,7 @@ export async function similarProductPage(query: Request['query'], stores: string
     if (tier < (page.after?.score ?? 0) || (tier === 0 && !source.brand_id) || (tier === 1 && !source.sub_category_id)) continue;
     let request = supabase.from('products').select(fields)
       .eq('approval_status', 'approved').eq('preorder_enabled', false)
+      .is('quick_tab_key', null)
       .in('store_id', stores).eq('category', source.category).neq('id', sourceId)
       .eq('is_in_stock', true).neq('stock_status', 'out_of_stock')
       .not('image_url', 'is', null).order('id').limit(page.limit + 1 - results.length);

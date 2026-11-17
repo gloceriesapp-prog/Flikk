@@ -8,8 +8,9 @@ export function selectContentProducts(products, rule, limit = Infinity) {
   for (const product of products) {
     const text = `${product.name} ${product.category}`.toLowerCase();
     if (rule.mode === 'manual' && !ids.has(product.id)) continue;
+    if (product.quick_tab_key && rule.mode !== 'manual') continue;
     if (stores.size && !stores.has(product.store_id)) continue;
-    if (categories.size && !categories.has(product.sub_category_id)) continue;
+    if (categories.size && !product.quick_tab_key && !categories.has(product.sub_category_id)) continue;
     if (
       rule.includeTerms.length &&
       !rule.includeTerms.some((term) => text.includes(term.toLowerCase()))

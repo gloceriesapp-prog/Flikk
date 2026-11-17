@@ -7,6 +7,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
     const chain = {
       select: () => chain,
       eq: (key: string, value: unknown) => { filters.push((r) => r[key] === value); return chain; },
+      is: (key: string) => { filters.push((r) => r[key] == null); return chain; },
       neq: (key: string, value: unknown) => { filters.push((r) => r[key] != null && r[key] !== value); return chain; },
       gt: (key: string, value: string) => { filters.push((r) => String(r[key]) > value); return chain; },
       in: (key: string, values: unknown[]) => { filters.push((r) => values.includes(r[key])); return chain; },
@@ -36,7 +37,7 @@ it('ranks the same brand first, then subcategory, then broader related category'
   expect(result.nextCursor).toBeNull();
 });
 it('fills short matches without recommending unrelated, unavailable or inaccessible stock', async () => {
-  fixture.rows.push(row(5, { category: 'Laundry' }), row(6, { store_id: 'far-away' }), row(7, { approval_status: 'pending' }), row(8, { is_in_stock: false }), row(9, { preorder_enabled: true }));
+  fixture.rows.push(row(5, { category: 'Laundry' }), row(6, { store_id: 'far-away' }), row(7, { approval_status: 'pending' }), row(8, { is_in_stock: false }), row(9, { preorder_enabled: true }), row(10, { quick_tab_key: 'regional' }));
   expect((await similarProductPage({ exclude: source }, ['nearby'], '*')).products).toHaveLength(3);
 });
 it('paginates across tier boundaries without duplicates or skipped related products', async () => {

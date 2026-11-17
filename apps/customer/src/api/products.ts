@@ -37,6 +37,7 @@ export interface ApiProduct {
   local_name: string | null;
   category: string;
   sub_category_id?: string | null;
+  quick_tab_key?: string | null;
   description: string | null;
   price: number;
   original_price: number | null;

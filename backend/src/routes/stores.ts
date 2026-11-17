@@ -144,6 +144,7 @@ storesRouter.get('/products/deals', async (req, res, next) => {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .is('quick_tab_key', null)
       .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .in('store_id', res.locals.deliveryStores ?? [])
       .not('original_price', 'is', null)
@@ -165,6 +166,7 @@ storesRouter.get('/products/catalog', async (req, res, next) => {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .is('quick_tab_key', null)
       .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .in('store_id', res.locals.deliveryStores ?? [])
       .order('created_at', { ascending: false })
@@ -229,6 +231,7 @@ storesRouter.get('/:id/products', async (req, res, next) => {
     let query = supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .is('quick_tab_key', null)
       .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .eq('store_id', req.params.id)
       ;
