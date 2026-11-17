@@ -36,6 +36,7 @@ homeFestivalSectionRouter.get('/', async (_req, res, next) => {
       .select(`sort_order, products!inner(${PRODUCT_WITH_VARIANTS_SELECT})`)
       .eq('festival_section_id', section.id)
       .eq('products.approval_status', 'approved')
+      .is('products.quick_tab_key', null)
       .order('sort_order');
     if (linksError) throw linksError;
 

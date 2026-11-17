@@ -22,9 +22,11 @@ async function contentFor(tab: unknown) {
   if (!content.enabled) throw new AppError(404, 'COLLECTION_UNAVAILABLE', 'This collection is unavailable.');
   return content;
 }
-async function products(storeId: string, rules: BrowseRule[], after: string | null, preview: boolean, pageLimit = 60) {
+async function products(storeId: string, tabKey: string, rules: BrowseRule[], after: string | null, preview: boolean, pageLimit = 60) {
   if (!rules.length) return { products: [], nextCursor: null };
-  const { data: ids, error } = await supabase.rpc('browse_collection_ids', { p_store_id: storeId, p_rules: rules, p_after: after, p_preview: preview });
+  const { data: ids, error } = await supabase.rpc('browse_collection_ids', {
+    p_store_id: storeId, p_rules: rules.map(rule => ({ ...rule, tabKey })), p_after: after, p_preview: preview,
+  });
   if (error) throw error; // Never fall back to downloading the entire catalogue.
   const selected: { id: string }[] = (ids ?? []).slice(0, preview ? 600 : pageLimit);
   const hydrated = [];
@@ -51,7 +53,7 @@ collectionRouter.get('/:id/home-preview', async (req, res, next) => {
     }
     // Config is bounded by validation. A single RPC selects only requested
     // previews; no application scan over a shop's unbounded product rows.
-    res.json((await products(req.params.id!, rules, null, true)).products);
+    res.json((await products(req.params.id!, String(req.query.tab), rules, null, true)).products);
   } catch (error) { next(error); }
 });
 collectionRouter.get('/:id/collection-products', async (req, res, next) => {
@@ -68,7 +70,7 @@ collectionRouter.get('/:id/collection-products', async (req, res, next) => {
     const selections = item ? [item.selection] : enabledItems.length ? enabledItems.map(i => i.selection) : section.kind === 'categories' ? [] : [section.selection];
     const rules = selections.filter(selection => section.kind !== 'categories' || hasContentSelection(selection))
       .map(selection => ({ selection, ...(section.kind !== 'categories' ? { base: section.selection } : {}), limit: limit + 1 }));
-    res.json(await products(req.params.id!, rules, after, false, limit));
+    res.json(await products(req.params.id!, String(req.query.tab), rules, after, false, limit));
   } catch (error) { next(error); }
 });
 
@@ -131,6 +133,7 @@ collectionRouter.get('/:id/catalogue-categories', async (req, res, next) => {
       .eq('is_active', true).eq('sub_categories.is_active', true)
       .eq('sub_categories.products.store_id', req.params.id!)
       .eq('sub_categories.products.approval_status', 'approved')
+      .is('sub_categories.products.quick_tab_key', null)
       .eq('sub_categories.products.preorder_enabled', false)
       .limit(1, { referencedTable: 'sub_categories.products' })
       .limit(1, { referencedTable: 'sub_categories' })
@@ -149,6 +152,7 @@ collectionRouter.get('/:id/catalogue-subcategories', async (req, res, next) => {
       .select('id, name, image_url, categories!inner(is_active), products!inner(id)')
       .eq('category_id', categoryId).eq('is_active', true).eq('categories.is_active', true)
       .eq('products.store_id', req.params.id!).eq('products.approval_status', 'approved')
+      .is('products.quick_tab_key', null)
       .eq('products.preorder_enabled', false).limit(1, { referencedTable: 'products' })
       .order('sort_order').order('name').limit(60);
     if (error) throw error;

@@ -8,6 +8,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
     const builder = {
       select: () => builder,
       eq: (key: string, value: unknown) => { mocks.calls.push([key, value]); return builder; },
+      is: (key: string, value: unknown) => { mocks.calls.push([key, value]); return builder; },
       neq: (key: string, value: unknown) => { mocks.calls.push([key, value]); return builder; },
       gt: (key: string, value: unknown) => { mocks.calls.push([key, value]); return builder; },
       in: (_key: string, ids: string[]) => { mocks.calls.push(['hydrate', ids]); return builder; },
@@ -41,6 +42,7 @@ it('selects bounded preview IDs before hydrating public product rows', async () 
   const args = mocks.rpc.mock.calls[0]![1];
   expect(args.p_preview).toBe(true); expect(args.p_store_id).toBe(store);
   expect(args.p_rules.every((r: { limit: number }) => r.limit >= 1 && r.limit <= 24)).toBe(true);
+  expect(args.p_rules.every((rule: { tabKey: string }) => rule.tabKey === 'grocery')).toBe(true);
   expect(mocks.calls.some(([key]) => key === 'hydrate')).toBe(false);
 });
 it('caps full-page hydration and advances cursor even if stock changes during hydration', async () => {
@@ -102,6 +104,7 @@ it('scopes category and subcategory facets to the selected store only', async ()
     expect(result.next).not.toHaveBeenCalled();
     expect(mocks.calls).toContainEqual([path.endsWith('subcategories') ? 'products.store_id' : 'sub_categories.products.store_id', store]);
     expect(mocks.calls).toContainEqual([path.endsWith('subcategories') ? 'products.approval_status' : 'sub_categories.products.approval_status', 'approved']);
+    expect(mocks.calls).toContainEqual([path.endsWith('subcategories') ? 'products.quick_tab_key' : 'sub_categories.products.quick_tab_key', null]);
   }
 });
 it('rejects invalid taxonomy and search filters before the catalogue selector runs', async () => {

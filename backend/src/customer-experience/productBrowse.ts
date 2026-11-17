@@ -83,6 +83,7 @@ productBrowseRouter.get('/preorders', async (req, res, next) => {
     const stores = await deliveryStores(req.query);
     const [ids, slots] = await Promise.all([
       stores.length ? supabase.from('products').select('id').in('store_id', stores).eq('approval_status', 'approved')
+        .is('quick_tab_key', null)
         .eq('preorder_enabled', true).order('name').limit(40) : Promise.resolve({ data: [], error: null }),
       supabase.from('preorder_slots').select(PREORDER_SLOT_SELECT).eq('is_active', true).order('sort_order'),
     ]);
@@ -128,6 +129,7 @@ productBrowseRouter.get('/brand/:id', async (req, res, next) => {
     if (stores.length) {
       let query = supabase.from('products').select(PRODUCT_WITH_VARIANTS_SELECT)
         .eq('brand_id', brand.id).in('store_id', stores)
+        .is('quick_tab_key', null)
         .eq('approval_status', 'approved').eq('preorder_enabled', false)
         .order('id').limit(page.limit + 1);
       if (page.after) query = query.gt('id', page.after.id);

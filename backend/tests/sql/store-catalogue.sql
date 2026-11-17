@@ -63,4 +63,56 @@ BEGIN
  IF has_function_privilege('anon','public.store_catalogue_page_ids(uuid,uuid,uuid,text,boolean,boolean,text,text,double precision,uuid,integer)','EXECUTE') THEN
   RAISE EXCEPTION 'Anonymous role can bypass backend'; END IF;
 END $$;
+
+DO $$
+DECLARE
+  shop uuid := '00000000-0000-4000-8000-0000000180f1';
+  category_id uuid := '00000000-0000-4000-8000-0000000180c2';
+  subcategory_id uuid := '00000000-0000-4000-8000-0000000180b3';
+  product uuid;
+  listing jsonb;
+  selection jsonb;
+  collection jsonb;
+  sections jsonb;
+  packs jsonb := '[{"unit_type":"g","quantity":100,"price":45,"original_price":50,"stock_quantity":7}]';
+BEGIN
+  listing := jsonb_build_object(
+    'name', 'Coastal Cutlet', 'unit', '100 g', 'price', 45, 'original_price', 50,
+    'category', 'Udupi', 'store_id', shop, 'sub_category_id', subcategory_id,
+    'image_url', 'https://images.example.com/test.webp');
+  product := create_quick_tab_product('regional', listing, packs,
+    '{"extra_image_urls":["https://images.example.com/other.webp"],"show_unit_price":true}',
+    '[{"unit_type":"g","quantity":100,"platform_markup":2}]',
+    '[{"name":"Coastal Chilli","stock_quantity":3}]');
+  ASSERT EXISTS (SELECT 1 FROM products p WHERE p.id = product AND p.quick_tab_key = 'regional'
+    AND p.category = 'Udupi' AND p.sub_category_id IS NULL AND p.catalogue_item_id IS NULL
+    AND p.stock_quantity = 7 AND p.show_unit_price AND cardinality(p.extra_image_urls) = 1);
+  ASSERT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = product AND v.platform_markup = 2);
+  ASSERT EXISTS (SELECT 1 FROM product_options o WHERE o.product_id = product AND o.stock_quantity = 3);
+  BEGIN
+    PERFORM create_quick_tab_product('regional', listing, packs, '{}', '[]', NULL);
+    RAISE EXCEPTION 'Duplicate scoped product was accepted';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+  ASSERT (SELECT count(*) FROM products WHERE name = 'Coastal Cutlet') = 1, 'duplicate failure left a public product';
+  ASSERT NOT EXISTS (SELECT 1 FROM search_customer_product_matches(ARRAY[shop], 'Coastal Cutlet') x WHERE x.id = product);
+  ASSERT NOT EXISTS (SELECT 1 FROM store_catalogue_page_ids(shop, NULL, NULL, 'Cutlet', false, false, 'all', 'relevance', NULL, NULL, 30) x WHERE x.id = product);
+  ASSERT NOT EXISTS (SELECT 1 FROM browse_customer_product_ids(ARRAY[shop], category_id, subcategory_id, '', '', false, false, 'recommended', NULL, NULL, 30) x WHERE x.id = product);
+
+  selection := jsonb_build_object('mode', 'manual', 'productIds', jsonb_build_array(product),
+    'categoryIds', jsonb_build_array(subcategory_id));
+  collection := jsonb_build_array(jsonb_build_object('tabKey', 'regional', 'selection', selection, 'limit', 3));
+  sections := jsonb_build_array(jsonb_build_object('kind', 'categories', 'enabled', true, 'items',
+    jsonb_build_array(jsonb_build_object('enabled', true, 'selection', selection))));
+  UPDATE home_content SET content = content || jsonb_build_object('enabled', true, 'sections', sections)
+    WHERE tab_key = 'regional';
+  ASSERT EXISTS (SELECT 1 FROM browse_collection_ids(shop, collection) x WHERE x.id = product);
+  ASSERT EXISTS (SELECT 1 FROM browse_collection_ids(shop, collection, NULL, false) x WHERE x.id = product);
+  ASSERT NOT EXISTS (SELECT 1 FROM browse_collection_ids(shop, jsonb_set(collection, '{0,tabKey}', '"grocery"')) x WHERE x.id = product);
+  ASSERT NOT EXISTS (SELECT 1 FROM browse_collection_ids(shop, jsonb_set(collection, '{0,selection,mode}', '"automatic"')) x WHERE x.id = product);
+  ASSERT EXISTS (SELECT 1 FROM search_customer_product_matches(ARRAY[shop], 'Coastal Chilli') x WHERE x.id = product);
+  UPDATE home_content SET content = jsonb_set(content, '{sections,0,items,0,enabled}', 'false') WHERE tab_key = 'regional';
+  ASSERT NOT EXISTS (SELECT 1 FROM search_customer_product_matches(ARRAY[shop], 'Coastal Cutlet') x WHERE x.id = product);
+  ASSERT NOT has_function_privilege('authenticated', 'public.create_quick_tab_product(text,jsonb,jsonb,jsonb,jsonb,jsonb)', 'EXECUTE');
+END $$;
 ROLLBACK;

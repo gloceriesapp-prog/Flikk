@@ -7,7 +7,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
     if (table === 'brands') return mocks.fromBrand();
     const override = mocks.fromProducts();
     if (override) return override;
-    const builder = { select: () => builder, in: () => builder, eq: () => builder,
+    const builder = { select: () => builder, in: () => builder, eq: () => builder, is: () => builder,
       then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: [{ id: 'p2' }, { id: 'p1' }], error: null }).then(resolve) };
     return builder;
   },
@@ -68,6 +68,7 @@ it('pages only the chosen brand at delivery stores and applies customer prices',
   const second = { ...first, id: '00000000-0000-4000-8000-000000000202' };
   const productQuery = {
     select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), gt: vi.fn().mockReturnThis(),
     then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: [first, second], error: null }).then(resolve),
   };
@@ -78,6 +79,7 @@ it('pages only the chosen brand at delivery stores and applies customer prices',
   expect(productQuery.eq).toHaveBeenCalledWith('brand_id', brandId);
   expect(productQuery.in).toHaveBeenCalledWith('store_id', ['s1']);
   expect(productQuery.eq).toHaveBeenCalledWith('approval_status', 'approved');
+  expect(productQuery.is).toHaveBeenCalledWith('quick_tab_key', null);
   const result = vi.mocked(initial.res.json).mock.calls[0]![0];
   expect(result.brand.bannerUrl).toBe('https://example.test/banner.png');
   expect(result.brand.imageUrl).toBe('https://example.test/logo.png');

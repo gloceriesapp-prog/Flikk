@@ -109,6 +109,16 @@ describe('Address-scoped catalogue selection', () => {
     rule.mode = 'manual';
     expect(selectContentProducts(products, rule)).toEqual([]);
   });
+  it('shows scoped products only when explicitly picked, even with a catalogue category filter', () => {
+    const rule = createSection('products', 'test').selection;
+    const scoped = { ...products[0]!, quick_tab_key: 'regional', sub_category_id: null };
+    const unfiled = { ...products[1]!, sub_category_id: null };
+    rule.categoryIds = [ids[2]!];
+    rule.productIds = [scoped.id, unfiled.id];
+
+    expect(selectContentProducts([scoped, unfiled], { ...rule, mode: 'manual' })).toEqual([scoped]);
+    expect(selectContentProducts([scoped], { ...rule, categoryIds: [] })).toEqual([]);
+  });
   it('combines include, exclude, category and store rules with AND semantics', () => {
     const rule = createSection('products', 'test').selection;
     rule.includeTerms = ['oil'];

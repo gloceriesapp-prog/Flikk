@@ -198,6 +198,7 @@ ordersRouter.get('/buy-it-again', requireAuth, requireRole('customer'), async (r
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .in('id', rankedProductIds)
+      .is('quick_tab_key', null)
       .in('store_id', storeIds)
       .eq('is_in_stock', true)
       .eq('approval_status', 'approved').eq('preorder_enabled', false)

@@ -32,7 +32,7 @@ function broadcast(event: HomeEvent) {
   for (const res of broker.recipients(event)) send(res, event);
 }
 function contentChanged(type: 'content' | 'settings' | 'config') {
-  if (type === 'content') { invalidateShortCache('/stores'); invalidateShortCache('/categories'); invalidateShortCache('/category-sections'); invalidateShortCache('/home/content'); }
+  if (type === 'content') { invalidateShortCache('/stores'); invalidateShortCache('/categories'); invalidateShortCache('/category-sections'); invalidateShortCache('/home/content'); invalidateShortCache('/browse/search'); }
   if (type === 'config') invalidateShortCache('/app-config');
   invalidateShortCache(type === 'content' ? '/home-tabs' : '/delivery-settings');
   broadcast({ type });
@@ -119,6 +119,7 @@ export function startHomeContentSync() {
           invalidateShortCache('/delivery-settings');
           invalidateShortCache('/home-tabs');
           invalidateShortCache('/home/content');
+          invalidateShortCache('/browse/search');
           invalidateShortCache('/zones');
           for (const path of HOME_SECTION_CACHE_PATHS) invalidateShortCache(path);
           broadcast({ type: 'health', healthy, recovery: healthy });

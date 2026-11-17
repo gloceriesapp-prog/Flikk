@@ -772,6 +772,10 @@
     {
       "file": "20261116120000_optional_veg_marker.sql",
       "sha256": "585def36af3aab210131f161118ce696fe3c65b3867a6fdf694582e0ae849125"
+    },
+    {
+      "file": "20261117010000_quick_tab_products.sql",
+      "sha256": "37ab6df93563926ad532ab2f9dcd676cc62b995268491f1f630c8e6b478381e1"
     }
   ]
 }

@@ -83,6 +83,7 @@ export function selectContentProducts<
     name: string;
     category: string;
     sub_category_id?: string | null;
+    quick_tab_key?: string | null;
     store_id: string;
     price: number;
     original_price: number | null;
