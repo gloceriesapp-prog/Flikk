@@ -1,0 +1,97 @@
+name: Customer iOS Release
+
+# Manual only (Actions -> Run workflow). The checks run on a Linux runner; the
+# signed iOS build runs on EAS (Expo's Macs), which holds the distribution
+# certificate, provisioning profile and App Store Connect API key, then uploads
+# the build to App Store Connect. No macOS runner minutes are billed here.
+on:
+  workflow_dispatch:
+    inputs:
+      previous_native_build_commit:
+        description: 'Exact 40-character source commit of the previous installed customer iOS build'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: customer-ios-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    env:
+      EXPO_PUBLIC_API_URL: https://api.example.com
+      EXPO_PUBLIC_SOURCE_COMMIT: ${{ github.sha }}
+      EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
+      CI: 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/customer/package-lock.json
+      - name: Install locked dependencies and persisted native patches
+        working-directory: apps/customer
+        run: npm ci --no-audit --no-fund
+      - name: Check Customer source and release safeguards
+        working-directory: apps/customer
+        run: |
+          npx tsc --noEmit
+          npm run lint -- --max-warnings=0
+          npm test -- --runInBand
+          node --test scripts/ota/*.test.cjs
+      - name: Require a new runtime when native inputs change
+        env:
+          OTA_NATIVE_BUILD_COMMIT: ${{ inputs.previous_native_build_commit }}
+          OTA_PLATFORM: ios
+        run: node apps/customer/scripts/ota/native-release.cjs
+      - name: Production releases run from the default branch only
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH" || {
+            echo 'Production releases must run from the reviewed default branch.'
+            exit 1
+          }
+
+  build:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: customer-ios-production
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_NO_TELEMETRY: '1'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/customer/package-lock.json
+      - name: Install locked dependencies
+        working-directory: apps/customer
+        run: npm ci --no-audit --no-fund
+      - name: Confirm production backend health
+        run: |
+          curl --fail --silent --show-error --max-time 30 https://api.gloceries.com/ | grep -q '"service":"gloceries-backend"'
+      # Build number comes from EAS (appVersionSource: remote, autoIncrement),
+      # so it always exceeds the last uploaded build. --auto-submit uploads to
+      # App Store Connect with the API key stored on EAS (submit.production in
+      # eas.json). App Review submission stays a manual step in App Store Connect.
+      - name: Build on EAS and upload to App Store Connect
+        working-directory: apps/customer
+        run: |
+          npx eas-cli build -p ios --profile production --non-interactive --wait --auto-submit --json > "$RUNNER_TEMP/eas-build.json"
+          node -e "const b=require(process.argv[1])[0]; console.log('Build', b.appVersion+' ('+b.appBuildVersion+')', b.status); console.log('Logs: https://expo.dev/accounts/nishal777/projects/customer/builds/'+b.id); if (b.status !== 'FINISHED') process.exit(1)" "$RUNNER_TEMP/eas-build.json"
