@@ -27,7 +27,9 @@ try {
   if (expo.updates?.checkAutomatically !== 'ON_ERROR_RECOVERY' || expo.updates?.fallbackToCacheTimeout !== 0) failures.push('Updates must download without a startup wait or forced reload.');
   if (manifest.version !== expo.version) failures.push('package.json and app.config.js versions must match.');
   if (expo.runtimeVersion !== require('../native-runtime.json').android || expo.ios?.runtimeVersion !== require('../native-runtime.json').ios) failures.push('Native release runtimes must match native-runtime.json.');
-  if (!expo.plugins?.includes('./plugins/withAndroidReleaseQuality.cjs')) failures.push('Android release optimization plugin is missing.');
+  const releasePlugin = expo.plugins?.find(p => Array.isArray(p) && p[0] === './plugins/withAndroidReleaseQuality.cjs');
+  if (!releasePlugin) failures.push('Android release optimization plugin is missing.');
+  else if (releasePlugin[1]?.releaseBuild !== true) failures.push('Android release network hardening is not enabled.');
   // Both shipped platforms use Google Maps. Refuse an iOS release that would
   // silently fall back to Apple Maps because its native SDK key was omitted.
   if (process.env.EAS_BUILD_PLATFORM === 'ios' && !expo.ios?.config?.googleMapsApiKey) {
