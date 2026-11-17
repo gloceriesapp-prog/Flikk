@@ -31,7 +31,7 @@ export function resolveApiBaseUrl(
 }
 
 export const API_BASE_URL = resolveApiBaseUrl(
-  validateApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__),
+  validateApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__, __DEV__ ? 'http://localhost:4000' : undefined),
   Constants.expoConfig?.hostUri,
   __DEV__ && process.env.EXPO_PUBLIC_API_FOLLOW_METRO_HOST === 'true',
 );

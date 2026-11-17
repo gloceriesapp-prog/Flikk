@@ -65,6 +65,30 @@ describe('customer release safeguards', () => {
     expect(result.stderr).toContain(message);
   });
 
+  it('hardens release builds: no backups, HTTPS + system CAs only, no dev launcher', () => {
+    const result = run(`
+      const assert = require('node:assert/strict');
+      const {configureNetworkSecurity} = require('./plugins/withAndroidReleaseQuality.cjs');
+      const {excludeDevClient} = require('./scripts/exclude-dev-client.cjs');
+      const {validateApiUrl} = require('../../packages/shared/config/api-url.cjs');
+      const {expo} = require('./app.config.js');
+      assert.equal(expo.android.allowBackup, false);
+      const plugin = expo.plugins.find(p => Array.isArray(p) && String(p[0]).includes('withAndroidReleaseQuality'));
+      assert.deepEqual(plugin[1], {releaseBuild: true});
+      const app = {$:{}};
+      configureNetworkSecurity({manifest:{application:[app]}});
+      assert.equal(app.$['android:networkSecurityConfig'], '@xml/network_security_config');
+      assert.equal(app.$['android:usesCleartextTraffic'], 'false');
+      const pkg = excludeDevClient({name:'x', expo:{autolinking:{exclude:['a']}}});
+      assert.deepEqual(pkg.expo.autolinking.exclude, ['a','expo-dev-client','expo-dev-launcher','expo-dev-menu']);
+      assert.deepEqual(excludeDevClient(pkg), pkg);
+      assert.equal(validateApiUrl('', true), undefined);
+      assert.equal(validateApiUrl('', true, 'http://localhost:4000'), 'http://localhost:4000');
+    `);
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+  });
+
   it('isolates the new native runtime from the shipped 1.0.3 app', () => {
     const result = run(`
       const {expo} = require('./app.config.js');
@@ -73,7 +97,7 @@ describe('customer release safeguards', () => {
     `);
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({
-      version: '1.0.4', packageVersion: '1.0.4', runtime: '1.0.4-android-native-2',
+      version: '1.0.4', packageVersion: '1.0.4', runtime: '1.0.4-android-native-3',
     });
   });
 

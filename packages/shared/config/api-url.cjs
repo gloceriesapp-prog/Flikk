@@ -1,6 +1,8 @@
-function validateApiUrl(configured, development) {
+// devFallback is passed by the app bundle as `__DEV__ ? url : undefined`, so a
+// release bundle never contains a local address. Config-time callers only validate.
+function validateApiUrl(configured, development, devFallback) {
   const value = typeof configured === 'string' ? configured.trim() : '';
-  if (!value && development) return 'http://localhost:4000';
+  if (!value && development) return devFallback;
   let parsed;
   try { parsed = new URL(value); } catch { throw new Error('Set EXPO_PUBLIC_API_URL to a valid API URL.'); }
   const host = parsed.hostname.toLowerCase();

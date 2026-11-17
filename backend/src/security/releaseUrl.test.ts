@@ -4,7 +4,9 @@ it('fails closed for unsafe or missing release configuration', () => {
   for (const url of [undefined,'','http://api.example.com','https://localhost','https://127.0.0.1','https://10.0.0.1','https://api.local','https://user:password@api.example.com','https://api.example.com?token=secret','https://[::1]'])
     expect(() => validateApiUrl(url,false)).toThrow();
   expect(validateApiUrl('https://api.example.com/api/',false)).toBe('https://api.example.com/api');
-  expect(validateApiUrl(undefined,true)).toBe('http://localhost:4000');
+  // The dev fallback comes from the caller, so release bundles never contain it.
+  expect(validateApiUrl(undefined,true,'http://localhost:4000')).toBe('http://localhost:4000');
+  expect(validateApiUrl(undefined,true)).toBeUndefined();
 });
 
 it('blocks release app configs without a valid HTTPS endpoint', async () => {

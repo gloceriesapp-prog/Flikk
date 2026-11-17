@@ -6,6 +6,8 @@ const buildProfile = process.env.EAS_BUILD_PROFILE;
 const nativeRuntime = require('./native-runtime.json');
 const updateChannel = process.env.CUSTOMER_UPDATE_CHANNEL || 'production';
 if (!['preview', 'production'].includes(updateChannel)) throw new Error('Unsupported customer update channel.');
+const releaseBuild = process.env.CUSTOMER_DIRECT_ANDROID_RELEASE === 'true' || process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true'
+  || ['preview', 'production'].includes(buildProfile);
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 // eas-cli evaluates this file on the developer's machine *before* it pulls the
 // EAS environment variables (it needs extra.eas.projectId first), so a release
@@ -84,12 +86,20 @@ module.exports = {
         ? require('./scripts/release-config.cjs').productionVersionCode(process.env)
         : 11,
       googleServicesFile,
+      // Adaptive icon layers: launchers crop/mask the 108dp canvas differently,
+      // so the logo (transparent foreground) stays inside the 66dp safe circle
+      // (same size and placement as the Play Store icon, shrunk to the 72dp
+      // visible area) and the blue lives in its own layer. Monochrome = same logo
+      // shape for Android 13+ themed icons.
       adaptiveIcon: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#0A47F5',
+        backgroundImage: './assets/android-icon-background.png',
         foregroundImage: './assets/android-icon-foreground.png',
         monochromeImage: './assets/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
+      // Sign-in tokens live in the Keystore and must not reach cloud/adb backups.
+      allowBackup: false,
       // 'pan' — Android's default ('resize') shrinks the whole window when
       // the keyboard opens, which squished/cropped the hero background
       // image (LoginScreen.tsx). 'pan' leaves the window (and the image)
@@ -124,7 +134,7 @@ module.exports = {
         ...(androidGoogleMapsApiKey ? { androidGoogleMapsApiKey } : {}),
         ...(iosGoogleMapsApiKey ? { iosGoogleMapsApiKey } : {}),
       }],
-      './plugins/withAndroidReleaseQuality.cjs',
+      ['./plugins/withAndroidReleaseQuality.cjs', { releaseBuild }],
       './plugins/withIosReleaseQuality.cjs',
       './plugins/withIosRazorpayUpi.cjs',
       './plugins/iosUpiMerchantUi.cjs',
