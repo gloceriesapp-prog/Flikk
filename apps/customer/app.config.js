@@ -88,7 +88,8 @@ module.exports = {
       googleServicesFile,
       // Adaptive icon layers: launchers crop/mask the 108dp canvas differently,
       // so the logo (transparent foreground) stays inside the 66dp safe circle
-      // and the blue lives in its own background layer. Monochrome = same logo
+      // (same size and placement as the Play Store icon, shrunk to the 72dp
+      // visible area) and the blue lives in its own layer. Monochrome = same logo
       // shape for Android 13+ themed icons.
       adaptiveIcon: {
         backgroundColor: '#0A47F5',
