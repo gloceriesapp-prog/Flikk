@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { formatOrderPrice } from '../../order-summary/utils/formatOrderPrice';
-import { getPurchaseArrivalLabel } from '../orderArrival';
+import { getPurchaseArrivalLabel, getPurchaseArrivedInLabel } from '../orderArrival';
 import type { PurchaseOrder } from '../data';
 import { OrderProductPreview } from './OrderProductPreview';
 
@@ -49,9 +49,9 @@ export function OrderRow({ order, onPress, now }: Props) {
           <Text
             numberOfLines={2}
             className="text-[18px] font-bold leading-6 tracking-tight"
-            style={{ color: delivered ? colors.ink : status.color }}
+            style={{ color: status.color }}
           >
-            {delivered ? order.storeName : getPurchaseArrivalLabel(order, now)}
+            {delivered ? getPurchaseArrivedInLabel(order) : getPurchaseArrivalLabel(order, now)}
           </Text>
           <Text className="mt-0.5 text-[12px] font-medium text-ink/55">
             {order.items.length} item{order.items.length === 1 ? '' : 's'}

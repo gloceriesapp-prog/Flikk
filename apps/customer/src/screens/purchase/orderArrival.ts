@@ -10,6 +10,21 @@ export function getPurchaseDeliveredDateLabel(order: PurchaseOrder): string | nu
   });
 }
 
+// Delivered card headline: how long the order took, placed → delivered.
+// Pre-orders are delivered in a chosen slot, so their duration means nothing.
+export function getPurchaseArrivedInLabel(order: PurchaseOrder): string {
+  const placed = new Date(order.placedAtIso).getTime();
+  const delivered = order.deliveredAtIso ? new Date(order.deliveredAtIso).getTime() : NaN;
+  if (order.preorderWindow || !Number.isFinite(placed) || !Number.isFinite(delivered) || delivered < placed) {
+    return getPurchaseArrivalLabel(order);
+  }
+  const minutes = Math.max(1, Math.round((delivered - placed) / 60_000));
+  if (minutes < 60) return `Arrived in ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return `Arrived in ${hours} hr${rest ? ` ${rest} min` : ''}`;
+}
+
 export function getPurchaseArrivalDeadline(order: PurchaseOrder): number | null {
   if (order.status !== 'out_for_delivery' || !Number.isFinite(new Date(order.placedAtIso).getTime())) {
     return null;
