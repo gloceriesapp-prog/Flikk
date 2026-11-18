@@ -147,16 +147,18 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
           </View>
         </View>
 
-        <ProductPriceRow price={price} originalPrice={originalPrice} size={17} onDark={onDark} showDiscount={false} />
-        {/* Discount on its own line under the price, so the price row never shrinks to fit it. */}
-        {discount ? (
-          <Text className={`text-[12px] font-bold leading-[15px] ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discount}% off</Text>
-        ) : null}
-
-        {/* Per-kg/litre price, right under the amount. */}
-        {product.unitPriceLabel && (
-          <Text className={`text-[11px] font-medium ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`}>{product.unitPriceLabel}</Text>
-        )}
+        {/* Price, discount and per-kg/litre price read as one block: no gap
+            between them, and only a small gap before the product name. */}
+        <View>
+          <ProductPriceRow price={price} originalPrice={originalPrice} size={17} onDark={onDark} showDiscount={false} />
+          {/* Discount on its own line under the price, so the price row never shrinks to fit it. */}
+          {discount ? (
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className={`text-[12px] font-bold leading-[15px] ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discount}% OFF on MRP</Text>
+          ) : null}
+          {product.unitPriceLabel && (
+            <Text className={`text-[11px] font-medium leading-[14px] ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`}>{product.unitPriceLabel}</Text>
+          )}
+        </View>
 
         <Text className={`${Platform.OS === 'ios' ? 'text-[14px] leading-[18px]' : 'text-[13px] leading-[17px]'} font-semibold ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
           {name}
