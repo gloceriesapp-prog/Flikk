@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
@@ -158,7 +158,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
           <Text className={`text-[11px] font-medium ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`}>{product.unitPriceLabel}</Text>
         )}
 
-        <Text className={`text-[13px] font-semibold leading-[17px] ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
+        <Text className={`${Platform.OS === 'ios' ? 'text-[14px] leading-[18px]' : 'text-[13px] leading-[17px]'} font-semibold ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
           {name}
         </Text>
         {stockStatus ? (
