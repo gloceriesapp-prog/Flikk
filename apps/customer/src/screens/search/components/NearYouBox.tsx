@@ -4,7 +4,7 @@
 // The banner is the coastal Udupi sunrise artwork unless admin App content
 // sets another (search.nearYou.imageUrl). The title sits bottom-left on a
 // soft white backing so the title stays readable over the darker foreground.
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCopy, useCopyImage } from '../../../api/appConfig';
 import { AppImage as Image } from '../../../components/AppImage';
@@ -39,7 +39,7 @@ export function NearYouBox({ products }: { products: Product[] }) {
           style={styles.titleBacking}
         />
         <View pointerEvents="none" className="absolute bottom-0 left-0 px-5 pb-4" style={{ maxWidth: '62%' }}>
-          <Text accessibilityRole="header" className="text-[22px] font-bold leading-[27px] tracking-tight text-ink">{title}</Text>
+          <Text accessibilityRole="header" className={`${Platform.OS === 'ios' ? 'text-[24px] leading-[29px]' : 'text-[22px] leading-[27px]'} font-bold tracking-tight text-ink`}>{title}</Text>
         </View>
       </View>
       <ScrollView
