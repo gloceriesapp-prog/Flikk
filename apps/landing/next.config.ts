@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from 'node:path';
 
 // Gate on an EXPLICIT prod signal (VERCEL_ENV/APP_ENV), NOT bare NODE_ENV:
 // CI runs `next build` with NODE_ENV=production but no VERCEL_ENV, and local
@@ -27,6 +28,9 @@ if (process.env.VERCEL_ENV === "production" || process.env.APP_ENV === "producti
 }
 
 const nextConfig: NextConfig = {
+  output: process.env.WEB_STANDALONE === '1' ? 'standalone' : undefined,
+  outputFileTracingRoot: path.resolve(__dirname, '../..'),
+  deploymentId: process.env.WEB_RELEASE_SHA,
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

@@ -1,0 +1,14 @@
+{$WEB_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy landing:3000
+}
+
+{$WWW_DOMAIN} {
+    redir https://{$WEB_DOMAIN}{uri} permanent
+}
+
+{$ADMIN_DOMAIN} {
+    encode zstd gzip
+    header X-Robots-Tag "noindex, nofollow"
+    reverse_proxy admin:3000
+}

@@ -1,0 +1,65 @@
+# Candidate configuration for a SEPARATE 4 GB host. Never run on gloceries-api.
+# Image refs must include immutable sha256 digests, not mutable "latest" tags.
+name: gloceries-web
+services:
+  landing:
+    image: ${LANDING_IMAGE:?set a verified landing image digest}
+    restart: unless-stopped
+    init: true
+    environment:
+      APP_ENV: production
+      NODE_OPTIONS: --max-old-space-size=512
+    expose: ["3000"]
+    mem_limit: 768m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/privacy').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 8s
+      retries: 4
+      start_period: 30s
+    logging: &logging
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  admin:
+    image: ${ADMIN_IMAGE:?set a verified admin image digest}
+    env_file: ./admin.runtime.env
+    restart: unless-stopped
+    init: true
+    environment:
+      APP_ENV: production
+      NODE_OPTIONS: --max-old-space-size=768
+    expose: ["3000"]
+    mem_limit: 1024m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 8s
+      retries: 4
+      start_period: 30s
+    logging: *logging
+  caddy:
+    image: caddy:2.11.7
+    ports: ["80:80", "443:443"]
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN:?set the website domain}
+      WWW_DOMAIN: ${WWW_DOMAIN:?set the www domain}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?set the admin domain}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      landing: {condition: service_healthy}
+      admin: {condition: service_healthy}
+    mem_limit: 192m
+    restart: unless-stopped
+    logging: *logging
+volumes:
+  caddy_data:
+  caddy_config:
