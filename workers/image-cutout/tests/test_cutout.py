@@ -105,6 +105,13 @@ class QualityTest(unittest.TestCase):
 
 
 class ModelTest(unittest.TestCase):
+    def test_default_job_gets_fallback_retry(self):
+        self.assertIsNone(c.pinned_model("isnet-general-use"))
+        self.assertIsNone(c.pinned_model(None))
+
+    def test_rerun_pins_birefnet(self):
+        self.assertEqual(c.pinned_model("birefnet-general"), "birefnet-general")
+
     def test_bria_is_refused(self):
         with self.assertRaises(ValueError):
             c.remove_background(Image.new("RGB", (10, 10)), "bria-rmbg")

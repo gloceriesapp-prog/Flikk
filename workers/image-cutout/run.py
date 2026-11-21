@@ -139,7 +139,7 @@ def run_worker(poll_seconds: int) -> None:
             continue
         job = res.json()
         try:
-            result = cutout.process(open_photo(admin.download(job["originalUrl"])), job.get("model") or None)
+            result = cutout.process(open_photo(admin.download(job["originalUrl"])), cutout.pinned_model(job.get("model")))
             admin.post("/api/product-images/worker/result", {"jobId": job["id"], **result_fields(result)}, result.webp)
             print(f"{job['id']}: {result.status} {result.reason or ''}")
         except Exception as error:  # report and move on; the job retries up to 3 times
