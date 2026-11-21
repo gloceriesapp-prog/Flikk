@@ -18,6 +18,7 @@ import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
+import { PhotoStatusBadge, usePhotoStatus } from './usePhotoStatus';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { ProductFlavoursEditor } from './ProductFlavoursEditor';
@@ -53,6 +54,14 @@ export function EditProductModal({
   });
   const setPlacement = useCallback((placement: CataloguePlacement) => setDraft((d) => ({ ...d, ...placement })), []);
   const [error, setError] = useState<string | null>(null);
+  // Cut-out status of the saved photos; a cleaned version replaces the old
+  // photo in the form as soon as it is ready.
+  const photoStates = usePhotoStatus(product.id, [draft.imageUrl, ...(draft.extraImageUrls ?? [])].filter((u): u is string => !!u),
+    (from, to) => setDraft((current) => ({
+      ...current,
+      imageUrl: current.imageUrl === from ? to : current.imageUrl,
+      extraImageUrls: (current.extraImageUrls ?? []).map((url) => (url === from ? to : url)),
+    })));
   const [submitting, setSubmitting] = useState(false);
   const [flavourUploading, setFlavourUploading] = useState(false);
   const homeChoice = useHomeSectionChoice(product.id);
@@ -117,6 +126,7 @@ export function EditProductModal({
             <ProductImageUpload
               imageUrl={draft.imageUrl}
               onChange={(imageUrl, bgColor) => setDraft({ ...draft, imageUrl, bgColor: bgColor ?? draft.bgColor })}
+              badge={<PhotoStatusBadge state={draft.imageUrl ? photoStates.get(draft.imageUrl) : undefined} />}
             />
             <input
               value={draft.name}
@@ -131,6 +141,7 @@ export function EditProductModal({
             urls={draft.extraImageUrls ?? []}
             hasCover={Boolean(draft.imageUrl)}
             onChange={(extraImageUrls) => setDraft({ ...draft, extraImageUrls })}
+            statusBadge={(url) => <PhotoStatusBadge state={photoStates.get(url)} />}
           />
 
           <input

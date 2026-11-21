@@ -14,15 +14,14 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const { id } = await ctx.params;
   const { action, imageUrl } = (await request.json().catch(() => ({}))) as { action?: unknown; imageUrl?: unknown };
   const { data: job, error } = await supabaseAdmin.from('product_image_jobs')
-    .select('id, product_id, original_url, result_url, status').eq('id', id).maybeSingle();
+    .select('id, product_id, slot, original_url, result_url, status').eq('id', id).maybeSingle();
   if (error || !job) return NextResponse.json({ error: 'Photo not found.' }, { status: 404 });
   if (job.status !== 'needs_review') return NextResponse.json({ error: 'This photo was already handled.' }, { status: 409 });
   const now = new Date().toISOString();
   try {
     if (action === 'accept') {
       if (!job.result_url) return NextResponse.json({ error: 'There is no processed photo to accept.' }, { status: 400 });
-      const { data: assets } = await supabaseAdmin.from('media_assets').select('public_url').eq('source_url', job.original_url);
-      const published = await publish(job.product_id, [job.original_url, ...(assets ?? []).map((a) => a.public_url as string)], job.result_url);
+      const published = await publish(job, job.result_url);
       if (!published) return NextResponse.json({ error: 'The product has a newer photo now.' }, { status: 409 });
       await supabaseAdmin.from('product_image_jobs').update({ status: 'done', updated_at: now }).eq('id', id);
     } else if (action === 'original') {
@@ -35,9 +34,11 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       const { data: asset } = await supabaseAdmin.from('media_assets').select('id')
         .eq('public_url', typeof imageUrl === 'string' ? imageUrl : '').eq('purpose', 'products').eq('status', 'ready').maybeSingle();
       if (!asset) return NextResponse.json({ error: 'Upload the new photo first.' }, { status: 400 });
+      // Swap the new upload in where the reviewed photo is; the queue
+      // trigger then cuts it out like any new photo.
       await supabaseAdmin.from('product_image_jobs').update({ status: 'failed', error: 'Replaced by a new upload.', updated_at: now }).eq('id', id);
-      const { error: productError } = await supabaseAdmin.from('products').update({ image_url: imageUrl }).eq('id', job.product_id);
-      if (productError) throw productError;
+      const replaced = await publish(job, imageUrl as string);
+      if (!replaced) return NextResponse.json({ error: 'The product has a newer photo now.' }, { status: 409 });
     } else {
       return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
     }

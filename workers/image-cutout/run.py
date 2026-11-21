@@ -110,8 +110,13 @@ class Admin:
         res.raise_for_status()
         return res
 
-    def post(self, path: str, data: dict, webp: bytes | None = None):
-        files = {"file": ("image.webp", webp, "image/webp")} if webp else None
+    def post(self, path: str, data: dict, webp: bytes | None = None, cutout: bytes | None = None):
+        files = {}
+        if webp:
+            files["file"] = ("image.webp", webp, "image/webp")
+        if cutout:
+            files["cutout"] = ("cutout.webp", cutout, "image/webp")
+        files = files or None
         res = self.http.post(f"{self.base}{path}", data=data, files=files, timeout=60)
         res.raise_for_status()
         return res
@@ -133,18 +138,26 @@ def run_worker(poll_seconds: int) -> None:
     admin = Admin()
     print("worker started")
     while True:
-        res = admin.post("/api/product-images/worker/claim", {})
+        try:
+            res = admin.post("/api/product-images/worker/claim", {})
+        except Exception as error:  # admin restarting or offline: wait, then try again
+            print(f"claim failed, retrying: {error}", file=sys.stderr)
+            time.sleep(poll_seconds)
+            continue
         if res.status_code == 204:
             time.sleep(poll_seconds)
             continue
         job = res.json()
         try:
             result = cutout.process(open_photo(admin.download(job["originalUrl"])), cutout.pinned_model(job.get("model")))
-            admin.post("/api/product-images/worker/result", {"jobId": job["id"], **result_fields(result)}, result.webp)
+            admin.post("/api/product-images/worker/result", {"jobId": job["id"], **result_fields(result)}, result.webp, result.cutout_webp)
             print(f"{job['id']}: {result.status} {result.reason or ''}")
         except Exception as error:  # report and move on; the job retries up to 3 times
-            admin.post("/api/product-images/worker/result", {"jobId": job["id"], "status": "failed", "error": str(error)[:500]})
             print(f"{job['id']}: failed {error}", file=sys.stderr)
+            try:
+                admin.post("/api/product-images/worker/result", {"jobId": job["id"], "status": "failed", "error": str(error)[:500]})
+            except Exception:
+                pass  # unreported: the claim expires after 10 minutes and is retried
 
 
 def run_batch_dry(out: Path, limit: int | None) -> None:
@@ -158,7 +171,8 @@ def run_batch_dry(out: Path, limit: int | None) -> None:
         for item in page["products"]:
             if limit is not None and sum(counts.values()) >= limit:
                 break
-            if item["processed"] or item["id"] in manifest:
+            key = f"{item['id']} {item['imageUrl']}"  # one entry per photo (main or extra)
+            if item["processed"] or key in manifest:
                 skipped += 1
                 continue
             try:
@@ -168,13 +182,18 @@ def run_batch_dry(out: Path, limit: int | None) -> None:
                 continue
             file = None
             if result.webp:
-                file = f"{result.reason or 'done'}/{item['id']}.webp".replace(" ", "-")
+                file = f"{result.reason or 'done'}/{item['id']}-{item['slot']}-{len(manifest)}.webp".replace(" ", "-")
                 (out / file).parent.mkdir(parents=True, exist_ok=True)
                 (out / file).write_bytes(result.webp)
-            manifest[item["id"]] = {"name": item["name"], "imageUrl": item["imageUrl"], "file": file, **result_fields(result)}
+            cutout_file = None
+            if result.cutout_webp:
+                cutout_file = file.replace(".webp", "-cutout.webp") if file else None
+                if cutout_file:
+                    (out / cutout_file).write_bytes(result.cutout_webp)
+            manifest[key] = {"productId": item["id"], "slot": item["slot"], "name": item["name"], "imageUrl": item["imageUrl"], "file": file, "cutout": cutout_file, **result_fields(result)}
             manifest_path.write_text(json.dumps(manifest, indent=2))  # resumable
             counts[result.reason or "done"] += 1
-            print(f"{item['name']}: {result.status} {result.reason or ''}")
+            print(f"{item['name']} ({item['slot']}): {result.status} {result.reason or ''}")
         cursor = page.get("next")
         if not cursor or (limit is not None and sum(counts.values()) >= limit):
             break
@@ -186,13 +205,14 @@ def run_batch_apply(out: Path) -> None:
     admin = Admin()
     manifest = json.loads((out / "manifest.json").read_text())
     counts, skipped = Counter(), 0
-    for product_id, item in manifest.items():
+    for item in manifest.values():
         if item.get("applied"):
             skipped += 1
             continue
         webp = (out / item["file"]).read_bytes() if item["file"] else None
+        cutout = (out / item["cutout"]).read_bytes() if item.get("cutout") else None
         fields = {k: item[k] for k in ("status", "reason", "model", "quality", "scale")}
-        res = admin.post("/api/product-images/worker/batch-result", {"productId": product_id, "imageUrl": item["imageUrl"], **fields}, webp)
+        res = admin.post("/api/product-images/worker/batch-result", {"productId": item["productId"], "slot": item["slot"], "imageUrl": item["imageUrl"], **fields}, webp, cutout)
         if res.json().get("skipped"):
             skipped += 1
         else:

@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
+import { NewForYouPicker } from '@/components/home/NewForYouPicker';
 import type { ProductImageJob } from '@/lib/productImageJobs';
 
 const REASON_TEXT: Record<string, string> = {
@@ -80,6 +81,7 @@ export default function ProductImagesPage() {
           Product photos the automatic cut-out would not publish on its own. {waiting > 0 ? `${waiting} more in the queue.` : ''}
         </p>
       </div>
+      <NewForYouPicker />
       {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-danger">{error}</p>}
       {loading && <p className="text-sm text-muted">Loading…</p>}
       {!loading && review.length === 0 && <p className="card p-5 text-sm text-muted">Nothing to review.</p>}
@@ -89,7 +91,10 @@ export default function ProductImagesPage() {
           <Photo url={job.resultUrl} label="After (cut out)" />
           <div className="flex min-w-[240px] flex-1 flex-col gap-3">
             <div>
-              <p className="text-sm font-semibold text-ink">{job.productName}</p>
+              <p className="text-sm font-semibold text-ink">
+                {job.productName}
+                <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-muted">{job.slot === 'extra' ? 'Extra photo' : 'Main photo'}</span>
+              </p>
               <p className="mt-1 text-sm text-danger">{job.reason ? REASON_TEXT[job.reason] : ''}</p>
               <p className="mt-1 text-xs text-muted">Model: {job.model}</p>
             </div>

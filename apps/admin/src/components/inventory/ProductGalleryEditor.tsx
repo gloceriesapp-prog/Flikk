@@ -2,11 +2,13 @@
 
 // Extra product photos after the main one (products.extra_image_urls). The
 // main photo stays in ProductImageUpload next to the name; these follow it in
-// the customer app's swipeable gallery, in the order shown here.
+// the customer app's swipeable gallery, in the order shown here. Several
+// photos can be picked at once; they upload one by one and each is then cut
+// out like the main photo (workers/image-cutout) after the product is saved.
 
-import { ChevronLeft, ChevronRight, X } from '@/components/icons';
+import { useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from '@/components/icons';
 import { MAX_EXTRA_IMAGES } from '@/lib/productValidation';
-import { ProductImageUpload } from './ProductImageUpload';
 
 export function ProductGalleryEditor({
   urls,
@@ -14,13 +16,53 @@ export function ProductGalleryEditor({
   onChange,
   onUpload,
   onUploadingChange,
+  statusBadge,
 }: {
   urls: string[];
   hasCover: boolean;
   onChange: (urls: string[]) => void;
   onUpload?: (url: string) => void;
   onUploadingChange?: (uploading: boolean) => void;
+  // Cut-out status over each saved photo (components/inventory/usePhotoStatus).
+  statusBadge?: (url: string) => React.ReactNode;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function uploadMany(files: File[]) {
+    const room = MAX_EXTRA_IMAGES - urls.length;
+    const picked = files.slice(0, room);
+    setError(files.length > room ? `Only ${room} more photo${room === 1 ? '' : 's'} fit; the rest were skipped.` : null);
+    if (!picked.length) return;
+    onUploadingChange?.(true);
+    // urls in this closure is the list before the batch: add to a local copy.
+    const next = [...urls];
+    const failed: string[] = [];
+    try {
+      for (const [index, file] of picked.entries()) {
+        setProgress({ done: index, total: picked.length });
+        try {
+          const form = new FormData();
+          form.append('file', file);
+          form.append('bucket', 'product-images');
+          const res = await fetch('/api/upload', { method: 'POST', body: form });
+          const body = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(body?.error ?? 'Upload failed.');
+          const url = body.url as string;
+          if (onUpload) onUpload(url);
+          else if (!next.includes(url)) { next.push(url); onChange([...next]); }
+        } catch (err) {
+          failed.push(`${file.name}: ${err instanceof Error ? err.message : 'Upload failed.'}`);
+        }
+      }
+    } finally {
+      setProgress(null);
+      onUploadingChange?.(false);
+      if (failed.length) setError(failed.join(' '));
+    }
+  }
+
   function move(from: number, to: number) {
     const next = [...urls];
     const [url] = next.splice(from, 1);
@@ -37,7 +79,8 @@ export function ProductGalleryEditor({
         {urls.map((url, index) => (
           <div key={url} className="relative h-20 w-20 overflow-hidden rounded-2xl border border-border bg-accent">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={`Photo ${index + 2}`} className="h-full w-full object-cover" />
+            <img src={url} alt={`Photo ${index + 2}`} className="h-full w-full bg-[#F9FAFB] object-contain" />
+            {statusBadge?.(url)}
             <button
               type="button"
               onClick={() => onChange(urls.filter((_, i) => i !== index))}
@@ -70,19 +113,44 @@ export function ProductGalleryEditor({
         ))}
         {urls.length < MAX_EXTRA_IMAGES && (
           hasCover ? (
-            // Remounted per count so the tile resets to "Add photo" after each upload.
-            <ProductImageUpload
-              key={urls.length}
-              small
-              imageUrl={undefined}
-              onUploadingChange={onUploadingChange}
-              onChange={(url) => { if (onUpload) onUpload(url); else if (!urls.includes(url)) onChange([...urls, url]); }}
-            />
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={!!progress}
+              className="relative flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-accent text-muted transition hover:border-ink/20"
+              aria-label="Add photos"
+            >
+              {progress ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span className="text-[10px] font-medium">{progress.done + 1} of {progress.total}</span>
+                </>
+              ) : (
+                <>
+                  <ImagePlus size={20} />
+                  <span className="text-[10px] font-medium">Add photos</span>
+                </>
+              )}
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const files = [...(event.target.files ?? [])];
+                  event.target.value = '';
+                  void uploadMany(files);
+                }}
+              />
+            </button>
           ) : (
             <p className="self-center text-[11px] text-muted">Add the main photo first.</p>
           )
         )}
       </div>
+      {error && <p className="text-[11px] font-medium text-danger">{error}</p>}
+      {urls.length > 0 && <p className="text-[11px] text-muted">You can pick several photos at once. Backgrounds are removed a few seconds after you save.</p>}
     </div>
   );
 }
