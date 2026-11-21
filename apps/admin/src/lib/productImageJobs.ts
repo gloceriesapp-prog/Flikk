@@ -12,9 +12,12 @@ export const JOB_REASONS = ['cut-out quality', 'low resolution', 'too small'] as
 export type JobReason = (typeof JOB_REASONS)[number];
 export const JOB_MODELS = ['isnet-general-use', 'birefnet-general'] as const;
 
+export type JobSlot = 'main' | 'extra';
+
 export interface ProductImageJob {
   id: string;
   productId: string;
+  slot: JobSlot;
   productName: string;
   originalUrl: string;
   resultUrl: string | null;
@@ -63,9 +66,21 @@ export function shouldPublish(reason: JobReason | null): boolean {
   return reason === null || reason === 'low resolution';
 }
 
-export async function publish(productId: string, fromUrls: string[], resultUrl: string): Promise<boolean> {
+// Put a cleaned photo on the product in place of the photo its job started
+// from: the main photo, or that one extra photo (order kept). Only while the
+// product still shows it (the original or a fitted upload made from it), so
+// a newer or removed photo is never overwritten or brought back.
+export async function publish(job: { product_id: string; slot: JobSlot; original_url: string }, resultUrl: string): Promise<boolean> {
+  const { data: assets, error: assetError } = await supabaseAdmin.from('media_assets').select('public_url').eq('source_url', job.original_url);
+  if (assetError) throw assetError;
+  const from = [job.original_url, ...(assets ?? []).map((a) => a.public_url as string)];
+  if (job.slot === 'extra') {
+    const { data, error } = await supabaseAdmin.rpc('replace_product_extra_image', { p_product: job.product_id, p_from: from, p_to: resultUrl });
+    if (error) throw error;
+    return data === true;
+  }
   const { data, error } = await supabaseAdmin.from('products').update({ image_url: resultUrl })
-    .eq('id', productId).in('image_url', fromUrls).select('id');
+    .eq('id', job.product_id).in('image_url', from).select('id');
   if (error) throw error;
   return (data ?? []).length > 0;
 }

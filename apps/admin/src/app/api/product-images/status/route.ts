@@ -1,5 +1,7 @@
-// Latest cut-out job per product, for the inventory page to show
-// "Cleaning photo…" after a save and swap in the cleaned photo when ready.
+// Cut-out progress per product (main and extra photos together), for the
+// inventory page to show "Cleaning photo…" after a save and swap in the
+// cleaned photos when ready: open while any job is queued or processing,
+// else the latest job's outcome.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
@@ -16,7 +18,11 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: 'Could not load photo status.' }, { status: 500 });
   const latest = new Map<string, { productId: string; status: string; reason: string | null }>();
   for (const row of data ?? []) {
-    if (!latest.has(row.product_id)) latest.set(row.product_id, { productId: row.product_id, status: row.status, reason: row.reason });
+    const open = row.status === 'queued' || row.status === 'processing';
+    const seen = latest.get(row.product_id);
+    if (!seen || (open && seen.status !== 'queued' && seen.status !== 'processing')) {
+      latest.set(row.product_id, { productId: row.product_id, status: row.status, reason: row.reason });
+    }
   }
   return NextResponse.json([...latest.values()]);
 }

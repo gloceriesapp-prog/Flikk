@@ -166,7 +166,8 @@ def run_batch_dry(out: Path, limit: int | None) -> None:
         for item in page["products"]:
             if limit is not None and sum(counts.values()) >= limit:
                 break
-            if item["processed"] or item["id"] in manifest:
+            key = f"{item['id']} {item['imageUrl']}"  # one entry per photo (main or extra)
+            if item["processed"] or key in manifest:
                 skipped += 1
                 continue
             try:
@@ -176,13 +177,13 @@ def run_batch_dry(out: Path, limit: int | None) -> None:
                 continue
             file = None
             if result.webp:
-                file = f"{result.reason or 'done'}/{item['id']}.webp".replace(" ", "-")
+                file = f"{result.reason or 'done'}/{item['id']}-{item['slot']}-{len(manifest)}.webp".replace(" ", "-")
                 (out / file).parent.mkdir(parents=True, exist_ok=True)
                 (out / file).write_bytes(result.webp)
-            manifest[item["id"]] = {"name": item["name"], "imageUrl": item["imageUrl"], "file": file, **result_fields(result)}
+            manifest[key] = {"productId": item["id"], "slot": item["slot"], "name": item["name"], "imageUrl": item["imageUrl"], "file": file, **result_fields(result)}
             manifest_path.write_text(json.dumps(manifest, indent=2))  # resumable
             counts[result.reason or "done"] += 1
-            print(f"{item['name']}: {result.status} {result.reason or ''}")
+            print(f"{item['name']} ({item['slot']}): {result.status} {result.reason or ''}")
         cursor = page.get("next")
         if not cursor or (limit is not None and sum(counts.values()) >= limit):
             break
@@ -194,13 +195,13 @@ def run_batch_apply(out: Path) -> None:
     admin = Admin()
     manifest = json.loads((out / "manifest.json").read_text())
     counts, skipped = Counter(), 0
-    for product_id, item in manifest.items():
+    for item in manifest.values():
         if item.get("applied"):
             skipped += 1
             continue
         webp = (out / item["file"]).read_bytes() if item["file"] else None
         fields = {k: item[k] for k in ("status", "reason", "model", "quality", "scale")}
-        res = admin.post("/api/product-images/worker/batch-result", {"productId": product_id, "imageUrl": item["imageUrl"], **fields}, webp)
+        res = admin.post("/api/product-images/worker/batch-result", {"productId": item["productId"], "slot": item["slot"], "imageUrl": item["imageUrl"], **fields}, webp)
         if res.json().get("skipped"):
             skipped += 1
         else:

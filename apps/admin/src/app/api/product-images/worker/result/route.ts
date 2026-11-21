@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const jobId = String(form.get('jobId') ?? '');
     const { data: job, error } = await supabaseAdmin.from('product_image_jobs')
-      .select('id, product_id, original_url, status').eq('id', jobId).maybeSingle();
+      .select('id, product_id, slot, original_url, status').eq('id', jobId).maybeSingle();
     if (error) throw error;
     // Superseded by a newer photo (or already reported): drop the result.
     if (!job || job.status !== 'processing') return NextResponse.json({ ok: true, ignored: true });
@@ -32,10 +32,7 @@ export async function POST(request: Request) {
       result_url: resultUrl, error: null, updated_at: new Date().toISOString(),
     }).eq('id', job.id);
     if (saveError) throw saveError;
-    if (resultUrl && shouldPublish(result.reason)) {
-      const { data: assets } = await supabaseAdmin.from('media_assets').select('public_url').eq('source_url', job.original_url);
-      await publish(job.product_id, [job.original_url, ...(assets ?? []).map((a) => a.public_url as string)], resultUrl);
-    }
+    if (resultUrl && shouldPublish(result.reason)) await publish(job, resultUrl);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Image job result failed', { message: err instanceof Error ? err.message : 'unknown' });

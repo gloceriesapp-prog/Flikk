@@ -174,7 +174,10 @@ export default function InventoryPage() {
   })();
 
   async function handleSave(updated: Product, homeKeys: string[] | null) {
-    const photoChanged = !!updated.imageUrl && products.find((p) => p.id === updated.id)?.imageUrl !== updated.imageUrl;
+    // A new main or extra photo is queued for cut-out; watch the card for it.
+    const before = products.find((p) => p.id === updated.id);
+    const photoChanged = (!!updated.imageUrl && before?.imageUrl !== updated.imageUrl)
+      || (updated.extraImageUrls ?? []).some((url) => !(before?.extraImageUrls ?? []).includes(url));
     const res = await fetch(`/api/products/${updated.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -244,7 +247,7 @@ export default function InventoryPage() {
     const created = (await res.json()) as Product;
     await loadData();
     setAdding(false);
-    if (created.imageUrl) watchPhoto(created.id);
+    if (created.imageUrl || (created.extraImageUrls ?? []).length > 0) watchPhoto(created.id);
     // The product exists now; a failed pick must not look like a failed add.
     if (homeKeys.length > 0) {
       try {

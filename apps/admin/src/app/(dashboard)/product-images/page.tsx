@@ -89,7 +89,10 @@ export default function ProductImagesPage() {
           <Photo url={job.resultUrl} label="After (cut out)" />
           <div className="flex min-w-[240px] flex-1 flex-col gap-3">
             <div>
-              <p className="text-sm font-semibold text-ink">{job.productName}</p>
+              <p className="text-sm font-semibold text-ink">
+                {job.productName}
+                <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-muted">{job.slot === 'extra' ? 'Extra photo' : 'Main photo'}</span>
+              </p>
               <p className="mt-1 text-sm text-danger">{job.reason ? REASON_TEXT[job.reason] : ''}</p>
               <p className="mt-1 text-xs text-muted">Model: {job.model}</p>
             </div>
