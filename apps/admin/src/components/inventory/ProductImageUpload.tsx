@@ -26,6 +26,7 @@ export function ProductImageUpload({
   const [error, setError] = useState<string | null>(null);
   // Product photos: the upload route warns when the product itself is small.
   const [warning, setWarning] = useState<string | null>(null);
+  const [uploaded, setUploaded] = useState(false);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
@@ -48,6 +49,7 @@ export function ProductImageUpload({
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error ?? 'Upload failed.');
       setWarning(typeof body.warning === 'string' ? body.warning : null);
+      setUploaded(true);
       await onChange(body.url as string, (body.bgColor as string | null) ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed — try again.');
@@ -87,6 +89,10 @@ export function ProductImageUpload({
       </button>
       {error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-danger`}>{error}</p>}
       {warning && !error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-amber-600`}>{warning}</p>}
+      {/* Product photos are cut out and centred by the photo worker after the product is saved. */}
+      {uploaded && !error && !small && ['products', 'product-images'].includes(bucket) && (
+        <p className="mt-1 w-28 text-[10px] text-muted">Background is removed automatically a few seconds after you save.</p>
+      )}
     </div>
   );
 }

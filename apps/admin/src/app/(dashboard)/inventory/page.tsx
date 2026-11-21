@@ -57,6 +57,10 @@ export default function InventoryPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
 
+  // Products whose new photo is being cleaned by the cut-out worker
+  // (workers/image-cutout): productId -> when we started waiting.
+  const [cleaning, setCleaning] = useState<Map<string, number>>(new Map());
+
   const loadData = useCallback(async () => {
     setLoadError(null);
     try {
@@ -80,6 +84,42 @@ export default function InventoryPage() {
     // fetchProducts/fetchStoreOptions were already async regardless.
     Promise.resolve().then(loadData);
   }, [loadData]);
+
+  // While photos are being cleaned, check every 4s; swap in the cleaned photo
+  // as soon as its job finishes. Give up quietly after 2 minutes (worker off).
+  useEffect(() => {
+    if (cleaning.size === 0) return;
+    const timer = setInterval(async () => {
+      const waiting = cleaning;
+      const res = await fetch(`/api/product-images/status?ids=${[...waiting.keys()].join(',')}`).catch(() => null);
+      const jobs = res?.ok ? ((await res.json()) as { productId: string; status: string; reason: string | null }[]) : [];
+      const byId = new Map(jobs.map((job) => [job.productId, job]));
+      const finished: string[] = [];
+      for (const [id, since] of waiting) {
+        const job = byId.get(id);
+        const open = !job || job.status === 'queued' || job.status === 'processing';
+        if (!open) {
+          finished.push(id);
+          if (job?.status === 'needs_review') toast.error('Photo needs a look', `${job.reason ?? 'Check it'} — see Photos to review.`);
+        } else if (Date.now() - since > 120_000) {
+          finished.push(id);
+          toast.error('Photo still waiting', 'The photo clean-up worker is not running. It will be cleaned when it starts.');
+        }
+      }
+      if (finished.length === 0) return;
+      setCleaning((current) => {
+        const next = new Map(current);
+        finished.forEach((id) => next.delete(id));
+        return next;
+      });
+      await loadData();
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [cleaning, loadData]);
+
+  function watchPhoto(productId: string) {
+    setCleaning((current) => new Map(current).set(productId, Date.now()));
+  }
 
   const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category)))], [products]);
 
@@ -134,6 +174,7 @@ export default function InventoryPage() {
   })();
 
   async function handleSave(updated: Product, homeKeys: string[] | null) {
+    const photoChanged = !!updated.imageUrl && products.find((p) => p.id === updated.id)?.imageUrl !== updated.imageUrl;
     const res = await fetch(`/api/products/${updated.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -146,6 +187,7 @@ export default function InventoryPage() {
     if (homeKeys) await saveProductHomeSections(updated.id, homeKeys);
     await loadData();
     setEditing(null);
+    if (photoChanged) watchPhoto(updated.id);
   }
 
   async function handleApproval(id: string, approve: boolean) {
@@ -202,6 +244,7 @@ export default function InventoryPage() {
     const created = (await res.json()) as Product;
     await loadData();
     setAdding(false);
+    if (created.imageUrl) watchPhoto(created.id);
     // The product exists now; a failed pick must not look like a failed add.
     if (homeKeys.length > 0) {
       try {
@@ -331,7 +374,10 @@ export default function InventoryPage() {
                 same 4:4.5 frame, #F9FAFB background, thin border and rounded
                 corners, photo filling the frame (the app's 'cover'), so what
                 you see here is what shoppers see. No photo: icon placeholder. */}
-            <div className="aspect-[4/4.5] w-[76px] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+            <div className="relative aspect-[4/4.5] w-[76px] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+              {cleaning.has(product.id) && (
+                <span className="absolute inset-x-0 bottom-0 z-10 bg-ink/70 py-0.5 text-center text-[9px] font-semibold text-white">Cleaning photo…</span>
+              )}
               {product.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />

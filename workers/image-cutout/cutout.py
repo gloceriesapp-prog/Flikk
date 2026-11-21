@@ -134,6 +134,13 @@ class Result:
     scale: float
 
 
+def pinned_model(job_model: str | None) -> str | None:
+    """The queue stores the primary model as every job's default; only a review
+    "Re-run with birefnet" pins one. A default job gets the primary model and
+    the fallback retry, so it returns None."""
+    return None if job_model in (None, "", PRIMARY_MODEL) else job_model
+
+
 def process(source: Image.Image, model: str | None = None) -> Result:
     """Cut out and fit one photo. With no model given, tries isnet then birefnet."""
     models = [model] if model else [PRIMARY_MODEL, FALLBACK_MODEL]
