@@ -79,7 +79,7 @@ export function ProductGalleryEditor({
         {urls.map((url, index) => (
           <div key={url} className="relative h-20 w-20 overflow-hidden rounded-2xl border border-border bg-accent">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={`Photo ${index + 2}`} className="h-full w-full object-cover" />
+            <img src={url} alt={`Photo ${index + 2}`} className="h-full w-full bg-[#F9FAFB] object-contain" />
             {statusBadge?.(url)}
             <button
               type="button"

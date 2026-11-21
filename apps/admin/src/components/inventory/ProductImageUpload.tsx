@@ -76,7 +76,7 @@ export function ProductImageUpload({
       >
         {displayUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={displayUrl} alt="" className="h-full w-full object-cover" />
+          <img src={displayUrl} alt="" className="h-full w-full bg-[#F9FAFB] object-contain" />
         ) : (
           <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted">
             <ImagePlus size={20} />
