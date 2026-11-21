@@ -11,14 +11,16 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const jobId = String(form.get('jobId') ?? '');
     const { data: job, error } = await supabaseAdmin.from('product_image_jobs')
-      .select('id, product_id, slot, original_url, status').eq('id', jobId).maybeSingle();
+      .select('id, product_id, slot, original_url, status, attempts').eq('id', jobId).maybeSingle();
     if (error) throw error;
     // Superseded by a newer photo (or already reported): drop the result.
     if (!job || job.status !== 'processing') return NextResponse.json({ ok: true, ignored: true });
 
     if (form.get('status') === 'failed') {
+      // Retry up to 3 attempts in all, then stop: a photo that always fails
+      // must not loop through the worker forever.
       await supabaseAdmin.from('product_image_jobs')
-        .update({ status: 'queued', error: String(form.get('error') ?? '').slice(0, 500), updated_at: new Date().toISOString() })
+        .update({ status: job.attempts >= 3 ? 'failed' : 'queued', error: String(form.get('error') ?? '').slice(0, 500), updated_at: new Date().toISOString() })
         .eq('id', job.id);
       return NextResponse.json({ ok: true });
     }
@@ -35,7 +37,9 @@ export async function POST(request: Request) {
     if (resultUrl && shouldPublish(result.reason)) await publish(job, resultUrl);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('Image job result failed', { message: err instanceof Error ? err.message : 'unknown' });
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Could not save the result.' }, { status: 400 });
+    // Supabase errors are plain objects, not Error instances: keep their text.
+    const message = err instanceof Error ? err.message : (err as { message?: string } | null)?.message ?? 'Could not save the result.';
+    console.error('Image job result failed', { message, code: (err as { code?: string } | null)?.code });
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
