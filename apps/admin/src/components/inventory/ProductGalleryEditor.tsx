@@ -16,12 +16,15 @@ export function ProductGalleryEditor({
   onChange,
   onUpload,
   onUploadingChange,
+  statusBadge,
 }: {
   urls: string[];
   hasCover: boolean;
   onChange: (urls: string[]) => void;
   onUpload?: (url: string) => void;
   onUploadingChange?: (uploading: boolean) => void;
+  // Cut-out status over each saved photo (components/inventory/usePhotoStatus).
+  statusBadge?: (url: string) => React.ReactNode;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -77,6 +80,7 @@ export function ProductGalleryEditor({
           <div key={url} className="relative h-20 w-20 overflow-hidden rounded-2xl border border-border bg-accent">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt={`Photo ${index + 2}`} className="h-full w-full object-cover" />
+            {statusBadge?.(url)}
             <button
               type="button"
               onClick={() => onChange(urls.filter((_, i) => i !== index))}

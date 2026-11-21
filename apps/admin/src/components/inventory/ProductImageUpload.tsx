@@ -12,12 +12,15 @@ export function ProductImageUpload({
   bucket = 'product-images',
   small = false,
   onUploadingChange,
+  badge,
 }: {
   imageUrl: string | undefined;
   onChange: (url: string, bgColor: string | null) => void | Promise<void>;
   // Gallery "add photo" tile (ProductGalleryEditor) — same upload, smaller box.
   small?: boolean;
   onUploadingChange?: (uploading: boolean) => void;
+  // Shown over the photo (cut-out status, components/inventory/usePhotoStatus).
+  badge?: React.ReactNode;
   bucket?: 'appsui' | 'banners' | 'categories' | 'festivals' | 'illustrations' | 'products' | 'stores' | 'product-images' | 'store-images' | 'category-images' | 'home-tab-images' | 'home-tab-banner-images';
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +83,7 @@ export function ProductImageUpload({
             <span className="text-[10px] font-medium">Add photo</span>
           </span>
         )}
+        {!preview && badge}
         {uploading && (
           <span className="absolute inset-0 flex items-center justify-center bg-black/30">
             <Loader2 size={20} className="animate-spin text-white" />
