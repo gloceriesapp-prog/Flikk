@@ -2,7 +2,7 @@
 // outcome, and publishes it to the product when no review is needed.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { parseResult, publish, requireWorker, shouldPublish, storeResult } from '@/lib/productImageJobs';
+import { parseResult, publish, requireWorker, shouldPublish, storeCutout, storeResult } from '@/lib/productImageJobs';
 
 export async function POST(request: Request) {
   const denied = requireWorker(request);
@@ -27,11 +27,12 @@ export async function POST(request: Request) {
 
     const result = parseResult(form);
     const resultUrl = await storeResult(form, result.reason);
+    const cutoutUrl = await storeCutout(form);
     // Record the result URL before publishing: the queue trigger recognises
     // it as the pipeline's own write and does not queue it again.
     const { error: saveError } = await supabaseAdmin.from('product_image_jobs').update({
       status: result.status, reason: result.reason, model: result.model, quality: result.quality,
-      result_url: resultUrl, error: null, updated_at: new Date().toISOString(),
+      result_url: resultUrl, cutout_url: cutoutUrl, error: null, updated_at: new Date().toISOString(),
     }).eq('id', job.id);
     if (saveError) throw saveError;
     if (resultUrl && shouldPublish(result.reason)) await publish(job, resultUrl);

@@ -788,6 +788,10 @@
     {
       "file": "20261121130000_fix_replace_product_extra_image.sql",
       "sha256": "97af99676d4d2fdb60a7b172882eee8847367c8e4466d1291a4ad4f1f094f8f8"
+    },
+    {
+      "file": "20261121140000_product_image_cutout_url.sql",
+      "sha256": "d1ca5aac7da21a507e98ff319f362cd45f6f26831b8f3e422f57acb2c9d87475"
     }
   ]
 }

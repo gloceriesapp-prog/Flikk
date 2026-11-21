@@ -3,7 +3,7 @@
 // queued job would, but only if the product still shows that photo.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { parseResult, publish, requireWorker, shouldPublish, storeResult, type JobSlot } from '@/lib/productImageJobs';
+import { parseResult, publish, requireWorker, shouldPublish, storeCutout, storeResult, type JobSlot } from '@/lib/productImageJobs';
 
 export async function POST(request: Request) {
   const denied = requireWorker(request);
@@ -19,9 +19,10 @@ export async function POST(request: Request) {
     if (!product || !stillShown) return NextResponse.json({ ok: true, skipped: true });
     const result = parseResult(form);
     const resultUrl = await storeResult(form, result.reason);
+    const cutoutUrl = await storeCutout(form);
     const job = { product_id: productId, slot, original_url: imageUrl };
     const { error: insertError } = await supabaseAdmin.from('product_image_jobs').insert({
-      ...job, result_url: resultUrl, status: result.status, reason: result.reason, model: result.model, quality: result.quality,
+      ...job, result_url: resultUrl, cutout_url: cutoutUrl, status: result.status, reason: result.reason, model: result.model, quality: result.quality,
     });
     if (insertError) throw insertError;
     if (resultUrl && shouldPublish(result.reason)) await publish(job, resultUrl);

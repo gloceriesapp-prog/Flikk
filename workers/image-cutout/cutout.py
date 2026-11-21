@@ -51,6 +51,9 @@ class Fit:
     scale: float
     box: tuple[int, int, int, int] | None  # where the product landed: left, top, right, bottom
     reason: str | None  # None: ready to publish
+    # The scaled product alone on a transparent background (no frame), for
+    # places that sit it on their own colour, e.g. the "NEW for you" tile.
+    cutout: Image.Image | None = None
 
 
 def check_quality(cutout: Image.Image) -> Quality:
@@ -102,7 +105,7 @@ def fit(cutout: Image.Image) -> Fit:
     frame = Image.new("RGB", (FRAME_W, FRAME_H), BACKGROUND)
     frame.paste(product, (left, top), product)
     reason = REASON_LOW_RES if scale > LOW_RES_SCALE else None
-    return Fit(frame, scale, (left, top, left + new_w, top + new_h), reason)
+    return Fit(frame, scale, (left, top, left + new_w, top + new_h), reason, product)
 
 
 def to_webp(image: Image.Image) -> bytes:
@@ -132,6 +135,7 @@ class Result:
     webp: bytes | None  # None: keep the original (too small)
     quality: Quality
     scale: float
+    cutout_webp: bytes | None = None  # transparent product only, when the cut-out passed
 
 
 def pinned_model(job_model: str | None) -> str | None:
@@ -153,4 +157,6 @@ def process(source: Image.Image, model: str | None = None) -> Result:
     reason = None if quality.ok else REASON_CUTOUT
     reason = reason or fitted.reason
     webp = to_webp(fitted.image) if fitted.image is not None else None
-    return Result("done" if reason is None else "needs_review", reason, name, webp, quality, fitted.scale)
+    # Only a cut-out that passed the check is worth showing without a frame.
+    cutout_webp = to_webp(fitted.cutout) if fitted.cutout is not None and quality.ok else None
+    return Result("done" if reason is None else "needs_review", reason, name, webp, quality, fitted.scale, cutout_webp)

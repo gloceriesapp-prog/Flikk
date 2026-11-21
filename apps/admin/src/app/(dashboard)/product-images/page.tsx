@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
+import { NewForYouPicker } from '@/components/home/NewForYouPicker';
 import type { ProductImageJob } from '@/lib/productImageJobs';
 
 const REASON_TEXT: Record<string, string> = {
@@ -80,6 +81,7 @@ export default function ProductImagesPage() {
           Product photos the automatic cut-out would not publish on its own. {waiting > 0 ? `${waiting} more in the queue.` : ''}
         </p>
       </div>
+      <NewForYouPicker />
       {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-danger">{error}</p>}
       {loading && <p className="text-sm text-muted">Loading…</p>}
       {!loading && review.length === 0 && <p className="card p-5 text-sm text-muted">Nothing to review.</p>}

@@ -70,6 +70,19 @@ class FitTest(unittest.TestCase):
         self.assertEqual(r.reason, c.REASON_TOO_SMALL)
         self.assertIsNone(r.image)
 
+    def test_cutout_is_transparent_product_only(self):
+        img = Image.new("RGBA", (1000, 1000), (0, 0, 0, 0))
+        ImageDraw.Draw(img).ellipse([100, 300, 899, 699], fill=(200, 30, 30, 255))  # 800x400 oval
+        r = c.fit(img)
+        self.assertEqual(r.cutout.mode, "RGBA")
+        self.assertEqual(r.cutout.size, (648, 324))  # the product, no frame
+        self.assertEqual(r.cutout.getpixel((324, 162))[3], 255)  # middle opaque
+        self.assertEqual(r.cutout.getpixel((0, 0))[3], 0)  # corner see-through
+        data = c.to_webp(r.cutout)
+        from io import BytesIO
+        from PIL import Image as I
+        self.assertEqual(I.open(BytesIO(data)).mode, "RGBA")  # alpha survives export
+
     def test_webp_export(self):
         data = c.to_webp(c.fit(product(500, 500)).image)
         self.assertEqual(data[:4], b"RIFF")

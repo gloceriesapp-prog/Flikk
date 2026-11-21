@@ -59,6 +59,14 @@ export async function storeResult(form: FormData, reason: JobReason | null): Pro
   return url;
 }
 
+// The transparent product-only copy (when the cut-out passed), or null.
+export async function storeCutout(form: FormData): Promise<string | null> {
+  const file = form.get('cutout');
+  if (!(file instanceof File)) return null;
+  const { url } = await storePublicImage({ folder: 'products', bytes: Buffer.from(await file.arrayBuffer()) });
+  return url;
+}
+
 // Publish when nothing needs a human: done, or only "low resolution" (still
 // the better photo). Only if the product still shows the photo this job
 // started from, so a newer upload is never overwritten.
