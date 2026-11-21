@@ -12,6 +12,7 @@ const MAX = 4;
 export function NewForYouPicker() {
   const [cutouts, setCutouts] = useState<ProductCutout[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [auto, setAuto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +20,11 @@ export function NewForYouPicker() {
   const load = useCallback(async () => {
     const [list, current] = await Promise.all([
       fetch('/api/product-images/cutouts').then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/product-images/new-for-you').then((r) => (r.ok ? r.json() : [])),
-    ]).catch(() => [[], []]);
+      fetch('/api/product-images/new-for-you').then((r) => (r.ok ? r.json() : { urls: [], auto: false })),
+    ]).catch(() => [[], { urls: [], auto: false }]);
     setCutouts(list as ProductCutout[]);
-    setSelected(current as string[]);
+    setSelected((current as { urls: string[] }).urls);
+    setAuto((current as { auto: boolean }).auto);
   }, []);
 
   useEffect(() => {
@@ -44,16 +46,18 @@ export function NewForYouPicker() {
     setMessage(null);
   }
 
-  async function save(urls: string[]) {
+  async function save(urls: string[], automatic = false) {
     setSaving(true); setError(null); setMessage(null);
     try {
       const res = await fetch('/api/product-images/new-for-you', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ urls }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(automatic ? { auto: true } : { urls }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error ?? 'Could not save.');
-      setSelected(urls);
-      setMessage(urls.length ? 'Saved. The app shows them within a minute.' : 'Cleared. The app shows new product photos instead.');
+      setSelected(body.urls as string[]);
+      setAuto(automatic);
+      setMessage(automatic ? 'Automatic: 4 random cleaned products, reshuffled whenever a new photo is cleaned.'
+        : urls.length ? 'Saved. The app shows them within a minute.' : 'Cleared. The app shows new product photos instead.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.');
     } finally {
@@ -69,13 +73,18 @@ export function NewForYouPicker() {
           <p className="mt-1 text-xs text-muted">
             Products with their background removed. Pick up to {MAX} ({selected.length}/{MAX} picked); the Home tile beside search rotates through them.
           </p>
+          <label className="mt-2 flex items-center gap-2 text-xs font-medium text-ink">
+            <input type="checkbox" checked={auto} disabled={saving || cutouts.length === 0}
+              onChange={(event) => void (event.target.checked ? save([], true) : save(selected))} />
+            Automatic — 4 random cleaned products, reshuffled whenever a new photo is cleaned
+          </label>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={pickRandom} disabled={cutouts.length === 0 || saving}
+          <button type="button" onClick={pickRandom} disabled={cutouts.length === 0 || saving || auto}
             className="rounded-xl border border-border px-3 py-2 text-xs font-semibold text-ink disabled:opacity-40">Pick {MAX} at random</button>
           <button type="button" onClick={() => void save([])} disabled={saving}
             className="rounded-xl border border-border px-3 py-2 text-xs font-semibold text-ink disabled:opacity-40">Clear</button>
-          <button type="button" onClick={() => void save(selected)} disabled={saving || selected.length === 0}
+          <button type="button" onClick={() => void save(selected)} disabled={saving || selected.length === 0 || auto}
             className="rounded-xl bg-[#155DFC] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{saving ? 'Saving…' : 'Save'}</button>
         </div>
       </div>
@@ -91,6 +100,7 @@ export function NewForYouPicker() {
               <button
                 key={cutout.productId}
                 type="button"
+                disabled={auto}
                 onClick={() => toggle(cutout.cutoutUrl)}
                 title={cutout.productName}
                 aria-pressed={position >= 0}

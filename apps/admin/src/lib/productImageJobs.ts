@@ -67,6 +67,46 @@ export async function storeCutout(form: FormData): Promise<string | null> {
   return url;
 }
 
+// Home "NEW for you" tile pictures: App content copy keys the customer app
+// reads (home.newForYou.image1-4). Automatic mode (home.newForYou.auto =
+// 'true') fills them with 4 random transparent cut-outs and refreshes them
+// whenever a new photo is cleaned.
+export const NEW_FOR_YOU_KEYS = ['home.newForYou.image1', 'home.newForYou.image2', 'home.newForYou.image3', 'home.newForYou.image4'];
+export const NEW_FOR_YOU_AUTO_KEY = 'home.newForYou.auto';
+
+export async function saveNewForYou(urls: string[], auto: boolean): Promise<void> {
+  const { data: row, error } = await supabaseAdmin.from('app_content').select('copy').eq('id', true).maybeSingle();
+  if (error) throw error;
+  const copy = { ...((row?.copy as Record<string, string> | null) ?? {}) };
+  NEW_FOR_YOU_KEYS.forEach((key, i) => { copy[key] = urls[i] ?? ''; });
+  copy[NEW_FOR_YOU_AUTO_KEY] = auto ? 'true' : 'false';
+  const { error: saveError } = await supabaseAdmin.from('app_content').update({ copy, updated_at: new Date().toISOString() }).eq('id', true);
+  if (saveError) throw saveError;
+}
+
+// 4 random cut-outs from the 100 most recent products that have one.
+export async function randomCutouts(count = 4): Promise<string[]> {
+  const { data, error } = await supabaseAdmin.from('product_image_jobs').select('product_id, cutout_url')
+    .eq('status', 'done').not('cutout_url', 'is', null).order('updated_at', { ascending: false }).limit(300);
+  if (error) throw error;
+  const byProduct = new Map<string, string>();
+  for (const row of data ?? []) if (!byProduct.has(row.product_id) && byProduct.size < 100) byProduct.set(row.product_id, row.cutout_url as string);
+  const pool = [...byProduct.values()];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
+
+// After a photo is cleaned: in automatic mode, reshuffle the tile pictures.
+export async function refreshAutoNewForYou(): Promise<void> {
+  const { data } = await supabaseAdmin.from('app_content').select('copy').eq('id', true).maybeSingle();
+  if ((data?.copy as Record<string, string> | null)?.[NEW_FOR_YOU_AUTO_KEY] !== 'true') return;
+  const urls = await randomCutouts();
+  if (urls.length) await saveNewForYou(urls, true);
+}
+
 // Publish when nothing needs a human: done, or only "low resolution" (still
 // the better photo). Only if the product still shows the photo this job
 // started from, so a newer upload is never overwritten.
