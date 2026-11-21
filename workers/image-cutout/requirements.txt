@@ -1,0 +1,4 @@
+# Python 3.12 (.venv-images). Background removal only; everything else is Pillow.
+rembg==2.0.87
+pillow==13.0.0
+requests==2.34.2
