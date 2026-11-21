@@ -133,7 +133,12 @@ def run_worker(poll_seconds: int) -> None:
     admin = Admin()
     print("worker started")
     while True:
-        res = admin.post("/api/product-images/worker/claim", {})
+        try:
+            res = admin.post("/api/product-images/worker/claim", {})
+        except Exception as error:  # admin restarting or offline: wait, then try again
+            print(f"claim failed, retrying: {error}", file=sys.stderr)
+            time.sleep(poll_seconds)
+            continue
         if res.status_code == 204:
             time.sleep(poll_seconds)
             continue
@@ -143,8 +148,11 @@ def run_worker(poll_seconds: int) -> None:
             admin.post("/api/product-images/worker/result", {"jobId": job["id"], **result_fields(result)}, result.webp)
             print(f"{job['id']}: {result.status} {result.reason or ''}")
         except Exception as error:  # report and move on; the job retries up to 3 times
-            admin.post("/api/product-images/worker/result", {"jobId": job["id"], "status": "failed", "error": str(error)[:500]})
             print(f"{job['id']}: failed {error}", file=sys.stderr)
+            try:
+                admin.post("/api/product-images/worker/result", {"jobId": job["id"], "status": "failed", "error": str(error)[:500]})
+            except Exception:
+                pass  # unreported: the claim expires after 10 minutes and is retried
 
 
 def run_batch_dry(out: Path, limit: int | None) -> None:
