@@ -792,6 +792,10 @@
     {
       "file": "20261121140000_product_image_cutout_url.sql",
       "sha256": "d1ca5aac7da21a507e98ff319f362cd45f6f26831b8f3e422f57acb2c9d87475"
+    },
+    {
+      "file": "20261122090000_product_premium_images.sql",
+      "sha256": "6f75d69494fd46c4c82e35526b69b6691546ac28f64ce21e93c9933fcd74dc0f"
     }
   ]
 }

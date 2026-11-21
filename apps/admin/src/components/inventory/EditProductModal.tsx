@@ -19,6 +19,8 @@ import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/pro
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { PhotoStatusBadge, usePhotoStatus } from './usePhotoStatus';
+import { PremiumImagePanel } from './PremiumImagePanel';
+import type { PresetId } from '@/lib/photoroomPresets';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { ProductFlavoursEditor } from './ProductFlavoursEditor';
@@ -41,8 +43,11 @@ export function EditProductModal({
   stores,
   onClose,
   onSave,
+  premiumStart,
 }: {
   product: Product;
+  // From Add product with Premium picked: open the Premium step on that background.
+  premiumStart?: { preset: PresetId; color: string | null };
   stores: StoreOption[];
   onClose: () => void;
   // homeKeys: the Home sections to pick it in, or null when unchanged.
@@ -136,6 +141,13 @@ export function EditProductModal({
               aria-label="Product name"
             />
           </div>
+
+          <PremiumImagePanel
+            productId={product.id}
+            imageUrl={draft.imageUrl}
+            start={premiumStart}
+            onApplied={(imageUrl) => setDraft((current) => ({ ...current, imageUrl }))}
+          />
 
           <ProductGalleryEditor
             urls={draft.extraImageUrls ?? []}

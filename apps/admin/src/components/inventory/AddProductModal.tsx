@@ -25,6 +25,7 @@ import { CatalogueNameInput } from './CatalogueNameInput';
 import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
+import { ImageStyleChoiceField, type ImageStyleChoice } from './PremiumImagePanel';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
@@ -82,9 +83,11 @@ export function AddProductModal({
   existingProducts: Product[];
   onClose: () => void;
   // homeKeys: Home sections to pick the new product in once it is created.
-  onAdd: (product: NewProductInput, homeKeys: string[]) => Promise<void>;
+  // imageStyle: Premium opens the generate step once the product exists.
+  onAdd: (product: NewProductInput, homeKeys: string[], imageStyle: ImageStyleChoice) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(() => makeEmptyDraft(stores));
+  const [imageStyle, setImageStyle] = useState<ImageStyleChoice>({ style: 'standard' });
   const setPlacement = useCallback((placement: CataloguePlacement) => setDraft((d) => ({ ...d, ...placement })), []);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -160,7 +163,7 @@ export function AddProductModal({
         catalogueItemId: draft.catalogueItemId,
         isVeg: draft.isVeg,
         freshnessTag: draft.freshnessTag || undefined,
-      }, homeChoice.keys);
+      }, homeChoice.keys, draft.imageUrl ? imageStyle : { style: 'standard' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add product — try again.');
       setSubmitting(false);
@@ -217,6 +220,8 @@ export function AddProductModal({
               }}
             />
           </div>
+
+          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} onChange={setImageStyle} />}
 
           <ProductGalleryEditor
             urls={draft.extraImageUrls ?? []}
