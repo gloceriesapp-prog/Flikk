@@ -55,3 +55,6 @@ supabase/.temp/
 node_modules
 credentials.json
 /output/
+
+# Python env for workers/image-cutout
+.venv-images/

@@ -24,6 +24,8 @@ export function ProductImageUpload({
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Product photos: the upload route warns when the product itself is small.
+  const [warning, setWarning] = useState<string | null>(null);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
@@ -33,6 +35,7 @@ export function ProductImageUpload({
     if (!file) return;
 
     setError(null);
+    setWarning(null);
     setPreview(URL.createObjectURL(file));
     setUploading(true);
     onUploadingChange?.(true);
@@ -44,6 +47,7 @@ export function ProductImageUpload({
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error ?? 'Upload failed.');
+      setWarning(typeof body.warning === 'string' ? body.warning : null);
       await onChange(body.url as string, (body.bgColor as string | null) ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed — try again.');
@@ -82,6 +86,7 @@ export function ProductImageUpload({
         <input ref={inputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
       </button>
       {error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-danger`}>{error}</p>}
+      {warning && !error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-amber-600`}>{warning}</p>}
     </div>
   );
 }

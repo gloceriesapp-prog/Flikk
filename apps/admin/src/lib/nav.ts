@@ -103,6 +103,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/festival-greeting', label: 'Festival tab & greeting', icon: Sparkles },
       { href: '/seasonal-section', label: 'Seasonal section', icon: Snowflake },
       { href: '/media', label: 'Image library', icon: ImageIcon },
+      { href: '/product-images', label: 'Photos to review', icon: ImageIcon },
     ],
   },
   {

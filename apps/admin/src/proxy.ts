@@ -18,7 +18,9 @@ import { ADMIN_SESSION_COOKIE, isValidAdminSessionCookie } from '@/lib/adminSess
 // Open only to the routes that PERFORM sign-in/out, before any session can
 // exist: the OTP entry page, the OTP send/verify API, and logout. Everything
 // else — page or API — needs a valid admin-session cookie.
-const PUBLIC_PATHS = ['/login', '/api/auth/otp', '/api/auth/logout'];
+// The image worker routes authenticate with IMAGE_WORKER_TOKEN instead
+// (lib/productImageJobs.ts requireWorker).
+const PUBLIC_PATHS = ['/login', '/api/auth/otp', '/api/auth/logout', '/api/product-images/worker'];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

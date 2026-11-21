@@ -776,6 +776,10 @@
     {
       "file": "20261117010000_quick_tab_products.sql",
       "sha256": "37ab6df93563926ad532ab2f9dcd676cc62b995268491f1f630c8e6b478381e1"
+    },
+    {
+      "file": "20261121090000_product_image_jobs.sql",
+      "sha256": "b855da62482798613c28a1c4a5ec57f92d8b684b8d5be64344538e458dfda720"
     }
   ]
 }

@@ -21,6 +21,13 @@ export const PUBLIC_ROUTES = {
   'auth/otp/verify/route.ts': 'OTP verify endpoint (performs sign-in, before any session exists)',
   // Only clears the caller's own session cookie; touches no data.
   'auth/logout/route.ts': 'sign-out endpoint (clears the caller\'s own session only)',
+  // The image cut-out worker (workers/image-cutout) is a separate process with
+  // no admin session; each handler calls requireWorker() (constant-time
+  // IMAGE_WORKER_TOKEN check, closed when the token is unset).
+  'product-images/worker/claim/route.ts': 'image worker: claim a queued photo (IMAGE_WORKER_TOKEN)',
+  'product-images/worker/result/route.ts': 'image worker: report a processed photo (IMAGE_WORKER_TOKEN)',
+  'product-images/worker/catalog/route.ts': 'image worker: list products for a batch dry run (IMAGE_WORKER_TOKEN)',
+  'product-images/worker/batch-result/route.ts': 'image worker: apply a reviewed batch result (IMAGE_WORKER_TOKEN)',
 };
 
 function apiRelativePath(filename) {

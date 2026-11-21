@@ -151,3 +151,14 @@ export async function cleanBandedPhoto(input: Buffer): Promise<Buffer | null> {
   if (!fill && !(await hasPlainLightEdge(input))) return null;
   return fitProductImage(input, { removeBand: true });
 }
+
+// Upload warning: the product itself (photo minus its plain background) is
+// smaller than half the cut-out safe box (648x668), so fitting it would
+// enlarge it over 2x (workers/image-cutout flags that as "low resolution").
+export const SMALL_PRODUCT_WIDTH = 324;
+export const SMALL_PRODUCT_HEIGHT = 334;
+export async function productAreaIsSmall(input: Buffer): Promise<boolean> {
+  const { info } = await open(input).trim({ threshold: 12 }).toBuffer({ resolveWithObject: true })
+    .catch(() => open(input).toBuffer({ resolveWithObject: true }));
+  return info.width < SMALL_PRODUCT_WIDTH && info.height < SMALL_PRODUCT_HEIGHT;
+}
