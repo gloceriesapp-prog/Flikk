@@ -5,6 +5,8 @@
 // Generate leaves the product as it was and records the reason.
 //   GET  ?productId=   enabled, usage, cap, current style, attempts
 //   POST {action:'generate', productId, preset, color?}
+//        text preset: + headline, textColor, background (720x810 PNG data URL
+//        drawn in the admin from the headline)
 //   POST {action:'use', productId, attemptId|null}   null = standard
 //   POST {action:'cap', monthlyCap}
 import { NextResponse } from 'next/server';
@@ -12,13 +14,13 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { storePublicImage } from '@/features/media/publicImages';
 import {
-  PhotoroomError, callPhotoroom, capReached, checkFrame, isPreset, monthStart, nextMonthLabel, photoroomKey, scrub,
+  PhotoroomError, callPhotoroom, capReached, checkFrame, headlineBackground, headlineLines, isPreset, monthStart, nextMonthLabel, photoroomKey, scrub,
 } from '@/lib/photoroom';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 
-export interface PremiumAttempt { id: string; preset: string; color: string | null; status: 'done' | 'failed'; url: string | null; error: string | null; createdAt: string }
+export interface PremiumAttempt { id: string; preset: string; color: string | null; headline: string | null; status: 'done' | 'failed'; url: string | null; error: string | null; createdAt: string }
 export interface PremiumState {
   enabled: boolean;
   used: number;
@@ -55,7 +57,7 @@ async function standardUrl(productId: string, attempts: { standard_url: string |
 
 async function attemptsOf(productId: string) {
   const { data, error } = await supabaseAdmin.from('product_premium_images')
-    .select('id, preset, color, status, url, error, standard_url, created_at').eq('product_id', productId)
+    .select('id, preset, color, headline, status, url, error, standard_url, created_at').eq('product_id', productId)
     .order('created_at', { ascending: false }).limit(12);
   if (error) throw error;
   return data ?? [];
@@ -77,7 +79,7 @@ async function state(productId: string | null): Promise<PremiumState> {
     ...base,
     style: rows.some((r) => r.url && r.url === current) ? 'premium' : 'standard',
     standardUrl: await standardUrl(productId, rows),
-    attempts: rows.map((r) => ({ id: r.id, preset: r.preset, color: r.color, status: r.status, url: r.url, error: r.error, createdAt: r.created_at })),
+    attempts: rows.map((r) => ({ id: r.id, preset: r.preset, color: r.color, headline: r.headline, status: r.status, url: r.url, error: r.error, createdAt: r.created_at })),
   };
 }
 
@@ -135,6 +137,9 @@ export async function POST(request: Request) {
   const preset = body.preset;
   const color = typeof body.color === 'string' && HEX.test(body.color) ? body.color : null;
   if (!isPreset(preset)) return NextResponse.json({ error: 'Pick a background.' }, { status: 400 });
+  const lines = preset === 'text' ? headlineLines(body.headline) : null;
+  if (preset === 'text' && !lines) return NextResponse.json({ error: 'Type a headline: up to 2 lines, 40 characters.' }, { status: 400 });
+  const textColor = preset === 'text' && typeof body.textColor === 'string' && HEX.test(body.textColor) ? body.textColor : null;
 
   try {
     const { used, cap } = await usage();
@@ -161,7 +166,8 @@ export async function POST(request: Request) {
     try {
       const image = await fetch(source, { signal: AbortSignal.timeout(20_000) });
       if (!image.ok) throw new PhotoroomError('Could not read the product photo.');
-      const bytes = await callPhotoroom(await image.blob(), preset, color, { key });
+      const background = preset === 'text' ? await headlineBackground(body.background) : undefined;
+      const bytes = await callPhotoroom(await image.blob(), { preset, color, background }, { key });
       await checkFrame(bytes);
       url = (await storePublicImage({ folder: 'products', bytes })).url;
     } catch (error) {
@@ -169,7 +175,8 @@ export async function POST(request: Request) {
       console.error('Photoroom generate failed', scrub(String((error as Error)?.message ?? error), key));
     }
     const { error } = await supabaseAdmin.from('product_premium_images').insert({
-      product_id: productId, preset, color: preset === 'pastel' ? color : null,
+      product_id: productId, preset, color: preset === 'pastel' || preset === 'text' ? color : null,
+      headline: lines?.join(' ') ?? null, text_color: textColor,
       status: url ? 'done' : 'failed', url, error: failure, standard_url: standard,
     });
     if (error) throw error;
