@@ -22,6 +22,8 @@ import { formatNumber } from '@/lib/format';
 import type { NewProductInput, Product, StockStatus } from '@/lib/types';
 import { fetchProducts, fetchStoreOptions, type StoreOption } from '@/lib/supabase/products';
 import { EditProductModal } from '@/components/inventory/EditProductModal';
+import type { ImageStyleChoice } from '@/components/inventory/PremiumImagePanel';
+import type { PresetId } from '@/lib/photoroomPresets';
 import { ShowOnHomeModal } from '@/components/home/ShowOnHomeModal';
 import { saveProductHomeSections } from '@/components/home/HomeSectionChecklist';
 import { toast } from '@/components/ui/Toast';
@@ -48,6 +50,8 @@ export default function InventoryPage() {
   const [category, setCategory] = useState('All');
   const [storeId, setStoreId] = useState('all');
   const [editing, setEditing] = useState<Product | null>(null);
+  // Set when a product was just added with Premium picked (EditProductModal premiumStart).
+  const [premiumStart, setPremiumStart] = useState<{ preset: PresetId; color: string | null } | undefined>();
   const [showingOnHome, setShowingOnHome] = useState<Product | null>(null);
   const [adding, setAdding] = useState(false);
   const [fixingPhotos, setFixingPhotos] = useState(false);
@@ -197,6 +201,7 @@ export default function InventoryPage() {
     if (homeKeys) await saveProductHomeSections(updated.id, homeKeys);
     await loadData();
     setEditing(null);
+    setPremiumStart(undefined);
     if (photoChanged) watchPhoto(updated.id);
   }
 
@@ -241,7 +246,7 @@ export default function InventoryPage() {
     }
   }
 
-  async function handleAdd(newProduct: NewProductInput, homeKeys: string[]) {
+  async function handleAdd(newProduct: NewProductInput, homeKeys: string[], imageStyle: ImageStyleChoice) {
     const res = await fetch('/api/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -255,6 +260,10 @@ export default function InventoryPage() {
     await loadData();
     setAdding(false);
     if (created.imageUrl || (created.extraImageUrls ?? []).length > 0) watchPhoto(created.id);
+    if (imageStyle.style === 'premium' && created.imageUrl) {
+      setPremiumStart({ preset: imageStyle.preset, color: imageStyle.color });
+      setEditing(created);
+    }
     // The product exists now; a failed pick must not look like a failed add.
     if (homeKeys.length > 0) {
       try {
@@ -536,7 +545,7 @@ export default function InventoryPage() {
       </div>
 
       {showingOnHome && <ShowOnHomeModal product={showingOnHome} onClose={() => setShowingOnHome(null)} />}
-      {editing && <EditProductModal product={editing} stores={stores} onClose={() => setEditing(null)} onSave={handleSave} />}
+      {editing && <EditProductModal product={editing} stores={stores} onClose={() => { setEditing(null); setPremiumStart(undefined); }} onSave={handleSave} premiumStart={premiumStart} />}
       {adding && (
         <AddProductModal stores={stores} existingProducts={products} onClose={() => setAdding(false)} onAdd={handleAdd} />
       )}
