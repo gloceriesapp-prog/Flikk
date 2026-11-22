@@ -796,6 +796,10 @@
     {
       "file": "20261122090000_product_premium_images.sql",
       "sha256": "6f75d69494fd46c4c82e35526b69b6691546ac28f64ce21e93c9933fcd74dc0f"
+    },
+    {
+      "file": "20261122100000_product_premium_text.sql",
+      "sha256": "11d97ef2c4ee7cacdcc0d8a04912031f4b012d6afe000b37685f7bc32e9f96cb"
     }
   ]
 }

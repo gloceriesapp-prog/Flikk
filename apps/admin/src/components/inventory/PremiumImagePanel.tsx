@@ -7,10 +7,13 @@
 // the product can switch either way at any time without a new upload.
 // Hidden entirely when the server has no Photoroom key.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from '@/components/icons';
 import type { PremiumAttempt, PremiumState } from '@/app/api/product-images/premium/route';
-import { COST_NOTE, DEFAULT_PASTEL, PRESETS, PRESET_IDS, type PresetId } from '@/lib/photoroomPresets';
+import {
+  COST_NOTE, DEFAULT_PASTEL, DEFAULT_TEXT_BG, DEFAULT_TEXT_COLOR, HEADLINE_MAX, PRESETS, PRESET_IDS, headlineLines, type PresetId,
+} from '@/lib/photoroomPresets';
+import { renderHeadline } from './renderHeadline';
 
 export type ImageStyleChoice = { style: 'standard' } | { style: 'premium'; preset: PresetId; color: string | null };
 
@@ -55,6 +58,46 @@ function PresetPicker({ preset, color, onChange }: { preset: PresetId; color: st
   );
 }
 
+// Text headline: the words, its colours, and a live preview of the
+// background (the product goes over the dashed area).
+function HeadlineFields({ canvasRef, headline, background, color, onChange }: {
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  headline: string;
+  background: string;
+  color: string;
+  onChange: (next: { headline?: string; background?: string; color?: string }) => void;
+}) {
+  const lines = headlineLines(headline);
+  useEffect(() => { if (canvasRef.current) void renderHeadline(canvasRef.current, lines ?? [], background, color); });
+  return (
+    <div className="flex gap-3">
+      <div className="flex flex-1 flex-col gap-2">
+        <textarea
+          value={headline}
+          onChange={(e) => onChange({ headline: e.target.value })}
+          rows={2}
+          maxLength={HEADLINE_MAX + 1}
+          placeholder={'e.g. FRESH\nDEALS'}
+          aria-label="Headline text"
+          className="w-full resize-none rounded-[10px] border border-border px-3 py-2 text-sm font-semibold uppercase text-ink"
+        />
+        <p className={`text-[11px] ${headline.trim() && !lines ? 'text-danger' : 'text-muted'}`}>
+          Up to 2 lines, {HEADLINE_MAX} characters. Press Enter for a new line, or one long line is split for you.
+        </p>
+        <div className="flex items-center gap-3 text-[11px] text-muted">
+          <label className="flex items-center gap-1.5">Background <input type="color" value={background} onChange={(e) => onChange({ background: e.target.value })} className="h-7 w-10 cursor-pointer rounded border border-border" /></label>
+          <label className="flex items-center gap-1.5">Text <input type="color" value={color} onChange={(e) => onChange({ color: e.target.value })} className="h-7 w-10 cursor-pointer rounded border border-border" /></label>
+        </div>
+      </div>
+      <div className="relative w-[120px] shrink-0">
+        <canvas ref={canvasRef} className="aspect-[8/9] w-full rounded-xl border border-border" aria-label="Headline preview" />
+        {/* Where Photoroom places the product (TEXT_PADDING). */}
+        <span className="pointer-events-none absolute rounded-md border border-dashed border-ink/30" style={{ left: '8.3%', right: '8.3%', top: '34.6%', bottom: '8.8%' }} />
+      </div>
+    </div>
+  );
+}
+
 function Usage({ state }: { state: PremiumState }) {
   return (
     <p className="text-[11px] text-muted">
@@ -81,7 +124,7 @@ export function ImageStyleChoiceField({ value, onChange }: { value: ImageStyleCh
       {value.style === 'premium' && (
         <>
           <PresetPicker preset={value.preset} color={value.color ?? DEFAULT_PASTEL} onChange={(preset, color) => onChange({ style: 'premium', preset, color: preset === 'pastel' ? color : null })} />
-          <p className="text-[11px] text-muted">After you add the product you can generate and compare it with the standard photo.</p>
+          <p className="text-[11px] text-muted">{value.preset === 'text' ? 'After you add the product you type the headline, generate and compare it with the standard photo.' : 'After you add the product you can generate and compare it with the standard photo.'}</p>
         </>
       )}
       {state.capMessage ? <p className="text-[11px] font-medium text-amber-600">{state.capMessage}</p> : <Usage state={state} />}
@@ -116,6 +159,10 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
   const [busy, setBusy] = useState<'generate' | 'use' | 'cap' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [capDraft, setCapDraft] = useState<string | null>(null);
+  const [headline, setHeadline] = useState('');
+  const [textBg, setTextBg] = useState(DEFAULT_TEXT_BG);
+  const [textColor, setTextColor] = useState(DEFAULT_TEXT_COLOR);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     void Promise.resolve().then(() => loadState(productId)).then((next) => {
@@ -147,7 +194,14 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
   }
 
   async function generate() {
-    const { ok, next } = await post('generate', { preset, color: preset === 'pastel' ? color : null });
+    let text = {};
+    if (preset === 'text') {
+      const lines = headlineLines(headline);
+      if (!lines || !canvasRef.current) { setError('Type a headline: up to 2 lines, 40 characters.'); return; }
+      await renderHeadline(canvasRef.current, lines, textBg, textColor);
+      text = { headline: lines.join('\n'), textColor, background: canvasRef.current.toDataURL('image/png') };
+    }
+    const { ok, next } = await post('generate', { preset, color: preset === 'pastel' ? color : preset === 'text' ? textBg : null, ...text });
     setPreview(ok ? next?.attempts.find((a) => a.status === 'done') ?? null : null);
   }
 
@@ -186,13 +240,26 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
             <button
               type="button"
               onClick={generate}
-              disabled={busy !== null || !!state.capMessage || !imageUrl}
+              disabled={busy !== null || !!state.capMessage || !imageUrl || (preset === 'text' && !headlineLines(headline))}
               className="inline-flex items-center gap-1.5 rounded-[10px] bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-strong disabled:opacity-40"
             >
               {busy === 'generate' && <Loader2 size={12} className="animate-spin" />}
               {busy === 'generate' ? 'Generating…' : preview ? 'Try again' : 'Generate'}
             </button>
           </div>
+          {preset === 'text' && (
+            <HeadlineFields
+              canvasRef={canvasRef}
+              headline={headline}
+              background={textBg}
+              color={textColor}
+              onChange={(next) => {
+                if (next.headline !== undefined) setHeadline(next.headline);
+                if (next.background) setTextBg(next.background);
+                if (next.color) setTextColor(next.color);
+              }}
+            />
+          )}
           {state.capMessage && <p className="text-[11px] font-medium text-amber-600">{state.capMessage}</p>}
 
           {(shown || busy === 'generate') && (
