@@ -1,9 +1,11 @@
 'use client';
 
-// "Image style" for a product's main photo: Standard (rembg cut-out, the
-// default) or Premium background (Photoroom, api/product-images/premium).
-// Premium: pick a background, Generate, compare with the standard photo,
-// then "Use this one" or "Try again". Earlier premium photos stay listed, so
+// "Image style" for a product: Standard (rembg cut-out, the default) or
+// Premium background (Photoroom, api/product-images/premium). Premium: the
+// preset for the product's category is pre-selected; pick another or edit
+// the background description (the safety text is fixed), Generate, compare
+// with the standard photo, then "Use this one" (as the second gallery photo
+// or the main photo) or "Try again". Earlier premium photos stay listed, so
 // the product can switch either way at any time without a new upload.
 // Hidden entirely when the server has no Photoroom key.
 
@@ -11,7 +13,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from '@/components/icons';
 import type { PremiumAttempt, PremiumState } from '@/app/api/product-images/premium/route';
 import {
-  COST_NOTE, DEFAULT_PASTEL, DEFAULT_TEXT_BG, DEFAULT_TEXT_COLOR, HEADLINE_MAX, PRESETS, PRESET_IDS, headlineLines, type PresetId,
+  CATEGORY_PRESET_IDS, COST_NOTE, DEFAULT_PASTEL, DEFAULT_TEXT_BG, DEFAULT_TEXT_COLOR, HEADLINE_MAX, PRESETS, PRESET_IDS, PROMPT_BASE_MAX, REQUIRED_PROMPT,
+  categoryPreset, cleanPromptBase, headlineLines, presetBase, type PresetId,
 } from '@/lib/photoroomPresets';
 import { renderHeadline } from './renderHeadline';
 
@@ -40,7 +43,11 @@ function StyleRadios({ premium, onChange, disabled }: { premium: boolean; onChan
   );
 }
 
-function PresetPicker({ preset, color, onChange }: { preset: PresetId; color: string; onChange: (preset: PresetId, color: string) => void }) {
+const OTHER_PRESET_IDS = PRESET_IDS.filter((id) => !CATEGORY_PRESET_IDS.includes(id));
+type Placement = 'gallery' | 'main';
+
+function PresetPicker({ preset, color, suggested, onChange }: { preset: PresetId; color: string; suggested: PresetId; onChange: (preset: PresetId, color: string) => void }) {
+  const option = (id: PresetId) => <option key={id} value={id}>{PRESETS[id].label}{id === suggested ? ' (this category)' : ''}</option>;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
@@ -49,11 +56,48 @@ function PresetPicker({ preset, color, onChange }: { preset: PresetId; color: st
         className="rounded-[10px] border border-border bg-white px-3 py-1.5 text-xs text-ink"
         aria-label="Premium background"
       >
-        {PRESET_IDS.map((id) => <option key={id} value={id}>{PRESETS[id].label}</option>)}
+        <optgroup label="Category backgrounds">{CATEGORY_PRESET_IDS.map(option)}</optgroup>
+        <optgroup label="Other styles">{OTHER_PRESET_IDS.map(option)}</optgroup>
       </select>
       {preset === 'pastel' && (
         <input type="color" value={color} onChange={(e) => onChange(preset, e.target.value)} className="h-7 w-10 cursor-pointer rounded border border-border" aria-label="Pastel colour" />
       )}
+    </div>
+  );
+}
+
+// The background description: the first part is editable, the safety
+// text after it is fixed (also added by the server, so it can't be removed).
+function PromptField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const valid = cleanPromptBase(value) !== null;
+  return (
+    <div className="flex flex-col gap-1">
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[\r\n]+/g, ' '))}
+        rows={2}
+        maxLength={PROMPT_BASE_MAX}
+        aria-label="Background description"
+        className="w-full resize-none rounded-[10px] border border-border px-3 py-2 text-xs text-ink"
+      />
+      <p className="text-[11px] text-muted">
+        <span className="font-medium">Always added:</span> {REQUIRED_PROMPT}
+      </p>
+      {!valid && <p className="text-[11px] text-danger">Describe the background in 3 to {PROMPT_BASE_MAX} characters.</p>}
+    </div>
+  );
+}
+
+function PlacementRadios({ value, onChange, disabled }: { value: Placement; onChange: (value: Placement) => void; disabled?: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-[11px] text-ink">
+      <span className="text-muted">Show it as</span>
+      {(['gallery', 'main'] as const).map((id) => (
+        <label key={id} className="flex items-center gap-1.5">
+          <input type="radio" name="premium-placement" checked={value === id} disabled={disabled} onChange={() => onChange(id)} />
+          {id === 'gallery' ? 'Second gallery photo (default)' : 'Main photo'}
+        </label>
+      ))}
     </div>
   );
 }
@@ -108,7 +152,7 @@ function Usage({ state }: { state: PremiumState }) {
 
 // Add product: the product does not exist yet, so only the choice is made
 // here; Premium opens the generate step right after the product is added.
-export function ImageStyleChoiceField({ value, onChange }: { value: ImageStyleChoice; onChange: (value: ImageStyleChoice) => void }) {
+export function ImageStyleChoiceField({ value, category, onChange }: { value: ImageStyleChoice; category?: string; onChange: (value: ImageStyleChoice) => void }) {
   const [state, setState] = useState<PremiumState | null>(null);
   useEffect(() => { void Promise.resolve().then(() => loadState()).then(setState); }, []);
   if (!state?.enabled) return null;
@@ -119,11 +163,11 @@ export function ImageStyleChoiceField({ value, onChange }: { value: ImageStyleCh
       <StyleRadios
         premium={premium}
         disabled={!!state.capMessage && !premium}
-        onChange={(next) => onChange(next ? { style: 'premium', preset: 'studio', color: null } : { style: 'standard' })}
+        onChange={(next) => onChange(next ? { style: 'premium', preset: categoryPreset(category), color: null } : { style: 'standard' })}
       />
       {value.style === 'premium' && (
         <>
-          <PresetPicker preset={value.preset} color={value.color ?? DEFAULT_PASTEL} onChange={(preset, color) => onChange({ style: 'premium', preset, color: preset === 'pastel' ? color : null })} />
+          <PresetPicker preset={value.preset} color={value.color ?? DEFAULT_PASTEL} suggested={categoryPreset(category)} onChange={(preset, color) => onChange({ style: 'premium', preset, color: preset === 'pastel' ? color : null })} />
           <p className="text-[11px] text-muted">{value.preset === 'text' ? 'After you add the product you type the headline, generate and compare it with the standard photo.' : 'After you add the product you can generate and compare it with the standard photo.'}</p>
         </>
       )}
@@ -149,11 +193,14 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
   imageUrl: string | undefined;
   // From Add product: open on Premium with this background picked.
   start?: { preset: PresetId; color: string | null };
-  onApplied: (url: string) => void;
+  onApplied: (photos: { imageUrl: string | null; extraImageUrls: string[] }) => void;
 }) {
   const [state, setState] = useState<PremiumState | null>(null);
   const [premium, setPremium] = useState(Boolean(start));
-  const [preset, setPreset] = useState<PresetId>(start?.preset ?? 'studio');
+  // null until picked: the category's preset (state.suggestedPreset).
+  const [picked, setPicked] = useState<PresetId | null>(start?.preset ?? null);
+  const [promptDraft, setPromptDraft] = useState<string | null>(null);
+  const [placementDraft, setPlacementDraft] = useState<Placement | null>(null);
   const [color, setColor] = useState(start?.color ?? DEFAULT_PASTEL);
   const [preview, setPreview] = useState<PremiumAttempt | null>(null);
   const [busy, setBusy] = useState<'generate' | 'use' | 'cap' | null>(null);
@@ -172,6 +219,9 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
   }, [productId]);
 
   if (!state?.enabled) return null;
+  const preset = picked ?? state.suggestedPreset;
+  const prompt = promptDraft ?? presetBase(preset, color);
+  const placement = placementDraft ?? state.placement ?? 'gallery';
 
   async function post(action: 'generate' | 'use' | 'cap', payload: Record<string, unknown>) {
     setBusy(action);
@@ -180,14 +230,14 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
       const res = await fetch('/api/product-images/premium', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, productId, ...payload }),
       });
-      const body = (await res.json().catch(() => ({}))) as { error?: string; state?: PremiumState; imageUrl?: string } & Partial<PremiumState>;
+      const body = (await res.json().catch(() => ({}))) as { error?: string; state?: PremiumState; imageUrl?: string | null; extraImageUrls?: string[] } & Partial<PremiumState>;
       const next = body.state ?? (action === 'cap' && res.ok ? { ...state!, used: body.used!, cap: body.cap!, capMessage: body.capMessage ?? null } : null);
       if (next) setState(next);
       if (!res.ok) setError(body.error ?? 'Something went wrong.');
-      return { ok: res.ok, next, imageUrl: body.imageUrl };
+      return { ok: res.ok, next, photos: body.extraImageUrls ? { imageUrl: body.imageUrl ?? null, extraImageUrls: body.extraImageUrls } : null };
     } catch {
       setError('Network error. Try again.');
-      return { ok: false, next: null, imageUrl: undefined };
+      return { ok: false, next: null, photos: null };
     } finally {
       setBusy(null);
     }
@@ -201,26 +251,30 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
       await renderHeadline(canvasRef.current, lines, textBg, textColor);
       text = { headline: lines.join('\n'), textColor, background: canvasRef.current.toDataURL('image/png') };
     }
-    const { ok, next } = await post('generate', { preset, color: preset === 'pastel' ? color : preset === 'text' ? textBg : null, ...text });
+    if (preset !== 'text' && !cleanPromptBase(prompt)) { setError(`Describe the background in 3 to ${PROMPT_BASE_MAX} characters.`); return; }
+    const { ok, next } = await post('generate', {
+      preset, color: preset === 'pastel' ? color : preset === 'text' ? textBg : null, ...(preset === 'text' ? text : { prompt }),
+    });
     setPreview(ok ? next?.attempts.find((a) => a.status === 'done') ?? null : null);
   }
 
-  async function use(attempt: PremiumAttempt | null) {
-    const { ok, imageUrl: applied } = await post('use', { attemptId: attempt?.id ?? null });
-    if (ok && applied) {
-      onApplied(applied);
+  async function use(attempt: PremiumAttempt | null, where: Placement = placement) {
+    const { ok, photos } = await post('use', { attemptId: attempt?.id ?? null, placement: where });
+    if (ok && photos) {
+      onApplied(photos);
       setPreview(null);
       if (!attempt) setPremium(false);
     }
   }
 
   const done = state.attempts.filter((a) => a.status === 'done');
-  const shown = preview ?? done.find((a) => a.url === imageUrl) ?? null;
+  const shown = preview ?? done.find((a) => a.url === state.premiumUrl) ?? null;
+  const label = (a: PremiumAttempt) => a.headline ? `“${a.headline}”` : a.prompt ?? PRESETS[a.preset as PresetId]?.label ?? a.preset;
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-ink">Image style <span className="font-normal text-muted">· now {state.style === 'premium' ? 'Premium' : 'Standard'}</span></p>
+        <p className="text-xs font-semibold text-ink">Image style <span className="font-normal text-muted">· now {state.placement === 'main' ? 'Premium main photo' : state.placement === 'gallery' ? 'Standard main, premium 2nd photo' : 'Standard'}</span></p>
         <Usage state={state} />
       </div>
       <StyleRadios
@@ -236,17 +290,28 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
       {premium && (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <PresetPicker preset={preset} color={color} onChange={(p, c) => { setPreset(p); setColor(c); }} />
+            <PresetPicker preset={preset} color={color} suggested={state.suggestedPreset} onChange={(p, c) => { setPicked(p); setColor(c); setPromptDraft(null); }} />
             <button
               type="button"
               onClick={generate}
-              disabled={busy !== null || !!state.capMessage || !imageUrl || (preset === 'text' && !headlineLines(headline))}
+              disabled={busy !== null || !!state.capMessage || !imageUrl || (preset === 'text' ? !headlineLines(headline) : !cleanPromptBase(prompt))}
               className="inline-flex items-center gap-1.5 rounded-[10px] bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-strong disabled:opacity-40"
             >
               {busy === 'generate' && <Loader2 size={12} className="animate-spin" />}
               {busy === 'generate' ? 'Generating…' : preview ? 'Try again' : 'Generate'}
             </button>
           </div>
+          {preset !== 'text' && <PromptField value={prompt} onChange={setPromptDraft} />}
+          <PlacementRadios
+            value={placement}
+            disabled={busy !== null}
+            onChange={(next) => {
+              setPlacementDraft(next);
+              // Move the photo in use right away; a new one waits for "Use this one".
+              const current = done.find((a) => a.url === state.premiumUrl);
+              if (current && !preview && state.placement && state.placement !== next) void use(current, next);
+            }}
+          />
           {preset === 'text' && (
             <HeadlineFields
               canvasRef={canvasRef}
@@ -268,7 +333,7 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
                 <Photo url={state.standardUrl} label="Standard (rembg)" />
                 {busy === 'generate'
                   ? <div className="flex aspect-[8/9] flex-1 items-center justify-center rounded-xl border border-border"><Loader2 size={18} className="animate-spin text-muted" /></div>
-                  : <Photo url={shown?.url ?? null} label={`Premium · ${shown ? PRESETS[shown.preset as PresetId]?.label ?? shown.preset : ''}`} />}
+                  : <Photo url={shown?.url ?? null} label={`Premium · ${shown ? label(shown) : ''}`} />}
               </div>
               {preview && busy === null && (
                 <div className="flex gap-2">
@@ -284,8 +349,8 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
               <p className="text-[11px] text-muted">Earlier premium photos (click to compare, no new charge)</p>
               <div className="flex flex-wrap gap-2">
                 {done.map((a) => (
-                  <button key={a.id} type="button" onClick={() => setPreview(a)} title={PRESETS[a.preset as PresetId]?.label}
-                    className={`h-14 w-[50px] overflow-hidden rounded-lg border ${a.url === imageUrl ? 'border-brand ring-2 ring-brand/30' : 'border-border'}`}>
+                  <button key={a.id} type="button" onClick={() => setPreview(a)} title={label(a)}
+                    className={`h-14 w-[50px] overflow-hidden rounded-lg border ${a.url === state.premiumUrl ? 'border-brand ring-2 ring-brand/30' : 'border-border'}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={a.url!} alt="" className="h-full w-full object-cover" />
                   </button>

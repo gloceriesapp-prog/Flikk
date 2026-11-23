@@ -221,7 +221,7 @@ export function AddProductModal({
             />
           </div>
 
-          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} onChange={setImageStyle} />}
+          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} category={draft.category} onChange={setImageStyle} />}
 
           <ProductGalleryEditor
             urls={draft.extraImageUrls ?? []}

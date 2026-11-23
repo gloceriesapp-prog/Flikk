@@ -5,7 +5,7 @@
 // product at a time; batch and the cut-out worker never call it. The rembg
 // cut-out (workers/image-cutout) stays the default photo.
 import sharp from 'sharp';
-import { presetPrompt, type PresetId } from './photoroomPresets';
+import { backgroundPrompt, presetBase, type PresetId } from './photoroomPresets';
 
 export * from './photoroomPresets';
 
@@ -24,9 +24,10 @@ export const SAFE_PADDING = { left: 36, right: 36, top: 71, bottom: 71 } as cons
 //   bottom of the headline (TEXT_PADDING, a part of the same safe box).
 export const TEXT_PADDING = { left: 60, right: 60, top: 280, bottom: 71 } as const;
 
-export interface EditOptions { preset: PresetId; color?: string | null; background?: Blob }
+// prompt: the admin's edited first part (cleanPromptBase); else the preset's.
+export interface EditOptions { preset: PresetId; color?: string | null; background?: Blob; prompt?: string | null }
 
-export function editForm(image: Blob, { preset, color, background }: EditOptions): FormData {
+export function editForm(image: Blob, { preset, color, background, prompt }: EditOptions): FormData {
   const form = new FormData();
   const pad = preset === 'text' ? TEXT_PADDING : SAFE_PADDING;
   form.set('imageFile', image, 'product');
@@ -46,7 +47,7 @@ export function editForm(image: Blob, { preset, color, background }: EditOptions
     form.set('background.scaling', 'fill');
     form.set('shadow.mode', 'ai.soft');
   } else {
-    form.set('background.prompt', presetPrompt(preset, color));
+    form.set('background.prompt', backgroundPrompt(prompt || presetBase(preset, color)));
     // Keep our prompt as written, so the "no other food" rules stay in it.
     form.set('background.expandPrompt.mode', 'ai.never');
   }

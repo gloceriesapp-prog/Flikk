@@ -146,7 +146,7 @@ export function EditProductModal({
             productId={product.id}
             imageUrl={draft.imageUrl}
             start={premiumStart}
-            onApplied={(imageUrl) => setDraft((current) => ({ ...current, imageUrl }))}
+            onApplied={({ imageUrl, extraImageUrls }) => setDraft((current) => ({ ...current, imageUrl: imageUrl ?? undefined, extraImageUrls }))}
           />
 
           <ProductGalleryEditor

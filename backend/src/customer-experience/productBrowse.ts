@@ -5,6 +5,7 @@ import { AppError } from '../lib/errors.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
 import { browsePage, deliveryStores, hydrateBrowse, optionalUuid } from './browse.js';
 import { PREORDER_SLOT_SELECT } from '../lib/preorders.js';
+import { premiumSectionKeys, withPremiumCard } from '../lib/premiumCards.js';
 export const productBrowseRouter = Router();
 productBrowseRouter.get('/search', async (req, res, next) => {
   try {
@@ -54,9 +55,9 @@ productBrowseRouter.get('/home-picks', async (req, res, next) => {
   try {
     const stores = await deliveryStores(req.query);
     const supportsCategories = req.query.category_sources === '1';
-    const { data, error } = stores.length ? await supabase.rpc(
+    const [{ data, error }, premiumKeys] = stores.length ? await Promise.all([supabase.rpc(
       supportsCategories ? 'home_section_preview_ids' : 'home_pick_product_ids', { p_stores: stores },
-    ) : { data: [], error: null };
+    ), premiumSectionKeys()]) : [{ data: [], error: null }, new Set<string>()];
     if (error) throw error;
     const pins = (data ?? []) as { section_key: string; id: string }[];
     const ids = [...new Set(pins.map(pin => pin.id))].map(id => ({ id }));
@@ -71,7 +72,7 @@ productBrowseRouter.get('/home-picks', async (req, res, next) => {
     const picks: Record<string, unknown[]> = {};
     for (const pin of pins) {
       const product = byId.get(pin.id);
-      if (product) (picks[pin.section_key] ??= []).push(product);
+      if (product) (picks[pin.section_key] ??= []).push(premiumKeys.has(pin.section_key) ? withPremiumCard(product) : product);
     }
     res.json(picks);
   } catch (error) { next(error); }

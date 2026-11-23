@@ -800,6 +800,10 @@
     {
       "file": "20261122100000_product_premium_text.sql",
       "sha256": "11d97ef2c4ee7cacdcc0d8a04912031f4b012d6afe000b37685f7bc32e9f96cb"
+    },
+    {
+      "file": "20261123090000_premium_category_presets.sql",
+      "sha256": "8a0c72d1ca643cca3b3d310296aef2123db1391a18f4a051b9dab15d4385b31e"
     }
   ]
 }
