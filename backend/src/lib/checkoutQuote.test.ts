@@ -88,3 +88,28 @@ describe('customer quote presentation', () => {
     expect(() => quotedCartItems([{ ...cart[0]!, variantId: 'different-pack' }], quote)).toThrow();
   });
 });
+
+describe('checkout fee comparison display', () => {
+  it('quotes original fees without charging or discounting them', () => {
+    const bill = calculateCheckoutBill([line('a')], { ...settings, handlingFee: 10.01, originalHandlingFee: 12.55, originalDeliveryFee: 30 }, 0);
+    expect(bill).toMatchObject({ originalBaseDeliveryFee: 30, baseDeliveryFee: 20, originalHandlingFee: 12.55, handlingFee: 10.01, total: 70.01 });
+  });
+  it('uses the configured original when delivery is waived', () => {
+    const bill = calculateCheckoutBill(items, { ...settings, freeDeliveryEnabled: true, originalDeliveryFee: 35, deliveryFeeTiers: [{ upToKm: 5, fee: 35 }] }, 0, 4);
+    expect(bill).toMatchObject({ originalBaseDeliveryFee: 35, baseDeliveryFee: 0, additionalShopFee: 0, total: 125 });
+  });
+  it('shows only the actual price when originals are blank, including free delivery', () => {
+    const bill = calculateCheckoutBill(items, { ...settings, freeDeliveryEnabled: true }, 0);
+    expect(bill.originalBaseDeliveryFee).toBeUndefined();
+    expect(bill.originalHandlingFee).toBeUndefined();
+  });
+  it('hides equal, smaller and invalid original amounts', () => {
+    for (const original of [0, 4, 5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(calculateCheckoutBill(items, { ...settings, originalHandlingFee: original }, 0).originalHandlingFee).toBeUndefined();
+    }
+  });
+  it('keeps FREE display preferences separate from actual charges', () => {
+    const bill = calculateCheckoutBill(items, { ...settings, handlingFee: 0, originalHandlingFee: 12.55, deliveryFeeShowFree: false, handlingFeeShowFree: true }, 0);
+    expect(bill).toMatchObject({ handlingFee: 0, originalHandlingFee: 12.55, deliveryFeeShowFree: false, handlingFeeShowFree: true, total: 170 });
+  });
+});
