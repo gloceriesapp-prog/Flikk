@@ -209,30 +209,6 @@ export function AddProductModal({
             ))}
           </select>
 
-<<<<<<< HEAD
-=======
-          <div className="flex items-center gap-3">
-            <ProductImageUpload
-              imageUrl={draft.imageUrl}
-              onChange={(imageUrl, bgColor) => setDraft({ ...draft, imageUrl, bgColor: bgColor ?? undefined })}
-            />
-            <CatalogueNameInput
-              value={draft.name}
-              onChange={(name) => {
-                setError(null);
-                setDraft((d) => ({ ...d, name }));
-              }}
-              onPick={(item) => {
-                setError(null);
-                setDraft((d) => ({ ...d, name: item.name, catalogueItemId: item.id }));
-                if (item.subCategoryId && item.categoryName) setPlacement({ subCategoryId: item.subCategoryId, category: item.categoryName });
-              }}
-            />
-          </div>
-
-          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} category={draft.category} onChange={setImageStyle} />}
-
->>>>>>> origin/feat/photoroom-category-presets
           <ProductGalleryEditor
             coverUrl={draft.imageUrl}
             coverFields={
@@ -260,7 +236,7 @@ export function AddProductModal({
             onUploadingChange={setGalleryUploading}
           />
 
-          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} onChange={setImageStyle} />}
+          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} category={category} onChange={setImageStyle} />}
 
           <input
             value={draft.localName}

@@ -5,7 +5,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 // They also need a photo: products without one are never shown in the apps.
 const db = vi.hoisted(() => ({
   parent: 'Chicken' as string | null,
-  product: { sub_category_id: null as string | null, image_url: 'https://cdn.test/p.webp' as string | null },
+  product: { sub_category_id: null, image_url: 'https://cdn.test/p.webp' } as Record<string, unknown>,
   approved: null as unknown,
   rpc: vi.fn(async () => ({ data: 'p1', error: null })),
 }));
@@ -51,7 +51,13 @@ it('only approves products filed under a sub-category; rejecting needs none', as
   expect((await approval(true)).status).toBe(409);
   expect(db.approved).toBeNull();
   expect((await approval(false)).status).toBe(200);
-  db.product = { sub_category_id: 'sub-curry', image_url: 'https://cdn.test/p.webp' };
+  const ready = { name: 'Chicken curry cut', sub_category_id: 'sub-curry', image_url: 'https://cdn.test/p.webp', product_variants: [{ stock_quantity: 4 }] };
+  // A partner draft with no name, or a size with no stock count, waits.
+  db.product = { ...ready, name: ' ' };
+  expect((await approval(true)).status).toBe(409);
+  db.product = { ...ready, product_variants: [{ stock_quantity: 4 }, { stock_quantity: null }] };
+  expect((await approval(true)).status).toBe(409);
+  db.product = ready;
   expect((await approval(true)).status).toBe(200);
   expect(db.approved).toEqual({ approval_status: 'approved' });
 });
