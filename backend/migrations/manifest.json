@@ -796,6 +796,10 @@
     {
       "file": "20261122090000_product_premium_images.sql",
       "sha256": "6f75d69494fd46c4c82e35526b69b6691546ac28f64ce21e93c9933fcd74dc0f"
+    },
+    {
+      "file": "20261123120000_checkout_fee_display.sql",
+      "sha256": "0bdf0b9fed0a040c2f40312d1935d41a1c78ba599915f28d6080e53c0c215702"
     }
   ]
 }

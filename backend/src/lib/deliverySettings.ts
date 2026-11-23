@@ -25,6 +25,10 @@ export interface DeliverySettings {
   freeDeliveryEnabled: boolean;
   freeDeliveryThreshold: number;
   handlingFee: number;
+  originalDeliveryFee?: number | null;
+  originalHandlingFee?: number | null;
+  deliveryFeeShowFree?: boolean;
+  handlingFeeShowFree?: boolean;
   estimatedDeliveryMinutes: number;
   // migration 104 — reach and distance pricing (see that file's header).
   defaultDeliveryRadiusKm: number;
@@ -57,6 +61,10 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
     freeDeliveryEnabled: data.free_delivery_enabled,
     freeDeliveryThreshold: Number(data.free_delivery_threshold),
     handlingFee: Number(data.handling_fee),
+    originalDeliveryFee: data.original_delivery_fee == null ? null : Number(data.original_delivery_fee),
+    originalHandlingFee: data.original_handling_fee == null ? null : Number(data.original_handling_fee),
+    deliveryFeeShowFree: data.delivery_fee_show_free ?? true,
+    handlingFeeShowFree: data.handling_fee_show_free ?? true,
     estimatedDeliveryMinutes: Number(data.estimated_delivery_minutes ?? 35),
     defaultDeliveryRadiusKm: positive(data.default_delivery_radius_km, DEFAULT_DELIVERY_RADIUS_KM),
     roadDistanceFactor: Math.max(1, positive(data.road_distance_factor, DEFAULT_ROAD_DISTANCE_FACTOR)),

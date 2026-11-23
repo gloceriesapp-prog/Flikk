@@ -5,6 +5,13 @@ import { checkoutLineKey, type PricedCheckoutItem } from './checkoutItems.js';
 import { additionalShopFee as extraShopFee, distanceDeliveryFee } from './deliveryFees.js';
 import type { DeliverySettings } from './deliverySettings.js';
 
+// Only an explicitly configured, higher original fee is shown. Blank means
+// one price, including waived delivery; comparison amounts never affect totals.
+function comparisonFee(configured: number | null | undefined, charged: number): number | undefined {
+  return typeof configured === 'number' && Number.isFinite(configured) && configured > charged
+    ? round2(configured) : undefined;
+}
+
 export const QUOTE_TTL_MS = 5 * 60 * 1000;
 
 // All values are rupees. Waive the whole delivery fee, including pickups,
@@ -22,7 +29,12 @@ export function calculateCheckoutBill(items: PricedCheckoutItem[], settings: Del
   const baseDeliveryFee = deliveryFree ? 0 : distanceDeliveryFee(deliveryDistanceKm, settings);
   const additionalShopFee = deliveryFree ? 0 : round2(extraShopFee(storeCount, settings));
   const deliveryFee = round2(baseDeliveryFee + additionalShopFee);
+  const originalBaseDeliveryFee = comparisonFee(settings.originalDeliveryFee, baseDeliveryFee);
+  const originalHandlingFee = comparisonFee(settings.originalHandlingFee, settings.handlingFee);
   return { storeCount, itemTotal, originalItemTotal, baseDeliveryFee, additionalShopFee, deliveryFee,
+    originalBaseDeliveryFee, originalHandlingFee,
+    deliveryFeeShowFree: settings.deliveryFeeShowFree ?? true,
+    handlingFeeShowFree: settings.handlingFeeShowFree ?? true,
     deliveryDistanceKm: deliveryDistanceKm == null ? null : Math.round(deliveryDistanceKm * 10) / 10,
     handlingFee: settings.handlingFee, discountAmount, tipAmount,
     total: round2(calcOrderTotal(itemTotal, deliveryFee, discountAmount, settings.handlingFee) + tipAmount) };
