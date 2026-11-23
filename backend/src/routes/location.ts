@@ -22,6 +22,20 @@ locationRouter.use((req, _res, next) => {
 });
 locationRouter.use(mapsBudget('client'), shortCache(60_000), mapsBudget('provider'));
 
+// A provider reply as JSON. Mappls answers "no matches" with an empty body
+// (HTTP 204), which res.json() can't parse ("Unexpected end of JSON input",
+// Sentry BACKEND-5): that is an empty result, not a failure. Anything else
+// that isn't JSON is the provider being unavailable.
+export async function providerJson<T>(res: Response): Promise<T | null> {
+  const text = await res.text();
+  if (!text.trim()) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new AppError(503, 'LOCATION_PROVIDER_UNAVAILABLE', 'Place search is temporarily unavailable. Try the map instead.');
+  }
+}
+
 interface MapplsAutosuggestLocation {
   placeName?: string;
   placeAddress?: string;
@@ -45,7 +59,8 @@ locationRouter.get('/search', async (req, res, next) => {
     const mapplsRes = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!mapplsRes.ok) throw new AppError(503, 'LOCATION_PROVIDER_UNAVAILABLE', 'Place search is temporarily unavailable. Try the map instead.');
 
-    const data = (await mapplsRes.json()) as MapplsAutosuggestResponse;
+    const data = await providerJson<MapplsAutosuggestResponse>(mapplsRes);
+    if (!data) return res.json({ labels: [] });
     if (data.suggestedLocations != null && !Array.isArray(data.suggestedLocations)) throw new AppError(503, 'LOCATION_PROVIDER_UNAVAILABLE', 'Place search is temporarily unavailable.');
     const labels = (data.suggestedLocations ?? [])
       .map((loc) => {
@@ -119,8 +134,8 @@ locationRouter.get('/nearby', async (req, res, next) => {
     const googleRes = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!googleRes.ok) return res.json({ places: [] });
 
-    const data = (await googleRes.json()) as GoogleNearbyResponse;
-    if (data.status !== 'OK') return res.json({ places: [] });
+    const data = await providerJson<GoogleNearbyResponse>(googleRes).catch(() => null);
+    if (data?.status !== 'OK') return res.json({ places: [] });
 
     // route/street_address/locality entries aren't landmarks a customer
     // would recognize their pin by — filtered out in favor of real named
