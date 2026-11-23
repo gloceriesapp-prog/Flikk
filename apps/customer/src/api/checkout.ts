@@ -30,6 +30,10 @@ export interface CheckoutQuote {
     additionalShopFee: number;
     deliveryFee: number;
     handlingFee: number;
+    originalBaseDeliveryFee?: number;
+    originalHandlingFee?: number;
+    deliveryFeeShowFree?: boolean;
+    handlingFeeShowFree?: boolean;
     discountAmount: number;
     // Rider tip inside total (absent from older servers).
     tipAmount?: number;

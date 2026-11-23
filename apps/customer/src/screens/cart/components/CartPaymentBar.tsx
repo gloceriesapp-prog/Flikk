@@ -1,62 +1,54 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
-import { UpiAppLogo } from '../../../components/payments/UpiAppLogo';
-import { AppIcon } from '../../../components/AppIcon';
-import type { UpiApp } from '../../../payments/upiApps';
-import { paymentMethodLabel, type PaymentMethod } from '../../../payments/paymentMethod';
 import { useCopy } from '../../../api/appConfig';
+import { IconlyShoppingCart } from '../../../components/icons/IconlyShoppingCart';
+import { TotalSkeleton } from './CheckoutSkeleton';
 
 interface Props {
-  method: PaymentMethod | null;
-  apps: UpiApp[];
   total: number | null;
   busy: boolean;
+  // Total is being priced: a skeleton instead of a placeholder word.
+  loading?: boolean;
   disabled: boolean;
   storeClosed?: boolean;
-  bankName?: string;
-  onChoose: () => void;
-  onPlaceOrder: () => void;
+  onProceed: () => void;
 }
 
-// One row, two actions: change payment on the left, place order on the right.
-export function CartPaymentBar({ method, apps, total, busy, disabled, storeClosed = false, bankName, onChoose, onPlaceOrder }: Props) {
-  const label = method === 'netbanking' && bankName ? bankName : method ? paymentMethodLabel(method, apps) : 'Select payment method';
-  const amount = total == null ? 'Checking total…' : `₹${total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-  const selectedUpiApp = apps.find(app => method === `upi_app:${app.id}`);
+// Total on the left (on white), one green action on the right. The payment
+// method is chosen on the next screen (Choose how to pay), and picking one
+// there places the order.
+export function CartPaymentBar({ total, busy, loading = false, disabled, storeClosed = false, onProceed }: Props) {
+  const amount = total == null ? null : `₹${total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   const blocked = busy || disabled || storeClosed;
-  const placeOrderLabel = useCopy('checkout.placeOrder.cta');
+  // Admin App content: checkout.placeOrder.cta (default "Proceed to Payment").
+  const ctaLabel = useCopy('checkout.placeOrder.cta');
 
   return (
-    <View className="flex-row items-center gap-3 bg-white px-4 pb-safe-offset-3 pt-2">
-      <Pressable onPress={onChoose} disabled={busy} accessibilityRole="button"
-        accessibilityLabel={method ? `Change payment method, ${label}` : label}
-        accessibilityState={{ disabled: busy }}
-        className="min-h-[52px] min-w-0 flex-1 flex-row items-center gap-2 py-2">
-        {selectedUpiApp && <UpiAppLogo app={selectedUpiApp} size={28} />}
-        <View className="min-w-0 flex-1">
-          <Text className="text-[11px] font-medium text-[#717986]">Payment method</Text>
-          <Text numberOfLines={1} className="mt-1 text-[13px] font-semibold text-[#18243B]">
-            {method ? label : 'Choose method'}
+    <View className="flex-row items-center gap-4 bg-white px-4 pb-safe-offset-3 pt-2">
+      <View className="min-w-0 flex-1" accessible accessibilityLabel={amount ? `Total amount ${amount}` : 'Checking total'}>
+        <Text className="text-[12px] font-medium text-[#717986]">Total amount</Text>
+        {amount == null && loading ? <TotalSkeleton /> : (
+          <Text numberOfLines={1} className="mt-0.5 text-[20px] font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+            {amount ?? '—'}
           </Text>
-        </View>
-        <AppIcon icon={ArrowDown01Icon} size={15} color="#536176" />
-      </Pressable>
-
-      <Pressable onPress={method ? onPlaceOrder : onChoose} disabled={blocked}
-        accessibilityRole="button" accessibilityState={{ disabled: blocked, busy }}
-        accessibilityLabel={storeClosed ? 'Store closed' : method ? `${placeOrderLabel}, total ${amount}` : `Select payment method, total ${amount}`}
-        className={`min-h-[52px] min-w-0 flex-1 items-center justify-center rounded-2xl px-3 py-2.5 ${storeClosed ? 'bg-[#E7E7EA]' : 'bg-primary'}`}
-        style={({ pressed }) => ({ opacity: storeClosed ? 1 : disabled ? 0.5 : pressed ? 0.85 : 1 })}>
-        {busy ? <ActivityIndicator color="#FFFFFF" /> : (
-          <>
-            <Text numberOfLines={1} className={`text-[14px] font-semibold ${storeClosed ? 'text-[#737373]' : 'text-white'}`}>
-              {storeClosed ? 'Store closed' : method ? placeOrderLabel : 'Select payment'}
-            </Text>
-            {!storeClosed && <Text numberOfLines={1} className="mt-0.5 text-[13px] font-semibold text-white/80 tracking-tight"
-              style={{ fontVariant: ['tabular-nums'] }}>{amount}</Text>}
-          </>
         )}
-      </Pressable>
+      </View>
+
+      <View className="min-w-0 flex-[1.4]" style={{ opacity: disabled && !storeClosed ? 0.5 : 1 }}>
+        <Pressable onPress={onProceed} disabled={blocked}
+          accessibilityRole="button" accessibilityState={{ disabled: blocked, busy }}
+          accessibilityLabel={storeClosed ? 'Store closed' : ctaLabel}
+          className={`min-h-[54px] flex-row items-center justify-center gap-2 rounded-2xl px-3 ${storeClosed ? 'bg-[#E7E7EA]' : 'bg-[#007A42]'}`}
+          style={({ pressed }) => ({ opacity: !disabled && !storeClosed && pressed ? 0.85 : 1 })}>
+          {busy ? <ActivityIndicator color="#FFFFFF" /> : (
+            <>
+              {!storeClosed && <IconlyShoppingCart size={22} color="#FFFFFF" />}
+              <Text numberOfLines={1} className={`min-w-0 shrink text-[16px] font-semibold ${storeClosed ? 'text-[#737373]' : 'text-white'}`}>
+                {storeClosed ? 'Store closed' : ctaLabel}
+              </Text>
+            </>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }

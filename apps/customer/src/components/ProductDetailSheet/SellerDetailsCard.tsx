@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Product } from '../../screens/home/products/types';
+import { GILROY } from '../../theme/fonts';
 
 interface Props {
   sellerDetails: NonNullable<Product['sellerDetails']>;
@@ -29,10 +30,10 @@ export function SellerDetailsCard({ sellerDetails }: Props) {
   const clipped = isLong && !showAll;
 
   return (
-    <View className="px-4">
-      <Text accessibilityRole="header" className="pb-3 pt-4 text-[16px] font-bold text-ink">Seller Details</Text>
+    <View className="bg-white px-4 pb-5 pt-6">
+      <Text accessibilityRole="header" className="mb-4 text-[18px] leading-[25px] text-ink" style={{ fontFamily: GILROY.bold }}>Seller Details</Text>
 
-      <View className="pb-4">
+      <View>
         <View style={clipped ? { maxHeight: PREVIEW_HEIGHT, overflow: 'hidden' } : undefined}>
           <View className="gap-1.5" onLayout={(e) => setFullHeight(e.nativeEvent.layout.height)}>
             <Line label="Seller Name" value={sellerDetails.name} />

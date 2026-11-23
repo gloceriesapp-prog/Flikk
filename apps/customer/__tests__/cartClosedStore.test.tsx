@@ -6,22 +6,21 @@ import type { Product } from '../src/screens/home/products/types';
 import { StoreClosedNotice } from '../src/screens/cart/components/StoreClosedNotice';
 
 jest.mock('../src/components/AppIcon', () => ({ AppIcon: () => null }));
-jest.mock('../src/api/appConfig', () => ({ useCopy: () => 'Place order' }));
+jest.mock('../src/api/appConfig', () => ({ useCopy: () => 'Proceed to Payment' }));
 
-it('blocks ordering for a closed store even if other checkout inputs are ready', async () => {
-  const onPlaceOrder = jest.fn();
-  const onChoose = jest.fn();
-  const view = await render(<CartPaymentBar method="cod" apps={[]} total={26} busy={false}
-    disabled={false} storeClosed onChoose={onChoose} onPlaceOrder={onPlaceOrder} />);
-  const button = view.getByRole('button', { name: 'Store closed', disabled: true });
-  await fireEvent.press(button);
-  expect(onPlaceOrder).not.toHaveBeenCalled();
-  expect(onChoose).not.toHaveBeenCalled();
-  expect(view.queryByText('Checking total…')).toBeNull();
-  await view.rerender(<CartPaymentBar method="cod" apps={[]} total={26} busy={false}
-    disabled={false} storeClosed={false} onChoose={onChoose} onPlaceOrder={onPlaceOrder} />);
-  await fireEvent.press(view.getByRole('button', { name: 'Place order, total ₹26' }));
-  expect(onPlaceOrder).toHaveBeenCalledTimes(1);
+it('blocks checkout for a closed store and otherwise proceeds to payment', async () => {
+  const onProceed = jest.fn();
+  const view = await render(<CartPaymentBar total={26} busy={false} disabled={false} storeClosed onProceed={onProceed} />);
+  await fireEvent.press(view.getByRole('button', { name: 'Store closed', disabled: true }));
+  expect(onProceed).not.toHaveBeenCalled();
+  await view.rerender(<CartPaymentBar total={26} busy={false} disabled storeClosed={false} onProceed={onProceed} />);
+  await fireEvent.press(view.getByRole('button', { name: 'Proceed to Payment', disabled: true }));
+  expect(onProceed).not.toHaveBeenCalled();
+  await view.rerender(<CartPaymentBar total={26} busy={false} disabled={false} storeClosed={false} onProceed={onProceed} />);
+  expect(view.getByText('Total amount')).toBeTruthy();
+  expect(view.getByText('₹26')).toBeTruthy();
+  await fireEvent.press(view.getByRole('button', { name: 'Proceed to Payment' }));
+  expect(onProceed).toHaveBeenCalledTimes(1);
 });
 
 it('explains closed-shop cart behavior in a single notice', async () => {

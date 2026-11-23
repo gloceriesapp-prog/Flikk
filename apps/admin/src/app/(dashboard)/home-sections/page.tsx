@@ -100,7 +100,7 @@ export default function HomeSectionsPage() {
       const [sectionsRes, productsRes] = await Promise.all([fetch('/api/home-sections'), fetch('/api/products')]);
       if (!sectionsRes.ok) throw new Error((await sectionsRes.json()).error ?? 'Could not load the home sections.');
       applyServer(await sectionsRes.json());
-      if (productsRes.ok) setProducts(await productsRes.json());
+      if (productsRes.ok) setProducts((await productsRes.json() as Product[]).filter(product => !product.quickTabKey));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load the home sections.');
     } finally {

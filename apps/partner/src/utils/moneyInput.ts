@@ -7,6 +7,7 @@ export function parseMoneyInput(value: string): number | null {
   return (Number(whole || '0') * 100 + Number(fraction.padEnd(2, '0'))) / 100;
 }
 export function validVariantPrices(variants: { price: number; originalPrice?: number }[]): boolean {
-  return variants.every(({ price, originalPrice }) => Number.isFinite(price) && price > 0 &&
+  return variants.every(({ price, originalPrice }) => Number.isFinite(price) && price >= 0 &&
+    (price > 0 || (originalPrice ?? 0) > 0) &&
     (originalPrice === undefined || (Number.isFinite(originalPrice) && originalPrice >= price)));
 }

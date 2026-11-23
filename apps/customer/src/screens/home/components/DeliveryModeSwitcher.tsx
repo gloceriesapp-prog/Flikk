@@ -12,7 +12,7 @@
 // fallback (GlassView renders a plain View there) gets a matching
 // translucent background + soft border.
 
-import { HeartIcon, UserIcon } from '@hugeicons/core-free-icons';
+import { HeartIcon, SparklesIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { GlassView } from 'expo-glass-effect';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +20,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
+import { useHomeReveal } from './HomeReveal';
 
 const styles = StyleSheet.create({
   pill: {
@@ -36,14 +37,15 @@ const styles = StyleSheet.create({
   },
 });
 
-export function DeliveryModeSwitcher({ light = false }: { light?: boolean }) {
+export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { light?: boolean; showWishlist?: boolean }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
+  const reveal = useHomeReveal();
   const iconColor = light ? colors.ink : '#FFFFFFCC';
 
   return (
     // GlassView is a native module like LinearGradient elsewhere in this
-    // header (see HomeHeader.tsx's own note) — className is silently
+    // header (see top-header/AppTopHeader.tsx's own note) — className is silently
     // ignored on it, layout has to go through style instead.
     <GlassView
       glassEffectStyle="regular"
@@ -57,21 +59,31 @@ export function DeliveryModeSwitcher({ light = false }: { light?: boolean }) {
             : { backgroundColor: 'rgba(20,20,20,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }),
       ]}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Wishlist"
-        className="h-11 w-11 items-center justify-center active:opacity-70"
-        onPress={() => navigation.navigate('Wishlist')}
-      >
-        <AppIcon icon={HeartIcon} size={19} color={iconColor} strokeWidth={1.8} />
-      </Pressable>
+      {showWishlist && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Wishlist"
+          className="h-11 w-11 items-center justify-center active:opacity-70"
+          onPress={() => navigation.navigate('Wishlist')}
+        >
+          <AppIcon icon={HeartIcon} size={22} color={iconColor} strokeWidth={1.8} />
+        </Pressable>
+      )}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Profile"
         className="h-11 w-11 items-center justify-center active:opacity-70"
         onPress={() => navigation.navigate('Profile')}
       >
-        <AppIcon icon={UserIcon} size={19} color={iconColor} strokeWidth={1.8} />
+        <AppIcon icon={UserIcon} size={22} color={iconColor} strokeWidth={1.8} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Test"
+        className="h-11 w-11 items-center justify-center active:opacity-70"
+        onPress={reveal}
+      >
+        <AppIcon icon={SparklesIcon} size={19} color={iconColor} strokeWidth={1.8} />
       </Pressable>
     </GlassView>
   );

@@ -8,32 +8,37 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { Delete02Icon, PackageIcon, RupeeIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import type { ProductVariant } from '../../catalog/data';
+import { PACK_UNITS, readPackSize, type ProductVariant } from '../../catalog/data';
 
 interface Props {
   variant: ProductVariant;
+  index: number;
   canRemove: boolean;
+  stockOptional?: boolean;
   onToggleStock: (isInStock: boolean) => void;
+  onChangeSize: (label: string) => void;
   onChangePrice: (text: string) => void;
   onChangeMrp: (text: string) => void;
   onChangeQuantity: (text: string) => void;
   onRemove: () => void;
 }
 
-export function ProductVariantCard({ variant, canRemove, onToggleStock, onChangePrice, onChangeMrp, onChangeQuantity, onRemove }: Props) {
+export function ProductVariantCard({ variant, index, canRemove, stockOptional = false, onToggleStock, onChangeSize, onChangePrice, onChangeMrp, onChangeQuantity, onRemove }: Props) {
   const [priceInput, setPriceInput] = useState<string | null>(null);
   const [mrpInput, setMrpInput] = useState<string | null>(null);
+  const { quantity, unit } = readPackSize(variant.label) ?? { quantity: '', unit: 'g' };
 
   return (
     <View className="gap-3 rounded-3xl bg-[#F9FAFB] p-4">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          <Text className="text-lg font-medium text-black">{variant.label}</Text>
+          <Text className="text-base font-medium text-black">Size {index + 1}</Text>
           {/* Removing a size back below one variant would leave the
               product unsellable — hidden rather than disabled so it
               doesn't read as a broken button. */}
           {canRemove && (
-            <Pressable onPress={onRemove} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Remove size ${index + 1}`}
+              onPress={onRemove} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
               <AppIcon icon={Delete02Icon} size={15} color={`${colors.danger}99`} />
             </Pressable>
           )}
@@ -62,6 +67,37 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
         </View>
       </View>
 
+      <View className="gap-2">
+        <Text className="text-sm font-medium text-ink">Pack quantity</Text>
+        <TextInput
+          accessibilityLabel={`Size ${index + 1} pack quantity`}
+          autoFocus={variant.id.startsWith('new-') && quantity === ''}
+          placeholder="Enter quantity"
+          placeholderTextColor={`${colors.ink}60`}
+          keyboardType="decimal-pad"
+          value={quantity}
+          onChangeText={(value) => {
+            const normalized = value.replace(',', '.');
+            if (/^\d*(?:\.\d*)?$/.test(normalized)) onChangeSize(`${normalized} ${unit}`);
+          }}
+          className="rounded-xl border border-black/10 bg-white px-3 py-2 text-base text-ink"
+        />
+        <View className="flex-row flex-wrap gap-2">
+          {PACK_UNITS.map((option) => (
+            <Pressable
+              key={option}
+              accessibilityRole="button"
+              accessibilityLabel={`Unit ${option} for size ${index + 1}`}
+              accessibilityState={{ selected: unit === option }}
+              onPress={() => onChangeSize(`${quantity} ${option}`)}
+              className={`rounded-full border border-black/10 px-3 py-2 ${unit === option ? 'bg-black' : 'bg-white'}`}
+            >
+              <Text className={unit === option ? 'text-white' : 'text-ink'}>{option}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
       <View className="flex-row items-center rounded-2xl border border-black/10 bg-white px-4 py-3">
         <AppIcon
           icon={RupeeIcon}
@@ -69,8 +105,11 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
           color={colors.ink}
         />
         <TextInput
-          value={priceInput ?? String(variant.price)}
-          onFocus={() => setPriceInput(String(variant.price))}
+          accessibilityLabel="Store price"
+          placeholder="Store price"
+          placeholderTextColor={`${colors.ink}60`}
+          value={priceInput ?? (variant.price ? String(variant.price) : '')}
+          onFocus={() => setPriceInput(variant.price ? String(variant.price) : '')}
           onBlur={() => setPriceInput(null)}
           onChangeText={(value) => { if (isMoneyInput(value)) { setPriceInput(value); onChangePrice(value); } }}
           keyboardType="decimal-pad"
@@ -83,17 +122,11 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
           }}
         />
 
-        <Text className="ml-2 text-sm font-medium text-ink/40">
-          per {variant.label}
-        </Text>
+        {Number(quantity) > 0 && (
+          <Text className="ml-2 text-sm font-medium text-ink/40">per {variant.label}</Text>
+        )}
       </View>
 
-      {/* MRP — optional: an empty field means "no MRP set", not zero.
-          Auto-suggested per category the moment a price is entered here
-          (see AddProductScreen/ProductDetailScreen's own onChangePrice),
-          but a founder can always clear or overwrite it — dashed border
-          matches the same "optional field" convention the stock count
-          below already uses. */}
       <View className="flex-row items-center gap-2 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-3">
         <AppIcon icon={RupeeIcon} size={15} color={`${colors.ink}60`} />
         <TextInput
@@ -108,16 +141,13 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
         />
       </View>
 
-      {/* Stock count — packs of this size on hand. Required to save:
-          checkout only sells counted packs (0 is a valid count, and is what
-          "Out of stock" sets). Solid border like the required price. */}
       <View className="flex-row items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-3">
         <AppIcon icon={PackageIcon} size={15} color={`${colors.ink}60`} />
         <TextInput
           value={variant.stockQuantity === undefined ? '' : String(variant.stockQuantity)}
           onChangeText={onChangeQuantity}
           keyboardType="number-pad"
-          placeholder="Stock count (packs)"
+          placeholder={stockOptional ? "Stock count (optional)" : "Stock count (packs)"}
           placeholderTextColor={`${colors.ink}60`}
           className="flex-1 text-base font-medium text-ink"
         />

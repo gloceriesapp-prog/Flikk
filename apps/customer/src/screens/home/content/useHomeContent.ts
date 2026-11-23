@@ -37,7 +37,13 @@ export function useHomeContent() {
         if (!Number.isSafeInteger(row.revision) || row.revision < 1) continue;
         if (row.tabKey.startsWith('custom-') && row.homeTabId !== row.tabKey.slice(7)) continue;
         try {
-          const content = validateContent(row.content);
+          const content = validateContent({
+            ...row.content,
+            ...(row.freshTabs ? { freshTabs: row.freshTabs } : {}),
+            sections: row.content.sections.map(section => ({ ...section,
+              ...(row.freshSectionPlacements?.[section.id] ? { freshPlacement: row.freshSectionPlacements[section.id] } : {}),
+            })),
+          });
           if (Array.isArray(row.productImagesHiddenSectionIds) && row.productImagesHiddenSectionIds.length > 0) {
             const hidden = new Set(row.productImagesHiddenSectionIds);
             content.sections = content.sections.map((section) =>

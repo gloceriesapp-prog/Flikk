@@ -152,9 +152,9 @@ function validateVariants(variants: unknown): asserts variants is VariantInput[]
 // message always names the actual field and constraint that failed, since
 // that's the difference between a founder/store-owner fixing their input
 // in one try versus guessing.
-export function validateProductInput(input: Partial<ProductInput>): asserts input is ProductInput {
+export function validateProductInput(input: Partial<ProductInput>, { allowUnnamed = false } = {}): asserts input is ProductInput {
   if (!input.storeId) throw new Error('storeId is required.');
-  if (!input.name || !input.name.trim()) throw new Error('name is required.');
+  if (typeof input.name !== 'string' || (!allowUnnamed && !input.name.trim())) throw new Error('name is required.');
   if (!input.category || !input.category.trim()) throw new Error('category is required.');
   if (!input.stockStatus || !STOCK_STATUSES.includes(input.stockStatus)) {
     throw new Error(`stockStatus must be one of: ${STOCK_STATUSES.join(', ')}.`);

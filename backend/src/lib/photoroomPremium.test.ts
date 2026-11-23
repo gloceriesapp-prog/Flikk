@@ -86,13 +86,14 @@ function post(body: Record<string, unknown>) {
 
 describe('request and prompts', () => {
   it('every preset prompt keeps the "no other food or products" rules', () => {
-    for (const id of lib.PRESET_IDS) expect(lib.presetPrompt(id, '#AABBCC')).toContain(lib.REQUIRED_PROMPT);
+    for (const id of lib.AI_PRESET_IDS) expect(lib.presetPrompt(id, '#AABBCC')).toContain(lib.REQUIRED_PROMPT);
+    expect(lib.AI_PRESET_IDS).not.toContain('text');
     expect(lib.REQUIRED_PROMPT).toBe('empty surface, no other food, no other products, no text, no logos, no people, soft and minimal, light tones');
     expect(lib.presetPrompt('pastel', '#AABBCC')).toContain('#AABBCC');
   });
 
   it('asks for exactly 720x810 with the product fitted in the 648x668 safe box, centred', () => {
-    const form = lib.editForm(new Blob(['x']), 'marble', null);
+    const form = lib.editForm(new Blob(['x']), { preset: 'marble' });
     expect(form.get('outputSize')).toBe('720x810');
     expect(form.get('scaling')).toBe('fit');
     expect(form.get('removeBackground')).toBe('true');
@@ -103,6 +104,29 @@ describe('request and prompts', () => {
     const { left, right, top, bottom } = lib.SAFE_PADDING;
     expect([lib.FRAME.width - left - right, lib.FRAME.height - top - bottom]).toEqual([648, 668]);
     expect(String(form.get('background.prompt'))).toContain(lib.REQUIRED_PROMPT);
+  });
+
+  it('text headline: tidy 2-line capitals, static background with soft shadow, product lower inside the safe box', async () => {
+    expect(lib.headlineLines('black friday')).toEqual(['BLACK', 'FRIDAY']);
+    expect(lib.headlineLines('Fresh\n  deals  today')).toEqual(['FRESH', 'DEALS TODAY']);
+    expect(lib.headlineLines('SALE')).toEqual(['SALE']);
+    expect(lib.headlineLines('a\nb\nc')).toBeNull();
+    expect(lib.headlineLines('x'.repeat(41))).toBeNull();
+    expect(lib.headlineLines('<script>')).toBeNull();
+    expect(lib.headlineLines('   ')).toBeNull();
+    const form = lib.editForm(new Blob(['x']), { preset: 'text', background: new Blob(['bg']) });
+    expect(form.get('background.imageFile')).toBeInstanceOf(Blob);
+    expect(form.get('shadow.mode')).toBe('ai.soft');
+    expect(form.get('background.prompt')).toBeNull();
+    expect(form.get('outputSize')).toBe('720x810');
+    const pad = lib.TEXT_PADDING;
+    expect(pad.left >= lib.SAFE_PADDING.left && pad.right >= lib.SAFE_PADDING.right && pad.top >= lib.SAFE_PADDING.top && pad.bottom >= lib.SAFE_PADDING.bottom).toBe(true);
+    expect(() => lib.editForm(new Blob(['x']), { preset: 'text' })).toThrow('headline background');
+    const ok = `data:image/png;base64,${(await sharp({ create: { width: 720, height: 810, channels: 3, background: '#eeeeee' } }).png().toBuffer()).toString('base64')}`;
+    await expect(lib.headlineBackground(ok)).resolves.toBeInstanceOf(Blob);
+    const wrong = `data:image/png;base64,${(await sharp({ create: { width: 500, height: 500, channels: 3, background: '#eeeeee' } }).png().toBuffer()).toString('base64')}`;
+    await expect(lib.headlineBackground(wrong)).rejects.toThrow('720x810');
+    await expect(lib.headlineBackground('https://evil.test/x.png')).rejects.toThrow('missing');
   });
 
   it('accepts only an exact 720x810 result', async () => {
@@ -140,6 +164,17 @@ describe('premium route', () => {
     // Starts from the untouched upload, stores the result, leaves the product alone until "use".
     expect(db.inserts).toEqual([expect.objectContaining({ table: 'product_premium_images', values: expect.objectContaining({ status: 'done', preset: 'wood', url: 'https://images.gloceries.com/products/premium.webp' }) })]);
     expect(db.updates.filter((u) => u.table === 'products')).toHaveLength(1); // only the earlier "use standard"
+  });
+
+  it('text headline needs valid words and its 720x810 background, and records them', async () => {
+    expect((await post({ action: 'generate', productId: PRODUCT, preset: 'text', headline: 'a\nb\nc' })).status).toBe(400);
+    expect(photoroomCalls).toHaveLength(0);
+    const background = `data:image/png;base64,${(await sharp({ create: { width: 720, height: 810, channels: 3, background: '#EEF1F6' } }).png().toBuffer()).toString('base64')}`;
+    const res = await post({ action: 'generate', productId: PRODUCT, preset: 'text', headline: 'Black friday', textColor: '#0B1026', color: '#EEF1F6', background });
+    expect(res.status).toBe(200);
+    expect(photoroomCalls[0].body.get('background.imageFile')).toBeInstanceOf(Blob);
+    expect(photoroomCalls[0].headers.get('pr-ai-background-model-version')).toBeNull();
+    expect(db.inserts[0].values).toMatchObject({ preset: 'text', headline: 'BLACK FRIDAY', text_color: '#0B1026', color: '#EEF1F6', status: 'done' });
   });
 
   it('blocks Generate once the monthly cap is reached', async () => {

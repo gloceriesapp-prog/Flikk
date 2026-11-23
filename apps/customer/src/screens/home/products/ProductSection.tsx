@@ -1,5 +1,6 @@
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { ProductCard } from './ProductCard';
+import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from './horizontalProductLayout';
 import { SectionTitle } from '../components/SectionTitle';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import { productAvailability } from '../../../utils/productAvailability';
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export function ProductSection({ title, subtitle, products, layout = 'grid', showDiscountBadge = false }: Props) {
+  const { width } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(width);
   const estimatedMinutes = useDeliveryEstimateMinutes();
   if (!products.length) return null;
   const horizontal = layout === 'horizontal';
@@ -24,16 +27,16 @@ export function ProductSection({ title, subtitle, products, layout = 'grid', sho
       <ProductCard
         product={product}
         showDiscountBadge={showDiscountBadge}
-        widthClassName={horizontal ? 'w-32' : 'w-full'}
+        widthClassName="w-full"
         estimatedMinutes={estimatedMinutes}
         isAvailable={availability.isAvailable}
         availabilityLabel={availability.label}
       />
     );
     return horizontal ? (
-      <View key={product.id}>{card}</View>
+      <View key={product.id} style={{ width: cardWidth }}>{card}</View>
     ) : (
-      <View key={product.id} className="px-1" style={{ width: '33.333333%' }}>{card}</View>
+      <View key={product.id} className="px-[6px]" style={{ width: '33.333333%' }}>{card}</View>
     );
   });
 
@@ -41,12 +44,14 @@ export function ProductSection({ title, subtitle, products, layout = 'grid', sho
     <View className={title ? 'pt-8' : undefined}>
       {title && <SectionTitle subtitle={subtitle}>{title}</SectionTitle>}
       {horizontal ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-start gap-3 px-5">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-start px-4"
+          contentContainerStyle={{ gap: HORIZONTAL_PRODUCT_CARD_GAP }} snapToInterval={cardWidth + HORIZONTAL_PRODUCT_CARD_GAP}
+          snapToAlignment="start" decelerationRate="fast">
           {cards}
         </ScrollView>
       ) : (
-        <View className="px-5">
-          <View className="-mx-1 flex-row flex-wrap items-start gap-y-5">{cards}</View>
+        <View className="px-4">
+          <View className="-mx-[6px] flex-row flex-wrap items-start gap-y-5">{cards}</View>
         </View>
       )}
     </View>

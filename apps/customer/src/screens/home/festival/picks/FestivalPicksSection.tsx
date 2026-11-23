@@ -1,14 +1,13 @@
+import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from '../../products/horizontalProductLayout';
 // The admin Festival Section's picked products as a Home rail. Renders
 // nothing while no section is active or it has no products, so an inactive
 // or empty admin section leaves no gap in the Home layout.
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View , useWindowDimensions } from 'react-native';
 import { ProductCard } from '../../products/ProductCard';
 import { HomeProductCollectionButton } from '../../components/HomeSectionButton';
 import { SectionTitle } from '../../components/SectionTitle';
 import { useFestivalSection } from './useFestivalSection';
 
-const CARD_WIDTH = 'w-32';
-const CARD_SNAP_INTERVAL = 128 + 10;
 // Limit the rail while keeping all picks accessible from the collection.
 const RAIL_LIMIT = 12;
 
@@ -18,6 +17,8 @@ interface Props {
 }
 
 export function FestivalPicksSection({ title }: Props) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(viewportWidth);
   const { data: section } = useFestivalSection();
   if (!section || section.products.length === 0) return null;
   const sectionTitle = title?.trim() || section.title;
@@ -28,13 +29,16 @@ export function FestivalPicksSection({ title }: Props) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="items-start gap-2.5 px-5"
-        snapToInterval={CARD_SNAP_INTERVAL}
+        contentContainerClassName="items-start px-5"
+        contentContainerStyle={{ gap: HORIZONTAL_PRODUCT_CARD_GAP }}
+        snapToInterval={cardWidth + HORIZONTAL_PRODUCT_CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
       >
         {preview.map((product) => (
-          <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} showDiscountBadge />
+          <View key={product.id} style={{ width: cardWidth }}>
+            <ProductCard product={product} widthClassName="w-full" showDiscountBadge />
+          </View>
         ))}
       </ScrollView>
       <HomeProductCollectionButton

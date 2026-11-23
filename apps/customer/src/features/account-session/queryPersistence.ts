@@ -66,7 +66,15 @@ export function createQueryPersistence(storage: PersistStorage, buster: string, 
                 if (!attached) return;
                 // Subscribe only after restoring: an early save while offline
                 // would overwrite the good snapshot with an empty cache.
-                unsubscribe = client.getQueryCache().subscribe(() => { timer ??= setTimeout(save, SAVE_THROTTLE_MS); });
+                // Save only when a saved (allowlisted) query gets new data. Every
+                // other cache event (a screen mounting or unmounting, a fetch
+                // starting, a private query) would re-serialise the whole
+                // catalogue snapshot, several MB, on every scroll and screen
+                // change, which drove the app's out-of-memory crashes.
+                unsubscribe = client.getQueryCache().subscribe((event) => {
+                    if (event.type !== 'updated' || event.action.type !== 'success' || !shouldPersistQuery(event.query)) return;
+                    timer ??= setTimeout(save, SAVE_THROTTLE_MS);
+                });
             });
         },
         // Account reset: stop saving the outgoing client and wipe its snapshot.

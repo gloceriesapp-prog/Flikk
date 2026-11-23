@@ -11,19 +11,22 @@ const OPTIONS: { value: boolean | null; label: string; active: string }[] = [
 export function VegChoice({ value, onChange }: { value: boolean | null | undefined; onChange: (value: boolean | null) => void }) {
   const current = value ?? null;
   return (
-    <div role="radiogroup" aria-label="Veg or non-veg" className="flex items-center gap-2 rounded-xl border border-border p-1">
-      {OPTIONS.map((option) => (
-        <button
-          key={option.label}
-          type="button"
-          role="radio"
-          aria-checked={current === option.value}
-          onClick={() => onChange(option.value)}
-          className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${current === option.value ? option.active : 'text-muted'}`}
-        >
-          {option.label}
-        </button>
-      ))}
+    <div>
+      <div role="radiogroup" aria-label="Veg or non-veg" className="flex items-center gap-2 rounded-xl border border-border p-1">
+        {OPTIONS.map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            role="radio"
+            aria-checked={current === option.value}
+            onClick={() => onChange(option.value)}
+            className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${current === option.value ? option.active : 'text-muted'}`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {current === null && <p className="mt-1 text-xs text-muted">Save to hide the dietary badge in the customer app.</p>}
     </div>
   );
 }

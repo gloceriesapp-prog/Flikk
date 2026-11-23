@@ -1,3 +1,4 @@
+import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from './horizontalProductLayout';
 // Generic Home row — title + a horizontally-scrolling row of real product
 // cards. Shared by every section that's fundamentally "a title and a
 // product row" with no card shell/background/"See all" footer of its own
@@ -17,7 +18,7 @@
 // rest on a full card. No right-edge fade overlay — per an explicit ask,
 // dropped (it read as an unwanted white wash rather than a subtle cue).
 
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View , useWindowDimensions } from 'react-native';
 import { ProductCard } from './ProductCard';
 import { SectionTitle } from '../components/SectionTitle';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
@@ -25,8 +26,6 @@ import { productAvailability } from '../../../utils/productAvailability';
 import type { Product } from './types';
 
 const VISIBLE_PRODUCTS = 6;
-const PRODUCT_CARD_WIDTH = 'w-36';
-const CARD_SNAP_INTERVAL = 144 + 12; // w-36 (144px) + this row's own gap-3 (12px)
 
 interface Props {
   title: string;
@@ -35,6 +34,8 @@ interface Props {
 }
 
 export function PromoListCard({ title, products, subtitle }: Props) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(viewportWidth);
   const visibleProducts = products.slice(0, VISIBLE_PRODUCTS);
   // Lifted once for the whole row (issue #22) — see ProductSection for the
   // rationale: one clock + delivery-settings subscription, not one per card.
@@ -47,23 +48,25 @@ export function PromoListCard({ title, products, subtitle }: Props) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="items-start gap-3 px-5"
-        snapToInterval={CARD_SNAP_INTERVAL}
+        contentContainerClassName="items-start px-5"
+        contentContainerStyle={{ gap: HORIZONTAL_PRODUCT_CARD_GAP }}
+        snapToInterval={cardWidth + HORIZONTAL_PRODUCT_CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
       >
         {visibleProducts.map((product) => {
           const availability = productAvailability(product);
           return (
-            <ProductCard
-              key={product.id}
-              product={product}
-              widthClassName={PRODUCT_CARD_WIDTH}
-              showDiscountBadge
-              estimatedMinutes={estimatedMinutes}
-              isAvailable={availability.isAvailable}
-              availabilityLabel={availability.label}
-            />
+            <View key={product.id} style={{ width: cardWidth }}>
+              <ProductCard
+                product={product}
+                widthClassName="w-full"
+                showDiscountBadge
+                estimatedMinutes={estimatedMinutes}
+                isAvailable={availability.isAvailable}
+                availabilityLabel={availability.label}
+              />
+            </View>
           );
         })}
       </ScrollView>

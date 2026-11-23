@@ -14,6 +14,10 @@ export interface DeliverySettingsRow {
   free_delivery_enabled: boolean;
   free_delivery_threshold: number;
   handling_fee: number;
+  original_delivery_fee?: number | string | null;
+  original_handling_fee?: number | string | null;
+  delivery_fee_show_free?: boolean;
+  handling_fee_show_free?: boolean;
   estimated_delivery_minutes?: number;
   // migration 104 — what a rider is paid per delivery / per extra trip stop.
   // Applied by rider_delivery_payout (migration 108) when an earning is written.
@@ -50,6 +54,11 @@ export interface DeliverySettings {
   freeDeliveryEnabled: boolean;
   freeDeliveryThreshold: number;
   handlingFee: number;
+  feeDisplayAvailable?: boolean;
+  originalDeliveryFee?: number | null;
+  originalHandlingFee?: number | null;
+  deliveryFeeShowFree?: boolean;
+  handlingFeeShowFree?: boolean;
   estimatedDeliveryMinutes: number;
   riderBasePayout: number;
   riderExtraStopPayout: number;
@@ -107,6 +116,11 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     freeDeliveryEnabled: row.free_delivery_enabled,
     freeDeliveryThreshold: Number(row.free_delivery_threshold),
     handlingFee: Number(row.handling_fee),
+    feeDisplayAvailable: Object.hasOwn(row, 'original_delivery_fee') && Object.hasOwn(row, 'original_handling_fee') && Object.hasOwn(row, 'delivery_fee_show_free') && Object.hasOwn(row, 'handling_fee_show_free'),
+    originalDeliveryFee: row.original_delivery_fee == null ? null : Number(row.original_delivery_fee),
+    originalHandlingFee: row.original_handling_fee == null ? null : Number(row.original_handling_fee),
+    deliveryFeeShowFree: row.delivery_fee_show_free ?? true,
+    handlingFeeShowFree: row.handling_fee_show_free ?? true,
     estimatedDeliveryMinutes: Number(row.estimated_delivery_minutes ?? 35),
     riderBasePayout: Number(row.rider_base_payout ?? 0),
     riderExtraStopPayout: Number(row.rider_extra_stop_payout ?? 0),

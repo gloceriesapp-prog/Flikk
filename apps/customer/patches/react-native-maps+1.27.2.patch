@@ -24,3 +24,23 @@ index ebf8780..0b37409 100644
              baseLeftMapPadding = left;
              baseRightMapPadding = right;
              baseTopMapPadding = top;
+diff --git a/node_modules/react-native-maps/ios/AirGoogleMaps/AIRGoogleMap.mm b/node_modules/react-native-maps/ios/AirGoogleMaps/AIRGoogleMap.mm
+index b375241..ab5b4ce 100644
+--- a/node_modules/react-native-maps/ios/AirGoogleMaps/AIRGoogleMap.mm
++++ b/node_modules/react-native-maps/ios/AirGoogleMaps/AIRGoogleMap.mm
+@@ -699,6 +699,15 @@ - (BOOL)showsMyLocationButton {
+   return self.settings.myLocationButton;
+ }
+ 
++// Gloceries patch: GMSMapView throws (and crashes the app) when the minimum
++// zoom is above the maximum. Fabric props start at 0, so a min zoom can
++// arrive while the max is still 0. Treat an unset or lower max as "no limit".
++- (void)setMinZoom:(float)minZoom maxZoom:(float)maxZoom {
++  float min = MAX(minZoom, kGMSMinZoomLevel);
++  float max = (maxZoom <= 0 || maxZoom < min) ? kGMSMaxZoomLevel : maxZoom;
++  [super setMinZoom:MIN(min, max) maxZoom:max];
++}
++
+ - (void)setMinZoom:(CGFloat)minZoomLevel {
+   [self setMinZoom:minZoomLevel maxZoom:self.maxZoom ];
+ }

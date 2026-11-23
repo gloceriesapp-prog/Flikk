@@ -1,4 +1,5 @@
 import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
+import { InlinePayButton } from './paymentChoice';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -51,7 +52,8 @@ export function WalletOptions({ method, onSelect }: {
                   </Pressable>
                 </View>
                 {open && <WalletAccountForm key={wallet.code} walletName={wallet.name}
-                  onContinue={contact => onSelect(value, contact)} />}
+                  onContinue={contact => { setExpanded(null); onSelect(value, contact); }} />}
+                <InlinePayButton selected={selected && !open} />
 
               </View>;
             })}

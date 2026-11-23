@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
@@ -50,7 +51,7 @@ export function AboutGloceriesScreen({ navigation }: NativeStackScreenProps<AppS
         <Pressable onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} className="h-11 w-11 items-center justify-center">
           <IconlyArrowLeft size={22} color="#101C10" />
         </Pressable>
-        <Text accessibilityRole="header" className="flex-1 text-center text-lg font-semibold text-ink">{about.title}</Text>
+        <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-center text-ink`}>{about.title}</Text>
         <View className="w-11" />
       </View>
       <ScrollView contentContainerClassName="gap-5 px-6 pb-safe-offset-8 pt-6">

@@ -1,65 +1,92 @@
 'use client';
 
-// Extra product photos after the main one (products.extra_image_urls). The
-// main photo stays in ProductImageUpload next to the name; these follow it in
-// the customer app's swipeable gallery, in the order shown here. Several
-// photos can be picked at once; they upload one by one and each is then cut
-// out like the main photo (workers/image-cutout) after the product is saved.
-
-import { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from '@/components/icons';
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, ImagePlus, X } from '@/components/icons';
 import { MAX_EXTRA_IMAGES } from '@/lib/productValidation';
+import { uploadPhoto, type UploadedPhoto } from '@/lib/productPhotoUpload';
 
 export function ProductGalleryEditor({
   urls,
   hasCover,
+  coverUrl,
+  coverFields,
   onChange,
+  onSwapCover,
   onUpload,
   onUploadingChange,
   statusBadge,
 }: {
   urls: string[];
   hasCover: boolean;
+  coverUrl?: string;
+  coverFields?: ReactNode;
+  statusBadge?: (url: string) => ReactNode;
   onChange: (urls: string[]) => void;
-  onUpload?: (url: string) => void;
-  onUploadingChange?: (uploading: boolean) => void;
-  // Cut-out status over each saved photo (components/inventory/usePhotoStatus).
-  statusBadge?: (url: string) => React.ReactNode;
+  onSwapCover: () => void;
+  onUpload: (photos: UploadedPhoto[], replaceCover: boolean) => void;
+  onUploadingChange: (uploading: boolean) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const replaceCoverOnPick = useRef(false);
+  const inFlight = useRef(false);
+  const [remaining, setRemaining] = useState(0);
+  const [errors, setErrors] = useState<string[]>([]);
+  const available = MAX_EXTRA_IMAGES - urls.length + (hasCover ? 0 : 1);
 
-  async function uploadMany(files: File[]) {
-    const room = MAX_EXTRA_IMAGES - urls.length;
-    const picked = files.slice(0, room);
-    setError(files.length > room ? `Only ${room} more photo${room === 1 ? '' : 's'} fit; the rest were skipped.` : null);
-    if (!picked.length) return;
-    onUploadingChange?.(true);
-    // urls in this closure is the list before the batch: add to a local copy.
-    const next = [...urls];
-    const failed: string[] = [];
+  function choosePhotos(replaceCover: boolean) {
+    replaceCoverOnPick.current = replaceCover;
+    input.current?.click();
+  }
+
+  async function uploadBatch(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (inFlight.current || !files.length) return;
+    const replaceCover = replaceCoverOnPick.current;
+    const capacity = available + Number(replaceCover && hasCover);
+    if (files.length > capacity) {
+      setErrors([`Choose up to ${capacity} photo${capacity === 1 ? '' : 's'}, or remove existing gallery photos to make room.`]);
+      return;
+    }
+
+    inFlight.current = true;
+    setErrors([]);
+    setRemaining(files.length);
+    onUploadingChange(true);
+    const photos: UploadedPhoto[] = [];
+    const failures: string[] = [];
     try {
-      for (const [index, file] of picked.entries()) {
-        setProgress({ done: index, total: picked.length });
+      const hasDesignatedCover = replaceCover || !hasCover;
+      if (hasDesignatedCover) {
+        const cover = files[0]!;
         try {
-          const form = new FormData();
-          form.append('file', file);
-          form.append('bucket', 'product-images');
-          const res = await fetch('/api/upload', { method: 'POST', body: form });
-          const body = await res.json().catch(() => null);
-          if (!res.ok) throw new Error(body?.error ?? 'Upload failed.');
-          const url = body.url as string;
-          if (onUpload) onUpload(url);
-          else if (!next.includes(url)) { next.push(url); onChange([...next]); }
-        } catch (err) {
-          failed.push(`${file.name}: ${err instanceof Error ? err.message : 'Upload failed.'}`);
+          photos.push(await uploadPhoto(cover, 'product-images'));
+        } catch (error) {
+          setErrors([`Main photo (${cover.name}) could not be uploaded. ${error instanceof Error ? error.message : 'Please try again.'}`]);
+          return;
         }
+        setRemaining(files.length - 1);
       }
+      // The upload route processes at most two images at once. allSettled
+      // returns results in file order even when the second one finishes first.
+      for (let offset = Number(hasDesignatedCover); offset < files.length; offset += 2) {
+        const group = files.slice(offset, offset + 2);
+        const results = await Promise.allSettled(group.map((file) => uploadPhoto(file, 'product-images')));
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') photos.push(result.value);
+          else {
+            const error = result.reason;
+            failures.push(`${group[index]!.name} · ${error instanceof Error ? error.message : 'Upload failed. Try again.'}`);
+          }
+        });
+        setRemaining(files.length - offset - group.length);
+      }
+      if (photos.length) onUpload(photos, replaceCover);
+      setErrors(failures);
     } finally {
-      setProgress(null);
-      onUploadingChange?.(false);
-      if (failed.length) setError(failed.join(' '));
+      inFlight.current = false;
+      setRemaining(0);
+      onUploadingChange(false);
     }
   }
 
@@ -72,8 +99,33 @@ export function ProductGalleryEditor({
 
   return (
     <div className="flex flex-col gap-2">
+      {coverFields && (
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => choosePhotos(true)} disabled={remaining > 0}
+            aria-label="Select main product image and gallery photos"
+            className="relative flex h-28 w-28 shrink-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl border border-border bg-accent text-muted disabled:opacity-60">
+            {coverUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={coverUrl} alt="" className="h-full w-full bg-[#F9FAFB] object-contain" />
+                {statusBadge?.(coverUrl)}
+                <span className="absolute left-1 top-1 rounded bg-black/60 px-1 text-[10px] text-white">1</span>
+              </>
+            ) : (
+              <>
+                <ImagePlus size={20} />
+                <span className="text-[10px] font-medium">Product images</span>
+              </>
+            )}
+          </button>
+          {coverFields}
+        </div>
+      )}
       <p className="text-xs font-medium text-muted">
-        More photos ({urls.length}/{MAX_EXTRA_IMAGES}) — customers swipe through these after the main photo
+        Photos ({urls.length + Number(hasCover)}/{MAX_EXTRA_IMAGES + 1})
+      </p>
+      <p className="text-xs text-muted">
+        {coverFields ? 'Select multiple files from the Product images tile. The first becomes the main image.' : hasCover ? 'Use the arrows to change the photo order.' : 'The first uploaded photo becomes the main image.'}
       </p>
       <div className="flex flex-wrap gap-2">
         {urls.map((url, index) => (
@@ -81,6 +133,7 @@ export function ProductGalleryEditor({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt={`Photo ${index + 2}`} className="h-full w-full bg-[#F9FAFB] object-contain" />
             {statusBadge?.(url)}
+            <span aria-hidden="true" className="absolute left-1 top-1 rounded bg-black/60 px-1 text-[10px] text-white">{index + 2}</span>
             <button
               type="button"
               onClick={() => onChange(urls.filter((_, i) => i !== index))}
@@ -92,10 +145,11 @@ export function ProductGalleryEditor({
             <div className="absolute inset-x-1 bottom-1 flex justify-between">
               <button
                 type="button"
-                onClick={() => move(index, index - 1)}
-                disabled={index === 0}
+                onClick={() => index === 0 ? onSwapCover() : move(index, index - 1)}
+                disabled={index === 0 && !hasCover}
                 className="rounded-full bg-black/60 p-0.5 text-white disabled:invisible"
-                aria-label={`Move photo ${index + 2} earlier`}
+                aria-label={index === 0 ? 'Make photo 2 the main photo' : `Move photo ${index + 2} earlier`}
+                title={index === 0 ? 'Make main photo' : 'Move earlier'}
               >
                 <ChevronLeft size={12} />
               </button>
@@ -111,46 +165,22 @@ export function ProductGalleryEditor({
             </div>
           </div>
         ))}
-        {urls.length < MAX_EXTRA_IMAGES && (
-          hasCover ? (
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={!!progress}
-              className="relative flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-accent text-muted transition hover:border-ink/20"
-              aria-label="Add photos"
-            >
-              {progress ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  <span className="text-[10px] font-medium">{progress.done + 1} of {progress.total}</span>
-                </>
-              ) : (
-                <>
-                  <ImagePlus size={20} />
-                  <span className="text-[10px] font-medium">Add photos</span>
-                </>
-              )}
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(event) => {
-                  const files = [...(event.target.files ?? [])];
-                  event.target.value = '';
-                  void uploadMany(files);
-                }}
-              />
-            </button>
-          ) : (
-            <p className="self-center text-[11px] text-muted">Add the main photo first.</p>
-          )
+        {available > 0 && (
+          <button type="button" onClick={() => choosePhotos(false)} disabled={remaining > 0}
+            className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-accent text-muted disabled:opacity-60">
+            <ImagePlus size={20} />
+            <span className="text-[10px] font-medium">Add photos</span>
+          </button>
         )}
       </div>
-      {error && <p className="text-[11px] font-medium text-danger">{error}</p>}
-      {urls.length > 0 && <p className="text-[11px] text-muted">You can pick several photos at once. Backgrounds are removed a few seconds after you save.</p>}
+      <input ref={input} type="file" multiple accept="image/jpeg,image/png,image/webp"
+        aria-label="Choose product photos" onChange={uploadBatch} className="hidden" />
+      {remaining > 0 && <p role="status" className="text-xs text-muted">Uploading photos · {remaining} remaining</p>}
+      {errors.length > 0 && (
+        <ul role="alert" className="space-y-1 text-xs text-danger">
+          {errors.map((error, index) => <li key={index}>{error}</li>)}
+        </ul>
+      )}
     </div>
   );
 }

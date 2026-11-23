@@ -1,5 +1,6 @@
+import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from '../../products/horizontalProductLayout';
 import { BrowseLoadingText, BROWSE_LOADING_COPY } from '../../loading/BrowseLoadingText';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View , useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../../../navigation/types';
@@ -29,6 +30,8 @@ interface Props {
 }
 
 export function GroceryCollectionSection({ title, subtitle, groups, maxProducts = 8, previewCount, onViewMore, collectionLabel, previewProducts = [], pinnedProducts = [], homeLayout, pinnedOnly = false }: Props) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(viewportWidth);
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { visibleProducts, hasLocation, isLoading, isError, retry } = useNearbyGroceryInventory();
   const limit = previewCount ?? maxProducts;
@@ -48,7 +51,7 @@ export function GroceryCollectionSection({ title, subtitle, groups, maxProducts 
       {products.length > 0 ? (
         <>
           {grid ? (
-            <View className="px-5">
+            <View className="px-4">
               {previewOnly && <Text className="mb-3 text-[11px] text-ink/50">Design preview · Sample products and prices</Text>}
               <View className="-mx-1 flex-row flex-wrap items-start gap-y-5">
                 {products.map((product) => (
@@ -63,10 +66,10 @@ export function GroceryCollectionSection({ title, subtitle, groups, maxProducts 
             </View>
           ) : (
             <View>
-              {previewOnly && <Text className="mb-3 px-5 text-[11px] text-ink/50">Design preview · Sample products and prices</Text>}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-start gap-3 px-5" snapToInterval={140} snapToAlignment="start" decelerationRate="fast">
+              {previewOnly && <Text className="mb-3 px-4 text-[11px] text-ink/50">Design preview · Sample products and prices</Text>}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-start px-4" contentContainerStyle={{ gap: HORIZONTAL_PRODUCT_CARD_GAP }} snapToInterval={cardWidth + HORIZONTAL_PRODUCT_CARD_GAP} snapToAlignment="start" decelerationRate="fast">
                 {products.map((product) => (
-                  <View key={product.id} className="w-32">
+                  <View key={product.id} style={{ width: cardWidth }}>
                     <GroceryProductTile product={product} previewOnly={previewOnly} />
                   </View>
                 ))}
@@ -83,11 +86,11 @@ export function GroceryCollectionSection({ title, subtitle, groups, maxProducts 
           )}
         </>
       ) : (
-        <View className="mx-5 items-center gap-3 rounded-2xl bg-mist/50 px-5 py-6">
+        <View className="mx-4 items-center gap-3 rounded-2xl bg-mist/50 px-4 py-6">
           {!hasLocation ? (
             <>
               <Text className="text-center text-sm text-ink/60">Choose your delivery address to see available products.</Text>
-              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-primary px-5">
+              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-primary px-4">
                 <Text className="text-sm font-semibold text-white">Choose location</Text>
               </Pressable>
             </>
@@ -98,7 +101,7 @@ export function GroceryCollectionSection({ title, subtitle, groups, maxProducts 
           ) : isError ? (
             <>
               <Text className="text-center text-sm text-ink/60">We couldn’t load these products. Please try again.</Text>
-              <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-primary px-5">
+              <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-primary px-4">
                 <Text className="text-sm font-semibold text-white">Try again</Text>
               </Pressable>
             </>

@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { refundPresentation } from '../../features/customer-care/refundPresentation';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
@@ -27,7 +28,7 @@ export function OrderSummaryScreen({ navigation, route }: Props) {
         <Pressable onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} className="h-11 w-11 items-center justify-center rounded-full border border-ink/5 bg-white">
           <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text accessibilityRole="header" className="flex-1 text-center text-[17px] font-semibold text-ink">Order summary</Text>
+        <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-center text-ink`}>Order summary</Text>
         <View className="w-11" />
       </View>
       {isLoading && !summary ? (

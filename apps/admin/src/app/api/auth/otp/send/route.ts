@@ -23,10 +23,15 @@ export async function POST() {
   }
 
   const key = createHmac('sha256', process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').update(`admin-otp-send:${userId}`).digest('hex');
-  const { data: wait, error: budgetError } = await supabaseAdmin.rpc('claim_auth_budget', {
+  const { data: wait, error: budgetError, status } = await supabaseAdmin.rpc('claim_auth_budget', {
     p_buckets: [{ key, limit: SENDS_PER_MINUTE }],
   });
-  if (budgetError || typeof wait !== 'number') return NextResponse.json({ error: 'Please try again shortly.' }, { status: 503 });
+  if (budgetError || !Number.isSafeInteger(wait) || wait < 0) {
+    const transportCode = budgetError?.details?.match(/\b(?:ENOTFOUND|EAI_AGAIN|EPERM|EACCES|ECONNREFUSED|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT)\b/)?.[0];
+    const code = budgetError ? budgetError.code || transportCode || 'REQUEST_FAILED' : 'INVALID_RESPONSE';
+    console.error(`Admin OTP rate limiter unavailable: HTTP ${status}, ${code}`);
+    return NextResponse.json({ error: 'Please try again shortly.' }, { status: 503 });
+  }
   if (wait > 0) {
     return NextResponse.json({ error: `Too many codes requested. Wait ${wait}s.` }, { status: 429, headers: { 'Retry-After': String(wait) } });
   }

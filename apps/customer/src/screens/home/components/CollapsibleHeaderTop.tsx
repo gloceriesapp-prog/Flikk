@@ -2,14 +2,14 @@
 // location row (including DeliveryModeSwitcher + profile, folded in here
 // instead of a separate always-visible element) hides, and the header's
 // overall height reduces with it. Tagline text removed — the search bar
-// (HomeHeader.tsx, rendered directly below this) is the only thing meant
+// (top-header/AppTopHeader.tsx, rendered directly below this) is the only thing meant
 // to sit below the header now.
 //
 // paddingTop also animates here (MAX_TOP_PADDING -> MIN_TOP_PADDING),
 // not just height/opacity — per an explicit ask, the space above the
 // search bar was still showing the full expanded gap even once this
 // block had fully collapsed, because that gap used to live as a static
-// pt-5 on HomeHeader.tsx's own wrapper View, a sibling that had no idea
+// pt-5 on top-header/AppTopHeader.tsx's own wrapper View, a sibling that had no idea
 // this block was collapsing. Owning the padding here, tied to the same
 // scroll progress, is what actually closes that gap down to a small
 // residual once scrolled, instead of a static class fighting an animated
@@ -29,7 +29,7 @@ import { LocationSelector } from './LocationSelector';
 // row's real content height (not spare padding, both already at floor
 // above) is the last thing standing between them, so the fix is
 // collapsing it away after a much smaller scroll instead of shrinking it
-// and risking clipping the address text/icon pill it holds. HomeHeader.tsx
+// and risking clipping the address text/icon pill it holds. top-header/AppTopHeader.tsx
 // shares this same constant for its own frosted/blurred transition, so
 // that now kicks in just as quickly too — both were always meant to
 // finish together.
@@ -58,11 +58,12 @@ interface Props {
   onChangeLocation: () => void;
   isClosed?: boolean;
   // 'all' tab renders a light pastel header — flip location + switcher to
-  // dark text/icons on it (HomeHeader.tsx's own note).
+  // dark text/icons on it (top-header/AppTopHeader.tsx's own note).
   light?: boolean;
+  showWishlist?: boolean;
 }
 
-export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = false, light = false }: Props) {
+export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = false, light = false, showWishlist = true }: Props) {
   const [contentHeight, setContentHeight] = useState(MAX_HEIGHT);
   const animatedStyle = useAnimatedStyle(() => {
     const progress = interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [0, 1], Extrapolation.CLAMP);
@@ -83,7 +84,7 @@ export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = fal
         <View className="min-w-0 flex-1 pr-3">
           <LocationSelector onPress={onChangeLocation} isClosed={isClosed} light={light} />
         </View>
-        <DeliveryModeSwitcher light={light} />
+        <DeliveryModeSwitcher light={light} showWishlist={showWishlist} />
       </View>
     </Animated.View>
   );

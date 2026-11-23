@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,10 +9,12 @@ import { IconlyArrowLeft } from '../../components/icons/iconly';
 import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import type { AppStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/tokens';
+import { useCollectionBottomPadding } from '../../navigation/home/useCollectionBottomPadding';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AllBrands'>;
 
 export function AllBrandsScreen({ navigation }: Props) {
+  const listBottomPadding = useCollectionBottomPadding(32);
   const query = useInfiniteQuery({
     queryKey: ['popular-brands', 'directory'],
     initialPageParam: null as string | null,
@@ -32,10 +35,10 @@ export function AllBrandsScreen({ navigation }: Props) {
           className="h-11 w-11 items-center justify-center">
           <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text accessibilityRole="header" className="text-xl font-bold text-ink">Popular Brands</Text>
+        <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} text-ink`}>Popular Brands</Text>
       </View>
       <FlatList data={brands} numColumns={5} keyExtractor={brand => brand.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: listBottomPadding }}
         onEndReached={loadMore} onEndReachedThreshold={0.4}
         onRefresh={() => void query.refetch()} refreshing={query.isRefetching}
         ListEmptyComponent={<View className="items-center gap-3 py-10">

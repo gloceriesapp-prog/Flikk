@@ -3,7 +3,7 @@ import { resolveStoreAccess } from '../stores/access.js';
 import { logger } from '../lib/logger.js';
 import { deliveryStores } from '../customer-experience/browse.js';
 import { receiptItems, withReceiptAddress } from '../customer-experience/receipt.js';
-import { HISTORY_SELECT } from '../history/customerHistory.js';
+import { HISTORY_SELECT, PLACED_ORDER_FILTER } from '../history/customerHistory.js';
 import { checkoutAttemptIdentity, findCheckoutAttempt, commitCheckoutAttempt } from '../lib/checkoutAttempts.js';
 // The highest-risk endpoints in the backend. Source: specs/00-foundation/api-conventions.md
 import { Router } from 'express';
@@ -155,7 +155,7 @@ ordersRouter.get('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       // migrations/015_create_trip_orders_fn.sql's own note — the real
       // combined charge lives only on trips.total).
       .select(HISTORY_SELECT)
-      .eq('customer_id', req.user!.id)
+      .eq('customer_id', req.user!.id).or(PLACED_ORDER_FILTER)
       .order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(20);
     if (error) throw error;
     res.json(data);

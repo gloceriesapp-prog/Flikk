@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { createQueryPersistence, type PersistStorage } from '../src/features/account-session/queryPersistence';
 import { queryRetryDelay } from '../src/features/account-session/accountCache';
 
@@ -25,6 +25,29 @@ async function saveFrom(storage: PersistStorage, fill: (client: QueryClient) => 
 describe('query cache persistence', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
+
+  it('saves only when a saved query gets new data, not on screen mounts or private queries', async () => {
+    const storage = memoryStorage();
+    const setItem = jest.spyOn(storage, 'setItem');
+    const persistence = createQueryPersistence(storage, '1.0.4', () => 1000);
+    const client = new QueryClient();
+    await persistence.attach(client);
+    client.setQueryData(['addresses', 'customer-a'], ['home address']);
+    for (let i = 0; i < 20; i++) {
+      const stop = new QueryObserver(client, { queryKey: ['home', 'sections'], enabled: false }).subscribe(() => {});
+      stop();
+    }
+    jest.advanceTimersByTime(5000);
+    await persistence.attach(new QueryClient());
+    expect(setItem).not.toHaveBeenCalled();
+
+    const next = new QueryClient();
+    await persistence.attach(next);
+    next.setQueryData(['home', 'sections'], ['deals']);
+    jest.advanceTimersByTime(1000);
+    await persistence.attach(new QueryClient());
+    expect(setItem).toHaveBeenCalledTimes(1);
+  });
 
   it('restores allowlisted catalogue queries only, never private ones', async () => {
     const storage = memoryStorage();

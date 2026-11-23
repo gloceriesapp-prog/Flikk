@@ -1,8 +1,9 @@
+import { horizontalProductCardWidth } from '../products/horizontalProductLayout';
 // One "Biggest Price Drops" card. The saving leads (a green "% OFF" band on top),
 // then price against MRP, name and pack size.
 // The add control sits on the image corner like the other Home product cards.
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { AppIcon } from '../../../components/AppIcon';
@@ -16,13 +17,11 @@ import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartId
 import { useProductAvailability } from '../products/useProductAvailability';
 import type { Product } from '../products/types';
 
-const CARD_WIDTH = 156;
 const BLUE = '#155DFC';
 const SAVING_GREEN = '#00A650';
 const NON_VEG_RED = '#E23744';
-const PANEL_HEIGHT = 158;
-const CARD_RADIUS = 20;
-const PANEL_TOP_RADIUS = 17;
+const CARD_RADIUS = 16;
+const PANEL_TOP_RADIUS = 16;
 // Add control: evenly rounded on every corner.
 const CORNER = { borderRadius: 12 };
 
@@ -57,6 +56,8 @@ function PriceTicket({ price }: { price: number }) {
 }
 
 export function DealCard({ product }: { product: Product }) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(viewportWidth);
   const { id, name, weight, price, originalPrice, imageUrl, storeId, storeName, isVeg } = product;
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -82,23 +83,23 @@ export function DealCard({ product }: { product: Product }) {
   return (
     <>
       <Pressable accessibilityRole="button" accessibilityLabel={name} onPress={() => setIsDetailOpen(true)}
-        style={{ width: CARD_WIDTH }} className="active:opacity-90">
+        style={{ width: cardWidth }} className="active:opacity-90">
         {/* Green card: the saving in its top band, then the product on a grey,
             bordered image panel (like the other product cards) that spans the
             full width with rounded top corners. */}
         <View>
-          <View className="overflow-hidden" style={{ borderRadius: CARD_RADIUS, backgroundColor: SAVING_GREEN }}>
+          <View className="overflow-hidden" style={{ borderRadius: CARD_RADIUS, borderCurve: 'continuous', backgroundColor: SAVING_GREEN }}>
             <View className="h-[32px] items-center justify-center" style={{ backgroundColor: SAVING_GREEN }}>
               <Text className="text-[14px] font-extrabold text-white" style={{ letterSpacing: 0.3 }}>
                 {percentOff ? `${percentOff}% OFF` : 'PRICE DROP'}
               </Text>
             </View>
             <View className="overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB]"
-              style={{ height: PANEL_HEIGHT, borderTopLeftRadius: PANEL_TOP_RADIUS, borderTopRightRadius: PANEL_TOP_RADIUS, borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS }}>
+              style={{ height: Math.round(cardWidth * 4.5 / 4), borderCurve: 'continuous', borderTopLeftRadius: PANEL_TOP_RADIUS, borderTopRightRadius: PANEL_TOP_RADIUS, borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS }}>
               <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} style={{ position: 'absolute', top: 10, right: 10, bottom: 10, left: 10 }} contentFit="contain" />
               {/* Veg / non-veg mark, standard Indian food-label convention.
                   Only when set in Admin. */}
-              {isVeg !== undefined && (
+              {typeof isVeg === 'boolean' && (
                 <View className="absolute bottom-2.5 left-2.5 h-[16px] w-[16px] items-center justify-center rounded-[3px] border-[1.5px] bg-white"
                   style={{ borderColor: isVeg ? SAVING_GREEN : NON_VEG_RED }}>
                   <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? SAVING_GREEN : NON_VEG_RED }} />

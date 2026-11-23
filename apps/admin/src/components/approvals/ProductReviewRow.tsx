@@ -21,7 +21,7 @@ import type { Product, ProductVariant } from '@/lib/types';
 const UNIT_LABEL: Record<ProductVariant['unitType'], string> = { g: 'g', kg: 'kg', ml: 'ml', l: 'L', pc: 'pc' };
 
 function packLabel(v: ProductVariant): string {
-  const mrp = v.originalPrice && v.originalPrice > v.price ? ` (MRP ₹${v.originalPrice})` : '';
+  const mrp = v.originalPrice != null ? ` (MRP ₹${v.originalPrice})` : '';
   return `${v.quantity} ${UNIT_LABEL[v.unitType]} ₹${v.price}${mrp}`;
 }
 
@@ -163,10 +163,26 @@ export function ProductReviewRow({
       ) : null}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-ink">{product.name}</p>
+        <p className="truncate text-sm font-semibold text-ink">{product.name || 'Unnamed product'}</p>
         <p className="truncate text-xs text-muted">{product.storeName}</p>
         {mode === 'changes' && <ChangeSummary product={product} />}
-        {mode === 'new' && <div className="mt-2"><ProductReviewPhotos product={product} busy={busy} onReplace={call} /></div>}
+        {mode === 'new' && (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-muted">
+              {product.subCategoryId ? product.category : 'Category / subcategory needs review'}
+              {!product.subCategoryId && product.category !== 'Uncategorized' && ` · ${product.category}`}
+            </p>
+            <ul className="space-y-1 text-xs text-ink">
+              {product.variants.map((variant) => (
+                <li key={variant.id ?? `${variant.quantity}-${variant.unitType}`}>
+                  {packLabel(variant)}
+                  {variant.stockQuantity != null && ` · ${variant.stockQuantity} packs in stock`}
+                </li>
+              ))}
+            </ul>
+            <ProductReviewPhotos product={product} busy={busy} onReplace={call} />
+          </div>
+        )}
       </div>
 
       {!!error && <p role="alert" className="text-sm text-danger">{error}</p>}

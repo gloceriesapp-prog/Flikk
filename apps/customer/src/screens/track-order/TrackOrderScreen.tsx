@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useEffect, useState } from 'react';
 import { Cancel01Icon, CustomerService01Icon, EllipsisVerticalIcon } from '@hugeicons/core-free-icons';
@@ -110,7 +111,7 @@ function TrackingDetails({ navigation, route }: Props) {
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Track Order</Text>
+        <Text className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-center text-ink`}>Track Order</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Order options" onPress={() => setMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={EllipsisVerticalIcon} size={22} color={colors.ink} />
         </Pressable>

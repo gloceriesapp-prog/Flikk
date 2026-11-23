@@ -28,12 +28,16 @@ const NOTIFICATION_PREFS = [
   { key: 'payoutReady', label: 'Weekly payout ready', description: 'Alert when a new settlement cycle is ready to review.' },
 ] as const;
 
-function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+function ToggleSwitch({ checked, onChange, disabled = false, label }: { checked: boolean; onChange: () => void; disabled?: boolean; label?: string }) {
   return (
     <button
       type="button"
       onClick={onChange}
-      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-brand' : 'bg-border-strong')}
+      disabled={disabled}
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50', checked ? 'bg-brand' : 'bg-border-strong')}
     >
       <span
         className={clsx(
@@ -61,6 +65,10 @@ export default function SettingsPage() {
     freeDeliveryEnabled: boolean;
     freeDeliveryThreshold: string;
     handlingFee: string;
+    originalDeliveryFee: string;
+    originalHandlingFee: string;
+    deliveryFeeShowFree: boolean;
+    handlingFeeShowFree: boolean;
     estimatedDeliveryMinutes: string;
     riderBasePayout: string;
     riderExtraStopPayout: string;
@@ -88,6 +96,10 @@ export default function SettingsPage() {
         freeDeliveryEnabled: settings.freeDeliveryEnabled,
         freeDeliveryThreshold: String(settings.freeDeliveryThreshold),
         handlingFee: String(settings.handlingFee),
+        originalDeliveryFee: settings.originalDeliveryFee == null ? '' : String(settings.originalDeliveryFee),
+        originalHandlingFee: settings.originalHandlingFee == null ? '' : String(settings.originalHandlingFee),
+        deliveryFeeShowFree: settings.deliveryFeeShowFree ?? true,
+        handlingFeeShowFree: settings.handlingFeeShowFree ?? true,
         estimatedDeliveryMinutes: String(settings.estimatedDeliveryMinutes),
         riderBasePayout: String(settings.riderBasePayout),
         riderExtraStopPayout: String(settings.riderExtraStopPayout),
@@ -115,6 +127,10 @@ export default function SettingsPage() {
       draft.freeDeliveryEnabled !== saved.freeDeliveryEnabled ||
       Number(draft.freeDeliveryThreshold) !== saved.freeDeliveryThreshold ||
       Number(draft.handlingFee) !== saved.handlingFee ||
+      (draft.originalDeliveryFee === '' ? null : Number(draft.originalDeliveryFee)) !== (saved.originalDeliveryFee ?? null) ||
+      (draft.originalHandlingFee === '' ? null : Number(draft.originalHandlingFee)) !== (saved.originalHandlingFee ?? null) ||
+      draft.deliveryFeeShowFree !== (saved.deliveryFeeShowFree ?? true) ||
+      draft.handlingFeeShowFree !== (saved.handlingFeeShowFree ?? true) ||
       Number(draft.estimatedDeliveryMinutes) !== saved.estimatedDeliveryMinutes ||
       Number(draft.riderBasePayout) !== saved.riderBasePayout ||
       Number(draft.riderExtraStopPayout) !== saved.riderExtraStopPayout ||
@@ -133,6 +149,10 @@ export default function SettingsPage() {
 
   async function handleSaveDelivery() {
     if (!draft || isSaving) return;
+    if ([draft.flatDeliveryFee, draft.handlingFee].some((fee) => fee.trim() === '' || !Number.isFinite(Number(fee)) || Number(fee) < 0)) {
+      setSaveError('Enter an actual delivery and handling price. Use 0 for a free fee.');
+      return;
+    }
     const minutes = Number(draft.estimatedDeliveryMinutes);
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
       setSaveError('Enter a delivery estimate between 1 and 240 whole minutes.');
@@ -169,6 +189,12 @@ export default function SettingsPage() {
           freeDeliveryEnabled: draft.freeDeliveryEnabled,
           freeDeliveryThreshold: Number(draft.freeDeliveryThreshold),
           handlingFee: Number(draft.handlingFee),
+          ...(saved?.feeDisplayAvailable ? {
+            originalDeliveryFee: draft.originalDeliveryFee === '' ? null : Number(draft.originalDeliveryFee),
+            originalHandlingFee: draft.originalHandlingFee === '' ? null : Number(draft.originalHandlingFee),
+            deliveryFeeShowFree: draft.deliveryFeeShowFree,
+            handlingFeeShowFree: draft.handlingFeeShowFree,
+          } : {}),
           estimatedDeliveryMinutes: Number(draft.estimatedDeliveryMinutes),
           riderBasePayout: Number(draft.riderBasePayout),
           riderExtraStopPayout: Number(draft.riderExtraStopPayout),
@@ -393,23 +419,6 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-ink">Fallback delivery fee</p>
-                <p className="text-xs text-muted">Used only when no distance tiers are set above.</p>
-              </div>
-              <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
-                <span className="text-sm text-muted">₹</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={draft.flatDeliveryFee}
-                  onChange={(e) => setDraft({ ...draft, flatDeliveryFee: e.target.value })}
-                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
-                />
-              </div>
-            </div>
-
             <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
               <div>
                 <label htmlFor="extraStopFee" className="text-sm font-medium text-ink">Extra store fee</label>
@@ -431,21 +440,58 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+            <div className="space-y-4 border-t border-border pt-4">
               <div>
-                <p className="text-sm font-medium text-ink">Handling fee</p>
-                <p className="text-xs text-muted">Charged on every order, regardless of free delivery.</p>
+                <p className="text-sm font-medium text-ink">Checkout fees</p>
+                <p className="text-xs text-muted">Enter an actual price for each fee. Add a higher original price only when you want it crossed out in the customer bill.</p>
               </div>
-              <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
-                <span className="text-sm text-muted">₹</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={draft.handlingFee}
-                  onChange={(e) => setDraft({ ...draft, handlingFee: e.target.value })}
-                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
-                />
-              </div>
+              {!saved?.feeDisplayAvailable && <p className="text-sm text-muted">Original prices require the fee-display database update. Actual prices can still be saved.</p>}
+              {(['delivery', 'handling'] as const).map((fee) => {
+                const originalKey = fee === 'delivery' ? 'originalDeliveryFee' : 'originalHandlingFee';
+                const actualKey = fee === 'delivery' ? 'flatDeliveryFee' : 'handlingFee';
+                const freeKey = fee === 'delivery' ? 'deliveryFeeShowFree' : 'handlingFeeShowFree';
+                const label = fee === 'delivery' ? 'Delivery' : 'Handling';
+                const actual = Number(draft[actualKey]);
+                const original = Number(draft[originalKey]);
+                const distancePricing = fee === 'delivery' && draft.deliveryFeeTiers.length > 0;
+                return <div key={fee} className="space-y-4 rounded-xl bg-gray-50 p-4">
+                  <p className="text-sm font-semibold text-ink">{label} fee</p>
+                  {fee === 'delivery' && <label className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink">
+                    Delivery pricing
+                    <select aria-label="Delivery pricing" value={distancePricing ? 'distance' : 'fixed'}
+                      onChange={(event) => setDraft({ ...draft, deliveryFeeTiers: event.target.value === 'fixed' ? [] : [{ upToKm: '1', fee: draft.flatDeliveryFee }] })}
+                      className="rounded-lg border border-border bg-white px-3 py-2 text-sm">
+                      <option value="fixed">Fixed price</option>
+                      <option value="distance">By distance</option>
+                    </select>
+                  </label>}
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="min-w-0 space-y-1.5 text-xs font-medium text-muted">
+                      <span className="block">Original price (₹) · optional</span>
+                      <input aria-label={`${label} original fee`} type="number" min={0} max={99999999.99} step="0.01" placeholder="Not set"
+                        disabled={!saved?.feeDisplayAvailable} value={draft[originalKey]}
+                        onChange={(event) => setDraft({ ...draft, [originalKey]: event.target.value })}
+                        className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-ink disabled:opacity-50" />
+                    </label>
+                    <label className="min-w-0 space-y-1.5 text-xs font-medium text-muted">
+                      <span className="block">{distancePricing ? 'Fallback actual price (₹)' : 'Actual price (₹)'}</span>
+                      <input aria-label={`${label} actual fee`} type="number" required min={0} max={99999999.99} step="0.01" placeholder="0.00"
+                        value={draft[actualKey]} onChange={(event) => setDraft({ ...draft, [actualKey]: event.target.value })}
+                        className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-ink" />
+                    </label>
+                  </div>
+                  {distancePricing ? <p className="text-xs text-muted">Distance pricing is active: the tier prices above are the actual charges. Choose Fixed price to charge the actual price entered here instead. Free-delivery rules still apply.</p> :
+                    <p className="text-sm text-ink" aria-label={`${label} bill preview`}>
+                      Preview: {draft[originalKey] !== '' && original > actual && <del className="mr-2 text-muted">₹{original.toFixed(2)}</del>}
+                      <span className="font-semibold">{draft[actualKey] === '' ? 'Enter actual price' : actual === 0 && draft[freeKey] ? 'FREE' : `₹${actual.toFixed(2)}`}</span>
+                    </p>}
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm text-ink">Show FREE when {fee} fee is ₹0</span>
+                    <ToggleSwitch label={`Show FREE for ${fee} fee`} checked={draft[freeKey]} disabled={!saved?.feeDisplayAvailable} onChange={() => setDraft({ ...draft, [freeKey]: !draft[freeKey] })} />
+                  </div>
+                  <p className="text-xs text-muted">Leave original price blank to show only the actual price. Set actual price to 0 to waive this fee.</p>
+                </div>;
+              })}
             </div>
 
             <div className="flex items-center justify-between gap-4 border-t border-border pt-4">

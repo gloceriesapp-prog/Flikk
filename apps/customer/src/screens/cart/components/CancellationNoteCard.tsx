@@ -20,8 +20,8 @@ import { Text, View } from 'react-native';
 export function CancellationNoteCard() {
   return (
     <View className="gap-1.5 rounded-2xl bg-white px-4 py-4">
-      <Text className="text-[15px] font-semibold text-ink">Cancellation Policy</Text>
-      <Text className="text-[13px] leading-[19px] text-ink/60 font-medium">
+      <Text className="text-[16px] font-semibold text-ink">Cancellation Policy</Text>
+      <Text className="text-[14px] leading-[21px] text-ink/60 font-medium">
        Free to cancel before your rider picks up your order. Once they&apos;ve got it, we can&apos;t stop the delivery, sorry!
       </Text>
     </View>

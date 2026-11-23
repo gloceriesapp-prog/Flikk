@@ -9,10 +9,11 @@ interface AddressDetails {
 }
 export function addressDetailsReady(details: AddressDetails): boolean {
   const required = [
-    [details.building, 150], [details.street, 140], [details.landmark, 200],
+    [details.building, 150], [details.street, 300], [details.landmark, 200],
     [details.recipientName, 100], [details.label, 40],
   ] as const;
   return required.every(([value, limit]) => value.trim().length > 0 && value.length <= limit)
+    && [details.building.trim(), details.street.trim()].filter(Boolean).join(', ').length <= 300
     && details.instructions.length <= 300
     && /^(?:\+91)?[6-9]\d{9}$/.test(details.recipientPhone.trim());
 }

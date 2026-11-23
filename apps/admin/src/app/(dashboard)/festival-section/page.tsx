@@ -51,7 +51,7 @@ export default function FestivalSectionPage() {
       setSection(data);
       setTitle(data?.title ?? '');
       setIsActive(data?.is_active ?? false);
-      setAllProducts(products);
+      setAllProducts(products.filter(product => !product.quickTabKey));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load the festival section.');
     } finally {

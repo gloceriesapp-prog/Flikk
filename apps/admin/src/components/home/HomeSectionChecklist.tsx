@@ -21,13 +21,14 @@ const RAIL_LABELS: Record<string, string> = {
 
 export interface SectionOption { key: string; label: string; enabled: boolean; count: number; capacity: number }
 
-export function useHomeSectionChoice(productId?: string) {
+export function useHomeSectionChoice(productId?: string, enabled = true) {
   const [options, setOptions] = useState<SectionOption[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [initial, setInitial] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     (async () => {
       try {
@@ -53,7 +54,7 @@ export function useHomeSectionChoice(productId?: string) {
       }
     })();
     return () => { cancelled = true; };
-  }, [productId]);
+  }, [productId, enabled]);
 
   function toggle(key: string) {
     setSelected((prev) => {

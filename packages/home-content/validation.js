@@ -75,12 +75,14 @@ function validateSelection(raw, path) {
   };
 }
 export function validateContent(raw) {
-  const doc = object(raw, 'content', ['schemaVersion', 'tabTitle', 'headerImageUrl', 'enabled', 'sections']);
+  const doc = object(raw, 'content', ['schemaVersion', 'tabTitle', 'headerImageUrl', 'enabled', 'sections', 'freshTabs']);
   if (doc.schemaVersion !== 1) fail('schemaVersion', 'unsupported version');
   const sections = unique(
     list(doc.sections, 'sections', 40).map((rawSection, index) => {
       const path = `sections[${index}]`,
-        s = object(rawSection, path, [...Object.keys(createSection('products', 'new')), 'categoryCardStyle', 'showProductImages']);
+        s = object(rawSection, path, [...Object.keys(createSection('products', 'new')), 'categoryCardStyle', 'showProductImages', 'freshPlacement']);
+      if (s.freshPlacement !== undefined && (s.kind === 'footer' || !['intro', 'everyday', 'village', 'both'].includes(s.freshPlacement)))
+        fail(path + '.freshPlacement', 'choose a valid Fresh section placement');
       if (!SECTION_KINDS.includes(s.kind)) fail(path + '.kind', 'invalid section type');
       if (s.categoryCardStyle !== undefined &&
         (s.kind !== 'categories' || !['standard', 'photo'].includes(s.categoryCardStyle)))
@@ -99,6 +101,7 @@ export function validateContent(raw) {
       )
         fail(path + '.imageAspectRatio', 'use a number from 0.3 to 5');
       return {
+        ...(s.freshPlacement === undefined ? {} : { freshPlacement: s.freshPlacement }),
         id: key(s.id, path + '.id'),
         kind: s.kind,
         title: text(s.title, path + '.title'),
@@ -145,7 +148,14 @@ export function validateContent(raw) {
       ? section.kind === 'stores' ? 3 : section.limit : 0)
       + section.items.filter(item => item.enabled).length, 0);
   if (previewBudget > 600) fail('sections', 'combined preview budget must not exceed 600 products per shop');
+  let freshTabs;
+  if (doc.freshTabs !== undefined) {
+    const tabs = object(doc.freshTabs, 'freshTabs', ['everyday', 'village']);
+    freshTabs = { everyday: text(tabs.everyday, 'freshTabs.everyday', 24, true), village: text(tabs.village, 'freshTabs.village', 24, true) };
+    if (freshTabs.everyday.toLowerCase() === freshTabs.village.toLowerCase()) fail('freshTabs', 'use different titles for the two choices');
+  }
   return {
+    ...(freshTabs ? { freshTabs } : {}),
     schemaVersion: 1,
     tabTitle: text(doc.tabTitle, 'tabTitle', 32, true),
     ...(doc.headerImageUrl === undefined ? {} : { headerImageUrl: url(doc.headerImageUrl, 'headerImageUrl') }),

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { TAB_KEYS, isHomeContentKey, createCustomContent, referencedIds, validateContent } from '@/lib/homeContent';
 import { removeMissingReferences } from '@/features/home-content/missingReferences';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { withQuickTabScope } from '@/lib/supabase/quickTabScope';
 
 export const dynamic = 'force-dynamic';
 const SELECT = 'tab_key, home_tab_id, revision, updated_at, content';
@@ -103,6 +104,9 @@ export async function PUT(request: Request, context: Context) {
       { status: 400 },
     );
   }
+  if (auth.tab !== 'fresh' && (content.freshTabs || content.sections.some(section => section.freshPlacement))) {
+    return NextResponse.json({ error: 'Fresh choices can only be configured on the Fruit & Veg tab.' }, { status: 400 });
+  }
   // Check references, including hidden sections, before the single atomic
   // update. Catalogue removal later never creates fake customer products.
   const refs = referencedIds(content);
@@ -115,7 +119,11 @@ export async function PUT(request: Request, context: Context) {
     const ids = refs[key];
     for (let offset = 0; offset < ids.length; offset += 100) {
       const batch = ids.slice(offset, offset + 100);
-      const { data, error } = await supabaseAdmin.from(table).select('id').in('id', batch);
+      const { data, error } = await withQuickTabScope(scoped => {
+        let query = supabaseAdmin.from(table).select('id');
+        if (table === 'products' && scoped) query = query.or(`quick_tab_key.is.null,quick_tab_key.eq.${auth.tab}`);
+        return query.in('id', batch);
+      });
       if (error)
         return NextResponse.json(
           { error: 'Could not validate catalogue selections.' },

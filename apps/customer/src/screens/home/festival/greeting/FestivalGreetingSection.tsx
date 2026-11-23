@@ -1,5 +1,6 @@
+import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from '../../products/horizontalProductLayout';
 // Navratri banner, category boxes and product rail, owned by FestivalTab.
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View , useWindowDimensions } from 'react-native';
 import { AppImage as Image } from '../../../../components/AppImage';
 import { ProductCard } from '../../products/ProductCard';
 import type { Product } from '../../products/types';
@@ -7,10 +8,6 @@ import { FESTIVAL_CATEGORIES } from './data';
 import { FestivalBanner } from '../banner/FestivalBanner';
 import { storageUrl } from '../../../../utils/storageUrl';
 
-// Smaller than every other Home row on purpose — the festival rail is a
-// lighter accent under the greeting, not a primary browse row.
-const CARD_WIDTH = 'w-28';
-const CARD_SNAP_INTERVAL = 112 + 12; // w-28 (112px) + this row's gap-3 (12px)
 const VISIBLE_PRODUCTS = 6;
 
 // One tone per box, positional (Pooja Essentials / Fasting Favourites /
@@ -40,6 +37,8 @@ interface Props {
 }
 
 export function FestivalGreetingSection({ products, categories, bannerUri, festivalTitle }: Props) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(viewportWidth);
   const visibleProducts = products.slice(0, VISIBLE_PRODUCTS);
   const boxes = categories && categories.length > 0 ? categories : FESTIVAL_CATEGORIES;
 
@@ -81,13 +80,16 @@ export function FestivalGreetingSection({ products, categories, bannerUri, festi
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerClassName="items-start gap-3 px-5 pt-4"
-          snapToInterval={CARD_SNAP_INTERVAL}
+          contentContainerClassName="items-start px-5 pt-4"
+        contentContainerStyle={{ gap: HORIZONTAL_PRODUCT_CARD_GAP }}
+          snapToInterval={cardWidth + HORIZONTAL_PRODUCT_CARD_GAP}
           snapToAlignment="start"
           decelerationRate="fast"
         >
           {visibleProducts.map((product) => (
-            <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} showDiscountBadge compact />
+            <View key={product.id} style={{ width: cardWidth }}>
+              <ProductCard product={product} widthClassName="w-full" showDiscountBadge compact />
+            </View>
           ))}
         </ScrollView>
       )}

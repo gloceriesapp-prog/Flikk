@@ -15,11 +15,20 @@ export const PHOTOROOM_URL = 'https://image-api.photoroom.com/v2/edit';
 export const FRAME = { width: 720, height: 810 } as const;
 export const SAFE_PADDING = { left: 36, right: 36, top: 71, bottom: 71 } as const;
 // The edit request: background removed, product fitted (never stretched or
-// cropped) inside the safe box of a 720x810 frame, AI background from the
-// preset prompt. AI backgrounds draw their own matching shadow, so no
-// separate shadow option (Photoroom docs advise against combining them).
-export function editForm(image: Blob, preset: PresetId, color?: string | null): FormData {
+// cropped) inside the safe box of a 720x810 frame.
+// - AI presets: background drawn from the preset prompt. AI backgrounds draw
+//   their own matching shadow, so no separate shadow option (Photoroom docs
+//   advise against combining them).
+// - text: the headline background (720x810, drawn in the admin) as a static
+//   background with a soft AI shadow; the product sits lower, over the
+//   bottom of the headline (TEXT_PADDING, a part of the same safe box).
+export const TEXT_PADDING = { left: 60, right: 60, top: 280, bottom: 71 } as const;
+
+export interface EditOptions { preset: PresetId; color?: string | null; background?: Blob }
+
+export function editForm(image: Blob, { preset, color, background }: EditOptions): FormData {
   const form = new FormData();
+  const pad = preset === 'text' ? TEXT_PADDING : SAFE_PADDING;
   form.set('imageFile', image, 'product');
   form.set('removeBackground', 'true');
   form.set('outputSize', `${FRAME.width}x${FRAME.height}`);
@@ -27,13 +36,20 @@ export function editForm(image: Blob, preset: PresetId, color?: string | null): 
   form.set('horizontalAlignment', 'center');
   form.set('verticalAlignment', 'center');
   form.set('ignorePaddingAndSnapOnCroppedSides', 'false');
-  form.set('paddingLeft', `${SAFE_PADDING.left}px`);
-  form.set('paddingRight', `${SAFE_PADDING.right}px`);
-  form.set('paddingTop', `${SAFE_PADDING.top}px`);
-  form.set('paddingBottom', `${SAFE_PADDING.bottom}px`);
-  form.set('background.prompt', presetPrompt(preset, color));
-  // Keep our prompt as written, so the "no other food" rules stay in it.
-  form.set('background.expandPrompt.mode', 'ai.never');
+  form.set('paddingLeft', `${pad.left}px`);
+  form.set('paddingRight', `${pad.right}px`);
+  form.set('paddingTop', `${pad.top}px`);
+  form.set('paddingBottom', `${pad.bottom}px`);
+  if (preset === 'text') {
+    if (!background) throw new PhotoroomError('The headline background is missing.');
+    form.set('background.imageFile', background, 'headline.png');
+    form.set('background.scaling', 'fill');
+    form.set('shadow.mode', 'ai.soft');
+  } else {
+    form.set('background.prompt', presetPrompt(preset, color));
+    // Keep our prompt as written, so the "no other food" rules stay in it.
+    form.set('background.expandPrompt.mode', 'ai.never');
+  }
   form.set('export.format', 'webp');
   return form;
 }
@@ -51,16 +67,16 @@ export function scrub(text: string, key: string): string {
 
 export async function callPhotoroom(
   image: Blob,
-  preset: PresetId,
-  color: string | null,
+  options: EditOptions,
   { key, fetchImpl = fetch, timeoutMs = 90_000 }: { key: string; fetchImpl?: typeof fetch; timeoutMs?: number },
 ): Promise<Buffer> {
+  const body = editForm(image, options);
   let res: Response;
   try {
     res = await fetchImpl(PHOTOROOM_URL, {
       method: 'POST',
-      headers: { 'x-api-key': key, 'pr-ai-background-model-version': 'background-studio-beta-2025-03-17' },
-      body: editForm(image, preset, color),
+      headers: options.preset === 'text' ? { 'x-api-key': key } : { 'x-api-key': key, 'pr-ai-background-model-version': 'background-studio-beta-2025-03-17' },
+      body,
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
@@ -75,6 +91,17 @@ export async function callPhotoroom(
     throw new PhotoroomError(`Photoroom error ${res.status}${detail ? `: ${detail}` : ''}.`);
   }
   return Buffer.from(await res.arrayBuffer());
+}
+
+// The admin-drawn headline background: must be a 720x810 image; re-encoded
+// to a clean PNG before it goes anywhere.
+export async function headlineBackground(dataUrl: unknown): Promise<Blob> {
+  const match = typeof dataUrl === 'string' ? /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl) : null;
+  if (!match || match[1].length > 4_000_000) throw new PhotoroomError('The headline picture is missing or too large.');
+  const input = Buffer.from(match[1], 'base64');
+  const { width, height } = await sharp(input, { limitInputPixels: 1_000_000 }).metadata();
+  if (width !== FRAME.width || height !== FRAME.height) throw new PhotoroomError('The headline picture must be 720x810.');
+  return new Blob([new Uint8Array(await sharp(input).png().toBuffer())], { type: 'image/png' });
 }
 
 // The result must be exactly the card frame, else it is not used.

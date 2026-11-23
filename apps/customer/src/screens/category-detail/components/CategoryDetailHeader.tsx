@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../../theme/typography';
 import { Pressable, Text, View } from 'react-native';
 import { colors } from '../../../theme/tokens';
 import { IconlyArrowLeft, IconlySearch } from '../../../components/icons/iconly';
@@ -18,7 +19,7 @@ export function CategoryDetailHeader({ title, onBack, onSearch }: Props) {
       </Pressable>
 
       <View className="min-w-0 flex-1">
-        <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
+        <Text className={`${PAGE_TITLE_CLASS_NAME} text-ink`} numberOfLines={1}>
           {title}
         </Text>
       </View>

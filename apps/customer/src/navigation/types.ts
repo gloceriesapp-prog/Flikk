@@ -77,8 +77,13 @@ export type AppStackParamList = {
   RegionalCategory: { categoryId: string };
   CoconutOilCollection: undefined;
   StoreDetail: { storeId: string; storeName: string };
-  Cart: { selectedWallet?: import('../payments/paymentMethod').WalletSelection; selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedPaymentMethod?: PaymentMethod } | undefined;
-  PaymentMethod: { selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedMethod: PaymentMethod | null; selectedAddressId?: string; source?: 'profile'; recoveryTarget?: import('../api/payments').PaymentTarget };
+  Cart: { selectedWallet?: import('../payments/paymentMethod').WalletSelection; selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedPaymentMethod?: PaymentMethod;
+    // Set by Choose how to pay (Date.now()): place the order with the chosen method.
+    placeOrderRequest?: number } | undefined;
+  ApplyCoupon: { itemTotal: number };
+  PaymentMethod: { selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedMethod: PaymentMethod | null; selectedAddressId?: string;
+    // Cart total, for the "Pay ₹…" button (checkout only).
+    amount?: number; source?: 'profile'; recoveryTarget?: import('../api/payments').PaymentTarget };
   CheckoutAttemptRecovery: undefined;
   PaymentRecovery: { target: import('../api/payments').PaymentTarget };
   PaymentStatus: { amount: number };

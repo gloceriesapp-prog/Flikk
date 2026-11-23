@@ -73,3 +73,23 @@ describe('admin extra store fee setting', () => {
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ extra_stop_fee: 0 }));
   });
 });
+
+describe('admin checkout fee display', () => {
+  it('saves paise comparison fees and zero-price labels independently of charges', async () => {
+    expect((await PATCH(request({ ...body, originalDeliveryFee: 30, originalHandlingFee: 12.55, deliveryFeeShowFree: false, handlingFeeShowFree: true }))).status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ original_delivery_fee: 30, original_handling_fee: 12.55, delivery_fee_show_free: false, handling_fee_show_free: true, handling_fee: 5 }));
+  });
+  it('clears comparisons explicitly but preserves omitted display settings', async () => {
+    expect((await PATCH(request({ ...body, originalHandlingFee: null }))).status).toBe(200);
+    expect(mocks.update.mock.calls[0]![0]).toMatchObject({ original_handling_fee: null });
+    expect(mocks.update.mock.calls[0]![0]).not.toHaveProperty('original_delivery_fee');
+  });
+  it.each([-1, '12.55', 1.999, 100000000, true])('rejects malformed original fee %s before writing', async (value) => {
+    expect((await PATCH(request({ ...body, originalHandlingFee: value }))).status).toBe(400);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+  it('rejects non-boolean FREE settings', async () => {
+    expect((await PATCH(request({ ...body, handlingFeeShowFree: 'true' }))).status).toBe(400);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+});

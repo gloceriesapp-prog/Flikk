@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   refs: true,
   missingIds: [] as string[],
   validationError: false,
+  scopeColumnMissing: false,
   update: vi.fn(),
   from: vi.fn(),
 }));
@@ -43,12 +44,15 @@ beforeEach(() => {
   mocks.refs = true;
   mocks.missingIds = [];
   mocks.validationError = false;
+  mocks.scopeColumnMissing = false;
   mocks.update.mockClear();
   mocks.from.mockClear();
   mocks.from.mockImplementation(() => {
+    let scoped = false;
     const query = {
       select: vi.fn(() => query),
       eq: vi.fn(() => query),
+      or: vi.fn(() => { scoped = true; return query; }),
       update: vi.fn((value) => {
         mocks.update(value);
         return query;
@@ -56,7 +60,9 @@ beforeEach(() => {
       maybeSingle: vi.fn(async () => ({ data: mocks.row, error: mocks.error })),
       in: vi.fn(async (_key, ids: string[]) => ({
         data: mocks.refs ? ids.filter(id => !mocks.missingIds.includes(id)).map((id) => ({ id })) : [],
-        error: mocks.validationError ? { message: 'private lookup error' } : null,
+        error: mocks.validationError ? { message: 'private lookup error' }
+          : scoped && mocks.scopeColumnMissing ? { code: '42703', message: 'column products.quick_tab_key does not exist' }
+            : null,
       })),
     };
     return query;
@@ -113,6 +119,14 @@ describe('Admin Home content API', () => {
       updated_by: mocks.user!.id,
     });
     expect((await response.json()).revision).toBe(3);
+  });
+  it('can publish existing product selections before quick-category product creation is installed', async () => {
+    const content = structuredClone(DEFAULT_CONTENT.grocery);
+    content.sections[0]!.selection.productIds = ['00000000-0000-4000-8000-000000000099'];
+    mocks.scopeColumnMissing = true;
+    expect((await PUT(publish({ revision: 2, content }), context)).status).toBe(200);
+    expect(mocks.from.mock.calls.filter(([table]) => table === 'products')).toHaveLength(2);
+    expect(mocks.update).toHaveBeenCalledOnce();
   });
   it('returns 409 rather than overwriting a newer publication', async () => {
     mocks.row = null;
@@ -214,5 +228,25 @@ it('refuses automatic cleanup against a newer saved revision', async () => {
   mocks.row = { ...(mocks.row as object), content: saved };
   mocks.missingIds = [old];
   expect((await PUT(publish({ revision: 2, content: saved }), context)).status).toBe(409);
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+it('publishes Fresh titles, destinations and selections together through revision validation', async () => {
+  const content = structuredClone(DEFAULT_CONTENT.fresh);
+  content.freshTabs = { everyday: 'Market Fresh', village: 'Village Fresh' };
+  content.sections[0].freshPlacement = 'village';
+  content.sections[0].title = 'Selected village vegetables';
+  content.sections[0].selection.mode = 'manual';
+  content.sections[0].selection.productIds = ['00000000-0000-4000-8000-000000000010'];
+  mocks.row = { tab_key: 'fresh', home_tab_id: null, revision: 4, updated_at: '', content };
+  const freshContext = { params: Promise.resolve({ tab: 'fresh' }) };
+  expect((await PUT(publish({ revision: 3, content }), freshContext)).status).toBe(200);
+  expect(mocks.update).toHaveBeenCalledWith({ content, updated_by: mocks.user!.id });
+  const response = await GET(new Request('http://localhost:3000/api/home-content/fresh'), freshContext);
+  expect((await response.json()).content).toEqual(content);
+});
+it('rejects Fresh placement metadata on unrelated quick categories', async () => {
+  const content = { ...DEFAULT_CONTENT.grocery, freshTabs: { everyday: 'Market', village: 'Village' } };
+  expect((await PUT(publish({ revision: 3, content }), context)).status).toBe(400);
   expect(mocks.update).not.toHaveBeenCalled();
 });

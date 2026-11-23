@@ -1,7 +1,7 @@
 'use client';
 
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
-import { categoryCardStyle, createItem, type CategoryCardStyle, type HomeContentKey, type HomeContentSection, type HomeContentItem } from '@/lib/homeContent';
+import { DEFAULT_FRESH_TABS, freshSectionPlacement, categoryCardStyle, createItem, type CategoryCardStyle, type HomeContentKey, type HomeContentSection, type HomeContentItem } from '@/lib/homeContent';
 import { Field, inputClass, Toggle } from './Fields';
 import { PopularBrandPicker } from './PopularBrandPicker';
 import { SelectionEditor } from './SelectionEditor';
@@ -10,10 +10,16 @@ import { SECTION_KIND_LABELS } from './sectionInsertion';
 export function SectionEditor({
   value: section,
   tabKey,
+  tabTitle,
+  sections,
+  freshTabs = DEFAULT_FRESH_TABS,
   onChange,
 }: {
   value: HomeContentSection;
   tabKey: HomeContentKey;
+  tabTitle: string;
+  sections: HomeContentSection[];
+  freshTabs?: { everyday: string; village: string };
   onChange: (value: HomeContentSection) => void;
 }) {
   const update = (patch: Partial<HomeContentSection>) => onChange({ ...section, ...patch });
@@ -44,6 +50,21 @@ export function SectionEditor({
           onChange={(enabled) => update({ enabled })}
         />
       </div>
+      {tabKey === 'fresh' && section.kind !== 'footer' && (
+        <div className="space-y-3 rounded-xl bg-slate-50 p-4">
+          <Field label="Show this section in" hint="Choose the destination, then edit its title and product selection below. Village origin must be verified by you.">
+            <select className={inputClass} value={freshSectionPlacement(section, sections)}
+              onChange={event => update({ freshPlacement: event.target.value as HomeContentSection['freshPlacement'] })}>
+              <option value="intro">Above both choices</option>
+              <option value="everyday">{freshTabs.everyday}</option>
+              <option value="village">{freshTabs.village}</option>
+              <option value="both">Both choices</option>
+            </select>
+          </Field>
+          {['products', 'hero'].includes(section.kind) && <button type="button" className="text-sm font-semibold text-blue-600"
+            onClick={() => update({ selection: { mode: 'manual', productIds: section.selection.productIds, categoryIds: [], storeIds: [], includeTerms: [], excludeTerms: [], discountedOnly: false } })}>Choose exact vegetables for this section</button>}
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={section.kind === 'footer' ? 'Brand name' : 'Title'}>
           <textarea
@@ -209,6 +230,8 @@ export function SectionEditor({
       {hasProducts && (
         <SelectionEditor
           value={section.selection}
+          quickTab={section.kind === 'products' || section.kind === 'hero' ? tabKey : undefined}
+          quickTabTitle={tabTitle}
           onChange={(selection) => update({ selection })}
         />
       )}
@@ -287,7 +310,22 @@ export function SectionEditor({
                     </button>
                   </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                {tabKey === 'fresh' && section.kind !== 'footer' && (
+        <div className="space-y-3 rounded-xl bg-slate-50 p-4">
+          <Field label="Show this section in" hint="Choose the destination, then edit its title and product selection below. Village origin must be verified by you.">
+            <select className={inputClass} value={freshSectionPlacement(section, sections)}
+              onChange={event => update({ freshPlacement: event.target.value as HomeContentSection['freshPlacement'] })}>
+              <option value="intro">Above both choices</option>
+              <option value="everyday">{freshTabs.everyday}</option>
+              <option value="village">{freshTabs.village}</option>
+              <option value="both">Both choices</option>
+            </select>
+          </Field>
+          {['products', 'hero'].includes(section.kind) && <button type="button" className="text-sm font-semibold text-blue-600"
+            onClick={() => update({ selection: { mode: 'manual', productIds: section.selection.productIds, categoryIds: [], storeIds: [], includeTerms: [], excludeTerms: [], discountedOnly: false } })}>Choose exact vegetables for this section</button>}
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Tile title" hint="Custom label, for example Rice & Atta. Choose its catalogue contents below.">
                     <input
                       value={item.title}
@@ -337,6 +375,8 @@ export function SectionEditor({
                 </div>
                 <SelectionEditor
                   categoryTile
+                  quickTab={tabKey}
+                  quickTabTitle={tabTitle}
                   value={item.selection}
                   onChange={(selection) => updateItem(index, { selection })}
                 />
