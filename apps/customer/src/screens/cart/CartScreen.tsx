@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { locationFromAddress } from '../../features/delivery-address/mapAddress';
 import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
 import { useCopy } from '../../api/appConfig';
@@ -17,9 +18,9 @@ import { useCopy } from '../../api/appConfig';
 //
 // Rider tips stay hidden until collection and payout are supported.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Delete02Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { RupeePrice } from '../../components/RupeePrice';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -38,6 +39,7 @@ import { StoreClosedNotice } from './components/StoreClosedNotice';
 import { CartPaymentBar } from './components/CartPaymentBar';
 import { useCartPayment } from './payment/useCartPayment';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
+import { CartDeliveryAddressCard } from './components/CartDeliveryAddressCard';
 import { useCartAvailability } from './quote/useCartAvailability';
 import { useCheckoutQuote } from './quote/useCheckoutQuote';
 import { quotedCartItems, quoteHasPriceChanges, quoteMatchesCart } from './quote/quoteItems';
@@ -48,6 +50,7 @@ import { PromoCodeCard } from './components/PromoCodeCard';
 import { RiderTipCard } from './components/RiderTipCard';
 import { BillDetailsCard } from './components/BillDetailsCard';
 import { CancellationNoteCard } from './components/CancellationNoteCard';
+import { BillSkeleton, CheckoutSkeleton } from './components/CheckoutSkeleton';
 import type { AppStackParamList } from '../../navigation/types';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
 
@@ -120,7 +123,8 @@ export function CartScreen({ navigation, route }: Props) {
   // its own saved receiver/building details instead of using the old default.
   const selectedAddress = locationHydrated ? cartAddressForLocation(addresses ?? [], location) : null;
 
-  const availabilityQuery = useCartAvailability(selectedAddress?.id);
+  const addressSettled = locationHydrated && !addressesLoading;
+  const availabilityQuery = useCartAvailability(selectedAddress?.id, addressSettled);
   const orderingClosedIssue = availabilityQuery.data?.issues.find(issue => issue.code === 'PLATFORM_CLOSED');
   const storeClosed = availabilityQuery.data?.lines.some(line => line.status === 'STORE_CLOSED') ?? false;
   const quoteQuery = useCheckoutQuote(selectedAddress?.id);
@@ -138,12 +142,40 @@ export function CartScreen({ navigation, route }: Props) {
       return priced ? { ...item, price: priced.price, originalPrice: priced.originalPrice, weight: priced.weight } : item;
     }));
   }, [items, quote]);
+  // First open: one skeleton until the address, availability and bill are
+  // all in, so the page appears whole rather than top first, bill later.
+  // Later re-checks (quantity change, refresh) keep the page and only hold
+  // the bill's place.
+  const firstLoad = !quote && !quoteQuery.isError && !availabilityQuery.isError
+    && (!addressSettled || quoteQuery.isLoading || availabilityQuery.isLoading);
+  const repricing = !quote && quoteQuery.isFetching;
   const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod, selectedWallet: route.params?.selectedWallet, selectedNetbankingBank: route.params?.selectedNetbankingBank,
     quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
   function choosePayment() {
     if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
     payment.choosePayment();
   }
+  const checkoutDisabled = !locationHydrated || !selectedAddress || addressesLoading || !payment.methodsReady || !quote || minimumShortfall > 0 || quoteQuery.isFetching
+    || quoteQuery.isError || availabilityQuery.isPlaceholderData || !availabilityQuery.data?.eligible || availabilityQuery.isError;
+
+  // Choose how to pay sends the method and a one-shot request while it stays
+  // on screen: place the order through the same guarded flow (single-tap
+  // lock, fresh quote, hours, address), which opens the payment over it. It
+  // waits while the quote or methods load; when the cart can't be ordered
+  // (closed, below minimum, unavailable), it comes back here to show why. A
+  // request older than a minute is dropped rather than ordering later.
+  const placeOrderRequest = route.params?.placeOrderRequest;
+  const handledPlaceRequest = useRef<number | undefined>(undefined);
+  const checkoutLoading = addressesLoading || !payment.methodsReady || quoteQuery.isFetching || availabilityQuery.isPlaceholderData;
+  useEffect(() => {
+    if (!placeOrderRequest || handledPlaceRequest.current === placeOrderRequest) return;
+    if (Date.now() - placeOrderRequest > 60_000) { handledPlaceRequest.current = placeOrderRequest; return; }
+    if (checkoutLoading) return;
+    handledPlaceRequest.current = placeOrderRequest;
+    navigation.setParams({ placeOrderRequest: undefined });
+    if (payment.paymentMethod !== route.params?.selectedPaymentMethod || checkoutDisabled || storeClosed) { navigation.popTo('Cart'); return; }
+    void payment.placeOrder();
+  });
 
   function addAddressAtLocation() {
     if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
@@ -189,7 +221,7 @@ export function CartScreen({ navigation, route }: Props) {
           <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
             <IconlyArrowLeft size={22} color={colors.ink} />
           </Pressable>
-          <Text className="flex-1 text-center text-[18px] font-bold text-ink">Checkout</Text>
+          <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-center text-ink`}>Checkout</Text>
           {items.length > 0 ? (
             <Pressable accessibilityRole="button" accessibilityLabel="More options" onPress={() => setIsMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
               <AppIcon icon={MoreVerticalIcon} size={22} color={colors.ink} />
@@ -240,13 +272,16 @@ export function CartScreen({ navigation, route }: Props) {
       ) : (
         <>
           <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-4 pt-4">
+            {firstLoad ? <CheckoutSkeleton rows={items.length} /> : <>
+            <CartDeliveryAddressCard loading={addressesLoading || !locationHydrated} address={selectedAddress} location={location}
+              onAdd={addAddressAtLocation} onChange={() => setAddressSheetVisible(true)} />
             {(storeClosed || orderingClosedIssue) && <StoreClosedNotice reopeningMessage={orderingClosedIssue?.message} />}
             <View className="rounded-2xl bg-white px-4 py-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2.5">
                   <View>
-                    <Text className="text-[17px] font-semibold text-ink">{preorder ? `Pre-order · ${preorder.label}` : storeClosed ? 'Your cart' : `Delivery in ${estimatedMinutes} minutes`}</Text>
-                    <Text className="text-[12.5px] text-ink/45 font-medium mt-1">
+                    <Text className="font-bold tracking-tight text-ink/90" style={{ fontSize: Platform.OS === 'ios' ? 18 : 17 }}>{preorder ? `Pre-order · ${preorder.label}` : storeClosed ? 'Your cart' : `Delivery in ${estimatedMinutes} minutes`}</Text>
+                    <Text className="mt-1.5 text-[14px] font-medium text-ink/55">
                       {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
                       {storeGroups.length > 1 ? ` from ${storeGroups.length} stores` : ' in this order'}
                     </Text>
@@ -290,7 +325,7 @@ export function CartScreen({ navigation, route }: Props) {
 
             <FreeDeliveryProgressCard itemTotal={quote?.bill.itemTotal ?? itemTotal} />
             <ForgotToAddSection cartItemIds={cartItemIds} />
-            <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} quotedDiscount={quote?.bill.discountAmount} />
+            <PromoCodeCard onOpen={() => navigation.navigate('ApplyCoupon', { itemTotal: quote?.bill.itemTotal ?? itemTotal })} appliedPromo={appliedPromo} quotedDiscount={quote?.bill.discountAmount} />
             <RiderTipCard />
             {/* The last bill stays on screen (faded) while a changed cart is
                 re-priced; Place order is disabled until the fresh quote lands. */}
@@ -314,7 +349,8 @@ export function CartScreen({ navigation, route }: Props) {
             {quote && quoteHasPriceChanges(items, quote) && (
               <Text className="px-2 text-[13px] text-[#996A16]">Some pack prices or sizes have changed. You’ll be asked to confirm before ordering.</Text>
             )}
-            {!storeClosed && (quoteQuery.isError || !quote) && (
+            {!storeClosed && repricing && <BillSkeleton />}
+            {!storeClosed && !repricing && (quoteQuery.isError || !quote) && (
               <View className="gap-2 rounded-2xl bg-white p-4">
                 <Text className="text-[13px] text-ink/65">{!accessToken ? 'Sign in to get your final bill.'
                   : !selectedAddress ? 'Choose a delivery address to get your final bill.'
@@ -323,17 +359,12 @@ export function CartScreen({ navigation, route }: Props) {
               </View>
             )}
             <CancellationNoteCard />
+            </>}
           </ScrollView>
 
           <CartCheckoutFooter
-            addressesLoading={addressesLoading || !locationHydrated}
-            selectedAddress={selectedAddress}
-            onAddAddress={addAddressAtLocation}
-            onChangeAddress={() => setAddressSheetVisible(true)}
-            paymentBar={<CartPaymentBar method={payment.paymentMethod} apps={payment.upiApps} total={payment.grandTotal}
-              bankName={payment.paymentMethod === 'netbanking' ? route.params?.selectedNetbankingBank?.name : undefined}
-              busy={payment.isPlacingOrder} storeClosed={storeClosed} disabled={addressesLoading || !payment.methodsReady || !quote || minimumShortfall > 0 || quoteQuery.isFetching || quoteQuery.isError || availabilityQuery.isPlaceholderData || !availabilityQuery.data?.eligible || availabilityQuery.isError}
-              onChoose={choosePayment} onPlaceOrder={payment.placeOrder} />}
+            paymentBar={<CartPaymentBar total={payment.grandTotal} busy={payment.isPlacingOrder} loading={firstLoad || repricing}
+              storeClosed={storeClosed} disabled={checkoutDisabled} onProceed={choosePayment} />}
           />
 
           {payment.receiptEmailForm}

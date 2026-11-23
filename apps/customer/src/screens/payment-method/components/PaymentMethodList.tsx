@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
+import { InlinePayButton, SelectedTick, usePaymentConfirm } from './paymentChoice';
 import { BankIcon, CreditCardIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { popularUpiApps } from '../../../payments/popularUpiApps';
 import { WalletOptions } from './WalletOptions';
@@ -14,7 +15,9 @@ import type { AllowedPaymentMethods, PaymentMethod } from '../../../payments/pay
 
 const BRAND_ACCENT = colors.limeDeep;
 
+// Checkout: tick circle; profile preference: the original arrow.
 function SelectionArrow({ selected }: { selected: boolean }) {
+  if (usePaymentConfirm()) return <SelectedTick selected={selected} />;
   return <AppIcon icon={ArrowRight01Icon} size={20} color={selected ? BRAND_ACCENT : colors.ink} />;
 }
 
@@ -30,15 +33,18 @@ function MethodRow({ icon, title, subtitle, selected, onPress, label }: {
   icon: typeof CreditCardIcon; title: string; subtitle: string; selected: boolean; onPress: () => void; label: string;
 }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}
-      accessibilityState={{ selected }} className="flex-row items-center gap-3" style={{ minHeight: minTouchTarget }}>
-      <AppBadge icon={icon} />
-      <View className="flex-1">
-        <Text className="text-[15px] font-medium text-ink">{title}</Text>
-        <Text className="mt-0.5 text-[12.5px] font-medium text-ink/50">{subtitle}</Text>
-      </View>
-      <SelectionArrow selected={selected} />
-    </Pressable>
+    <View>
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}
+        accessibilityState={{ selected }} className="flex-row items-center gap-3" style={{ minHeight: minTouchTarget }}>
+        <AppBadge icon={icon} />
+        <View className="flex-1">
+          <Text className="text-[15px] font-medium text-ink">{title}</Text>
+          <Text className="mt-0.5 text-[12.5px] font-medium text-ink/50">{subtitle}</Text>
+        </View>
+        <SelectionArrow selected={selected} />
+      </Pressable>
+      <InlinePayButton selected={selected} />
+    </View>
   );
 }
 
@@ -60,6 +66,7 @@ export function orderUpiApps(apps: UpiApp[], method: PaymentMethod | null): UpiA
 }
 
 export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: detectedApps, allowed = { cod: true, online: true }, upiOnly = false }: Props) {
+  const confirm = usePaymentConfirm();
   const selectedUpiAppId = method?.startsWith('upi_app:') ? method.slice('upi_app:'.length) : null;
   const upiApps = allowed.online ? orderUpiApps(popularUpiApps(detectedApps), method) : [];
 
@@ -86,7 +93,7 @@ export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: d
                     <View className="flex-1 flex-row items-center gap-2">
                       <Text className="text-[15px] font-medium text-ink">{app.name}</Text>
                       
-                      {index === 0 && app.id === selectedUpiAppId ? (
+                      {index === 0 && app.id === selectedUpiAppId && !confirm ? (
                         <View className="rounded-full bg-lime-soft px-2 py-0.5">
                           <Text className="text-[10.5px] font-semibold uppercase tracking-wide text-ink">Selected</Text>
                         </View>
@@ -94,6 +101,7 @@ export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: d
                     </View>
                     <SelectionArrow selected={isSelected} />
                   </Pressable>
+                  <InlinePayButton selected={isSelected} />
                 </View>
               );
             })}
@@ -129,6 +137,7 @@ export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: d
             </View>
             <SelectionArrow selected={method === 'cod'} />
           </Pressable>
+          <InlinePayButton selected={method === 'cod'} />
         </View>
       </View>}
     </View>

@@ -4,6 +4,25 @@ import { MAX_EXTRA_IMAGES, toProductOptions, toBrand, toCatalogueItemLink, toPre
 
 const cover = 'https://cdn.example/a.webp';
 
+test('a flavour MRP can be saved on its own with independent stock', () => {
+  const variants = [
+    { unitType: 'ml' as const, quantity: 200, price: 25 },
+    { unitType: 'ml' as const, quantity: 500, price: 0, originalPrice: 50 },
+  ];
+  const saved = toProductOptions({ variants, options: [
+    { name: 'Mango', stockQuantity: 0, priceOverrides: { 'ml:200': { originalPrice: 30 }, 'ml:500': { originalPrice: 60 } } },
+    { name: 'Badam', stockQuantity: 4, priceOverrides: { 'ml:200': { price: 27, originalPrice: 32 } } },
+  ] });
+  assert.deepEqual(saved?.map((flavour) => [flavour.stock_quantity, flavour.price_overrides]), [
+    [0, { 'ml:200': { price: 25, original_price: 30 }, 'ml:500': { price: 50, original_price: 60 } }],
+    [4, { 'ml:200': { price: 27, original_price: 32 } }],
+  ]);
+  assert.throws(() => toProductOptions({
+    variants,
+    options: [{ name: 'Mango', priceOverrides: { 'ml:200': { originalPrice: 24 } } }],
+  }), /MRP must be at least the store price/);
+});
+
 test('gallery list is cleaned and kept in order', () => {
   assert.equal(toExtraImageUrls({ imageUrl: cover }), undefined);
   assert.deepEqual(toExtraImageUrls({ imageUrl: cover, extraImageUrls: [] }), []);

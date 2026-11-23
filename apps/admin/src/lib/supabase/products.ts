@@ -47,6 +47,7 @@ export interface ProductRow {
   freshness_tag: string | null;
   description: string | null;
   sub_category_id: string | null;
+  quick_tab_key?: string | null;
   approval_status: 'pending' | 'approved' | 'rejected';
   // A partner-submitted photo awaiting founder review — the product stays
   // live on its OLD image_url until admin approves/rejects this via
@@ -65,7 +66,11 @@ export interface ProductRow {
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, serving_options, preorder_enabled, preorder_min_qty, preorder_lead_days, brand_id, brands(name), bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(stock_quantity, id, name, image_url, extra_image_urls, price_overrides, sort_order, is_available)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, serving_options, preorder_enabled, preorder_min_qty, preorder_lead_days, brand_id, brands(name), bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, quick_tab_key, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(stock_quantity, id, name, image_url, extra_image_urls, price_overrides, sort_order, is_available)';
+
+export function productColumns(scoped: boolean) {
+  return scoped ? PRODUCT_SELECT : PRODUCT_SELECT.replace(', quick_tab_key', '');
+}
 
 function mapVariants(rows: ProductVariantRow[], product: ProductRow): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
@@ -165,6 +170,7 @@ export function mapRowToProduct(row: ProductRow): Product {
     brandId: row.brand_id ?? undefined,
     brandName: row.brands?.name ?? undefined,
     approvalStatus: row.approval_status,
+    quickTabKey: row.quick_tab_key ?? undefined,
     pendingImageUrl: row.pending_image_url,
     pendingChanges: mapPendingChanges(row.pending_changes),
     pendingChangesAt: row.pending_changes_at,

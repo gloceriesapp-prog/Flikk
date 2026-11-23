@@ -32,3 +32,44 @@ it('adds the chosen price/identity, retains the original, and blocks sold-out fl
   await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk, 170 ml to cart' }));
   expect(addToCart).toHaveBeenLastCalledWith(expect.objectContaining({ optionId: undefined, price: 20 }), undefined);
 });
+it('shows the reference ADD layout without counting flavours as pack sizes', async () => {
+  const view = await render(<ProductCardView product={product} onAdd={jest.fn()} onPress={jest.fn()} isAvailable />);
+  expect(view.getByRole('button', { name: 'Add Badam Milk to cart' })).toBeTruthy();
+  expect(view.queryByText('ADD')).toBeNull();
+  expect(view.queryByText(/\(\d+ options?\)/)).toBeNull();
+  expect(view.getByText('170 ml')).toBeTruthy();
+});
+it('opens pack selection instead of silently adding the default size', async () => {
+  const onPress = jest.fn(), stopPropagation = jest.fn();
+  const sized = { ...product, options: undefined, variants: [{ id: 'small', label: '170 ml', price: 20 }, { id: 'large', label: '500 ml', price: 50 }] };
+  const view = await render(<ProductCardView product={sized} onPress={onPress} isAvailable />);
+  expect(view.getByText('(1 option)')).toBeTruthy();
+  await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk to cart' }), { stopPropagation });
+  expect(onPress).toHaveBeenCalledTimes(1);
+  expect(addToCart).not.toHaveBeenCalled();
+});
+it('keeps single-pack quick add and out-of-stock behavior', async () => {
+  const plain = { ...product, options: undefined };
+  const view = await render(<ProductCardView product={plain} isAvailable />);
+  expect(view.queryByText(/\(\d+ options?\)/)).toBeNull();
+  await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk to cart' }), { stopPropagation: jest.fn() });
+  expect(addToCart).toHaveBeenCalledWith(expect.objectContaining({ variantId: 'small', price: 20, weight: '170 ml' }));
+  await view.rerender(<ProductCardView product={plain} isAvailable={false} availabilityLabel="Out of stock" />);
+  expect(view.queryByRole('button', { name: 'Add Badam Milk to cart' })).toBeNull();
+  expect(view.getByText('₹20')).toBeTruthy();
+  expect(view.getByText('Out of stock')).toBeTruthy();
+});
+
+it('counts additional distinct sizes below the weight', async () => {
+  const sized = { ...product, options: undefined, sizeOptions: ['170 ml', '500 ml', '500 ML'], imageUrls: ['one', 'two', 'three'] };
+  const view = await render(<ProductCardView product={sized} isAvailable />);
+  expect(view.getByText('(1 option)')).toBeTruthy();
+});
+
+it('pluralizes additional sizes and hides the label when there is no weight', async () => {
+  const sized = { ...product, options: undefined, sizeOptions: ['170 ml', '500 ml', '1 L'] };
+  const view = await render(<ProductCardView product={sized} isAvailable />);
+  expect(view.getByText('(2 options)')).toBeTruthy();
+  await view.rerender(<ProductCardView product={{ ...sized, weight: '' }} isAvailable />);
+  expect(view.queryByText(/\(\d+ options?\)/)).toBeNull();
+});

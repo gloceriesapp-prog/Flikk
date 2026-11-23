@@ -7,6 +7,7 @@
 // nothing written.
 
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import type { HomeContentKey } from '@/lib/homeContent';
 import type { VariantPayload } from '@/lib/productValidation';
 
 export class CatalogueSaveError extends Error {
@@ -27,6 +28,9 @@ export async function saveCatalogueProduct(
     p_variants: variants,
   });
   if (error) {
+    if (error.code === '23505' && error.message.includes('products_quick_tab_store_name_unique')) {
+      throw new CatalogueSaveError(409, 'A product with that name already exists for this store in this quick category.');
+    }
     if (error.code === 'P0409') throw new CatalogueSaveError(409, error.message);
     if (error.code === 'P0404') throw new CatalogueSaveError(404, 'Could not find that product.');
     throw new CatalogueSaveError(400, error.code === 'P0400' ? error.message : 'Could not save this product.');
@@ -79,7 +83,7 @@ export async function saveProductOptions(productId: string,
   }
 }
 
-// Every admin-saved product is filed under a sub-category, and its category
+// General catalogue products are filed under a sub-category, and their category
 // is that sub-category's parent (the database trigger does the same; doing
 // it here too keeps the chicken/veg rules in toProductRow on the right name).
 export async function resolveCatalogueCategory(subCategoryId: string | null | undefined): Promise<string> {
@@ -89,6 +93,20 @@ export async function resolveCatalogueCategory(subCategoryId: string | null | un
   const name = (data as { categories: { name: string } | null } | null)?.categories?.name;
   if (!name) throw new CatalogueSaveError(400, 'That sub-category no longer exists. Pick another one.');
   return name;
+}
+
+export async function resolveQuickTabCategory(tab: HomeContentKey): Promise<string> {
+  const { data, error } = await supabaseAdmin.from('home_content').select('content->>tabTitle').eq('tab_key', tab).maybeSingle();
+  if (error) throw new CatalogueSaveError(503, 'Could not load this quick category.');
+  if (data?.tabTitle?.trim()) return data.tabTitle.trim();
+
+  if (tab.startsWith('custom-')) {
+    const { data: custom, error: customError } = await supabaseAdmin.from('home_tabs')
+      .select('name').eq('id', tab.slice(7)).maybeSingle();
+    if (customError) throw new CatalogueSaveError(503, 'Could not load this quick category.');
+    if (custom?.name?.trim()) return custom.name.trim();
+  }
+  throw new CatalogueSaveError(404, 'This quick category no longer exists.');
 }
 
 export function catalogueErrorStatus(err: unknown): number {

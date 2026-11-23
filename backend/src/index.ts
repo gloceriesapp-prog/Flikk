@@ -11,6 +11,7 @@ import { liveOrdersRouter, liveTripsRouter } from './tracking/live.js';
 import { riderLocationOrdersRouter, riderLocationTripsRouter } from './tracking/riderLocation.js';
 import { notificationsRouter } from './notifications/router.js';
 import { supportRouter } from './support/router.js';
+import { productRequestsRouter } from './routes/productRequests.js';
 import { staffSupportRouter } from './support/staffRouter.js';
 import { customerRefundsRouter } from './support/refundsRouter.js';
 import { randomUUID } from 'node:crypto';
@@ -227,6 +228,7 @@ app.use('/referrals', referralsRouter);
 app.use('/delivery-settings', shortCache(5000), deliverySettingsRouter);
 app.use('/app-config', shortCache(60000), appConfigRouter);
 app.use('/area-upvotes', areaUpvotesRouter);
+app.use('/product-requests', productRequestsRouter);
 // Mounted before partnerRouter — its two routes (/store-application,
 // /store-photo) must be reachable without partnerRouter's router-wide
 // requireRole('store_owner')/requireApproved gate (see that file's own

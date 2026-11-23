@@ -1,4 +1,4 @@
-// Reached from BottomNavBar's "Store" tab. Header (StoreHeader) is now the
+// Reached from BottomNavBar's "Store" tab. Header (shared AppTopHeader) is the
 // same shell as Home's own header — location row + search bar on a
 // pale green background — not the old photo banner with its own back
 // arrow; BottomNavBar is rendered here now (same as Home) since this
@@ -12,7 +12,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { View } from 'react-native';
-import { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { moveNavBar } from '../home/category-page/useHomeBrowseScroll';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { PopularBrands } from '../../components/PopularBrands/PopularBrands';
@@ -21,8 +22,9 @@ import { AllStoresSection } from './all-stores/AllStoresSection';
 import { useAllStores } from './all-stores/useAllStores';
 import { StoreFilterBar } from './components/StoreFilterBar';
 import { StoreFilterSheet, type MinRating, type StoreSort } from './components/StoreFilterSheet';
-import { StoreHeader } from './components/StoreHeader';
+import { usePublishHeaderScroll } from '../home/top-header/topHeaderScroll';
 import { StorePromoBanner } from './components/StorePromoBanner';
+import { RequestProductFooter } from './components/RequestProductFooter';
 import { NearestToYouSection } from './nearest/NearestToYouSection';
 import { PopularThisWeekSection } from './popular/PopularThisWeekSection';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
@@ -89,39 +91,29 @@ export function StoreListScreen({ navigation }: Props) {
   // always visible near the very top) is what actually reads as
   // intentional here too, not just on Home.
   const scrollY = useSharedValue(0);
+  usePublishHeaderScroll(scrollY);
   const prevScrollY = useSharedValue(0);
+  const navTarget = useSharedValue(0);
   const navHidden = useSharedValue(0);
   const SCROLL_HIDE_THRESHOLD = 6;
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     const y = event.contentOffset.y;
-    scrollY.value = y;
+    scrollY.set(y);
 
     const delta = y - prevScrollY.value;
-    if (y < 40) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta > SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta < -SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    }
+    if (y < 40 || delta < -SCROLL_HIDE_THRESHOLD) moveNavBar(navHidden, navTarget, 0);
+    else if (delta > SCROLL_HIDE_THRESHOLD) moveNavBar(navHidden, navTarget, 1);
     prevScrollY.value = y;
   });
 
   return (
-    <View className="flex-1 bg-[#F6F6F6]">
-      <StatusBar style="dark" />
+    <View className="flex-1 bg-white">
+      <StatusBar style="light" />
 
-      {/* StoreHeader stays pinned above the one virtualized list. It was a
-          sticky index-0 child of an Animated.ScrollView; FlashList v2 has no
-          stickyHeaderIndices, so the same always-at-top behaviour is a pinned
-          sibling here (bounces are off, so there's no overscroll difference).
-          Its collapse is driven by the list's own scroll handler. */}
-      <StoreHeader
-        onChangeLocation={() => navigation.navigate('SelectLocation')}
-        onOpenSearch={() => navigation.navigate('Search')}
-        scrollY={scrollY}
-      />
+      {/* The blue header + search is the shared shell header
+          (HomeNavigationShell → AppTopHeader), kept mounted across the
+          Home/Store switch; this list's scroll folds it. */}
 
       {/* The whole screen below the header is now one FlashList (M3): promo +
           filter + Nearest + Popular ride along as its header, BrandFooter as
@@ -132,6 +124,7 @@ export function StoreListScreen({ navigation }: Props) {
         isError={isError}
         isRefetching={isRefetching}
         onRefresh={() => void refetch()}
+        footer={<RequestProductFooter />}
         header={
           <>
             <StorePromoBanner />
@@ -145,7 +138,7 @@ export function StoreListScreen({ navigation }: Props) {
               onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
               onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
             />
-            <PopularBrands previewLimit={5} cardBackground="white" alwaysShowSeeAll
+            <PopularBrands previewLimit={5} alwaysShowSeeAll
               onSelect={brand => navigation.navigate('BrandProducts', { brand })}
               onSeeAll={() => navigation.navigate('AllBrands')} />
             <NearestToYouSection />

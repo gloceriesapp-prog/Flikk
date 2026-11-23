@@ -155,6 +155,7 @@ export default function InventoryPage() {
   const storeCountByName = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of products) {
+      if (p.quickTabKey) continue;
       const key = p.name.toLowerCase();
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
@@ -164,7 +165,7 @@ export default function InventoryPage() {
   function dedupeCheapest(list: Product[]): Product[] {
     const cheapestByName = new Map<string, Product>();
     for (const p of list) {
-      const key = p.name.toLowerCase();
+      const key = p.quickTabKey ? p.id : p.name.toLowerCase();
       const current = cheapestByName.get(key);
       if (!current || p.price < current.price) cheapestByName.set(key, p);
     }
@@ -481,7 +482,8 @@ export default function InventoryPage() {
                   {product.originalPrice && product.originalPrice > product.price && (
                     <span className="text-xs text-muted line-through tabular-nums">{formatNumber(product.originalPrice)}</span>
                   )}
-                  {storeId === 'all' && (storeCountByName.get(product.name.toLowerCase()) ?? 1) > 1 && (
+                  {product.quickTabKey && <span className="text-[11px] font-medium text-muted">Quick category product</span>}
+                  {!product.quickTabKey && storeId === 'all' && (storeCountByName.get(product.name.toLowerCase()) ?? 1) > 1 && (
                     <span className="text-[11px] font-medium text-muted">
                       cheapest of {storeCountByName.get(product.name.toLowerCase())} stores
                     </span>
@@ -496,7 +498,7 @@ export default function InventoryPage() {
                       {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
                     </span>
                   )}
-                  <button
+                  {!product.quickTabKey && <button
                     type="button"
                     onClick={() => setShowingOnHome(product)}
                     className="flex h-[30px] w-[30px] items-center justify-center rounded-[10px] border border-border text-ink-soft hover:bg-accent hover:text-ink"
@@ -504,7 +506,7 @@ export default function InventoryPage() {
                     title="Show on home"
                   >
                     <Home size={13} />
-                  </button>
+                  </button>}
                   <button
                     type="button"
                     onClick={() => setEditing(product)}

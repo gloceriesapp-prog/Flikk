@@ -1,5 +1,9 @@
 'use client';
-import type { ContentSelection } from '@/lib/homeContent';
+import { useEffect, useRef, useState } from 'react';
+import type { ContentSelection, HomeContentKey } from '@/lib/homeContent';
+import { AddProductModal } from '@/components/inventory/AddProductModal';
+import { fetchStoreOptions, type StoreOption } from '@/lib/supabase/products';
+import type { Product } from '@/lib/types';
 import { categoryTileSelection } from './categoryTileSelection';
 import { CataloguePicker } from './CataloguePicker';
 import { Field, inputClass, Toggle } from './Fields';
@@ -8,17 +12,47 @@ export function SelectionEditor({
   value,
   onChange,
   categoryTile = false,
+  quickTab,
+  quickTabTitle,
 }: {
   value: ContentSelection;
   categoryTile?: boolean;
+  quickTab?: HomeContentKey;
+  quickTabTitle: string;
   onChange: (value: ContentSelection) => void;
 }) {
+  const [stores, setStores] = useState<StoreOption[] | null>(null);
+  const [loadingStores, setLoadingStores] = useState(false);
+  const [scopeAvailable, setScopeAvailable] = useState<boolean | null>(null);
+  const [error, setError] = useState('');
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
   const update = (patch: Partial<ContentSelection>) => onChange({ ...value, ...patch });
+  const setProducts = (productIds: string[]) => categoryTile
+    ? onChange(categoryTileSelection(value, { products: productIds }))
+    : update({ productIds });
+
+  async function openProductForm() {
+    setLoadingStores(true);
+    setError('');
+    try {
+      const options = await fetchStoreOptions();
+      if (!options.length) throw new Error('Add a store before creating a product.');
+      setStores(options);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not load stores.');
+    } finally {
+      setLoadingStores(false);
+    }
+  }
   return (
     <div className="space-y-4">
       <Field
         label={categoryTile ? "Tile contents" : "Product selection"}
-        hint="Every selection is limited to stock available near the customer's delivery address."
+        hint={quickTab ? 'Choose a manual selection to create products for this quick category.' : "Every selection is limited to stock available near the customer's delivery address."}
       >
         <select
           value={value.mode}
@@ -37,8 +71,35 @@ export function SelectionEditor({
         <CataloguePicker
           kind="products"
           value={value.productIds}
-          onChange={(productIds) => categoryTile ? onChange(categoryTileSelection(value, { products: productIds })) : update({ productIds })}
+          tab={quickTab}
+          onScopeAvailable={quickTab ? setScopeAvailable : undefined}
+          onChange={setProducts}
         />
+      )}
+      {value.mode === 'manual' && quickTab && (
+        <>
+          <button type="button" onClick={() => void openProductForm()} disabled={scopeAvailable !== true || loadingStores || value.productIds.length >= 100}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40">
+            {loadingStores ? 'Loading stores…' : 'Create product'}
+          </button>
+          {scopeAvailable === false && <p className="text-xs text-slate-600">You can select existing products now. Creating products for this quick category requires the database update.</p>}
+          {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+          {stores && <AddProductModal stores={stores} existingProducts={[]} quickTabTitle={quickTabTitle} onClose={() => setStores(null)}
+            onAdd={async (product) => {
+              const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...product, quickTabKey: quickTab }),
+              });
+              const data = await response.json();
+              if (!response.ok) throw new Error(data.error ?? 'Could not create product.');
+              // A newer published revision can replace this editor while the
+              // product saves. It can still be picked from this tab's catalogue.
+              if (!active.current) return;
+              setProducts([...value.productIds, (data as Product).id]);
+              setStores(null);
+            }} />}
+        </>
       )}
       {categoryTile && value.mode === 'automatic' && <div className="space-y-2">
         <p className="text-xs text-slate-600">Select a catalogue subcategory to link this tile to its parent category. Customers see the normal category sidebar and can browse all of its subcategories. Use Custom collection to show only hand-picked products without a sidebar.</p>

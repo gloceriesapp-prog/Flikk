@@ -22,6 +22,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AddressFormScreen } from '../screens/address/AddressFormScreen';
 import { AddressListScreen } from '../screens/address/AddressListScreen';
 import { CartScreen } from '../screens/cart/CartScreen';
+import { ApplyCouponScreen } from '../screens/coupons/ApplyCouponScreen';
 import { AllBrandsScreen } from '../screens/categories/AllBrandsScreen';
 import { BrandProductsScreen } from '../screens/categories/BrandProductsScreen';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
@@ -126,6 +127,7 @@ export function AppNavigator() {
       <Stack.Screen name="CoconutOilCollection" component={CoconutOilScreen} />
       <Stack.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
+      <Stack.Screen name="ApplyCoupon" component={ApplyCouponScreen} />
       <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
       <Stack.Screen name="AddressList" component={AddressListScreen} />
       <Stack.Screen name="AddressForm" component={AddressFormScreen} />

@@ -44,6 +44,26 @@ export async function PATCH(request: Request) {
       throw new Error('Free-delivery threshold must be a real number, 0 or more.');
     }
     if (!Number.isFinite(handlingFee) || handlingFee < 0) throw new Error('Handling fee must be a real number, 0 or more.');
+    const feeDisplay: Record<string, number | boolean | null> = {};
+    for (const [field, column] of [
+      ['originalDeliveryFee', 'original_delivery_fee'],
+      ['originalHandlingFee', 'original_handling_fee'],
+    ] as const) {
+      const value = body[field];
+      if (value === undefined) continue;
+      if (value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 99999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) {
+        throw new Error('Original fees must be blank or a non-negative amount with at most two decimal places.');
+      }
+      feeDisplay[column] = value;
+    }
+    for (const [field, column] of [
+      ['deliveryFeeShowFree', 'delivery_fee_show_free'],
+      ['handlingFeeShowFree', 'handling_fee_show_free'],
+    ] as const) {
+      if (body[field] === undefined) continue;
+      if (typeof body[field] !== 'boolean') throw new Error('Show FREE must be on or off.');
+      feeDisplay[column] = body[field];
+    }
     // Rider payouts (migration 104) and the extra-store fee (migration 108)
     // are optional here: omitted = unchanged.
     const riderPayouts: { rider_base_payout?: number; rider_extra_stop_payout?: number; extra_stop_fee?: number; rider_per_km_payout?: number } = {};
@@ -149,6 +169,7 @@ export async function PATCH(request: Request) {
         free_delivery_threshold: freeDeliveryThreshold,
         handling_fee: handlingFee,
         estimated_delivery_minutes: estimatedDeliveryMinutes,
+        ...feeDisplay,
         ...riderPayouts,
         ...reach,
         ...hours,

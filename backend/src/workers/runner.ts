@@ -3,6 +3,19 @@ import { logger } from '../lib/logger.js';
 import { metrics } from '../observability/metrics.js';
 import { performance } from 'node:perf_hooks';
 
+// A dropped connection to Supabase (HTTP/2 GOAWAY, reset, timeout) is
+// routine; the next poll retries it. Such a blip is a warning; it becomes an
+// error (and reaches Sentry) only once it keeps failing.
+const TRANSIENT = /fetch failed|GOAWAY|ECONNRESET|ETIMEDOUT|EAI_AGAIN|UND_ERR|socket hang up|other side closed|TimeoutError/i;
+export const ALERT_AFTER_FAILURES = 3;
+export function isTransientNetworkError(err: unknown): boolean {
+  for (let e: unknown = err, depth = 0; e && depth < 4; e = (e as { cause?: unknown }).cause, depth++) {
+    const { name, message, details, code } = e as { name?: unknown; message?: unknown; details?: unknown; code?: unknown };
+    if ([name, message, details, code].some((part) => typeof part === 'string' && TRANSIENT.test(part))) return true;
+  }
+  return false;
+}
+
 export interface WorkClaim { name: string; lease_token: string; scheduled_for: string; attempts: number }
 export type Job = (scheduledFor: Date, assertActive: () => Promise<void>) => Promise<unknown>;
 export type Jobs = Record<string, Job>;
@@ -72,7 +85,8 @@ function startPoller(tick: (shouldStop: () => boolean) => Promise<unknown>, name
     }).catch(err => {
       metrics.increment('flikk_worker_passes_total',{queue:name,outcome:'error'});
       failures++;
-      logger.error({ err, queue: name }, 'Worker polling failed');
+      if (isTransientNetworkError(err) && failures < ALERT_AFTER_FAILURES) logger.warn({ err, queue: name, failures }, 'Worker polling retrying after a connection blip');
+      else logger.error({ err, queue: name, failures }, 'Worker polling failed');
     }).finally(() => {
       running = undefined;
       metrics.gauge('flikk_worker_running',0,{queue:name});

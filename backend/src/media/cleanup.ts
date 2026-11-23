@@ -6,7 +6,8 @@ interface Asset { id: string; provider: string; visibility: string; bucket: stri
 export async function cleanupMedia(shouldStop: () => boolean) {
   if (shouldStop()) return;
   const { data, error } = await supabase.rpc('claim_media_cleanup', { p_limit: 25 });
-  if (error) throw new Error('Media cleanup claim failed');
+  // Keep the database error as the cause, so a connection blip is seen as one.
+  if (error) throw new Error('Media cleanup claim failed', { cause: error });
   for (const asset of (data ?? []) as Asset[]) {
     if (shouldStop()) break;
     let success = false;
@@ -21,6 +22,6 @@ export async function cleanupMedia(shouldStop: () => boolean) {
       success = true;
     } catch { logger.warn({ assetId: asset.id }, 'Media cleanup deferred'); }
     const completed = await supabase.rpc('complete_media_cleanup', { p_id: asset.id, p_token: asset.cleanup_token, p_success: success });
-    if (completed.error) throw new Error('Media cleanup completion failed');
+    if (completed.error) throw new Error('Media cleanup completion failed', { cause: completed.error });
   }
 }

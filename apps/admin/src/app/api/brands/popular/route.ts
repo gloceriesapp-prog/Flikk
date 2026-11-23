@@ -48,6 +48,7 @@ export async function PATCH(request: Request) {
 
   const body = await request.json().catch(() => null) as {
     id?: unknown;
+    name?: unknown;
     position?: unknown;
     imageUrl?: unknown;
     bannerUrl?: unknown;
@@ -55,6 +56,10 @@ export async function PATCH(request: Request) {
   if (!body || !isUuid(body.id)) return NextResponse.json({ error: 'Choose a brand.' }, { status: 400 });
 
   const { id, position, imageUrl, bannerUrl } = body;
+  const name = typeof body.name === 'string' ? body.name.trim().replace(/\s+/g, ' ') : '';
+  if (body.name !== undefined && (name.length < 1 || name.length > 80)) {
+    return NextResponse.json({ error: 'Enter a brand name (up to 80 characters).' }, { status: 400 });
+  }
   if (position !== null && (typeof position !== 'number' || !Number.isInteger(position) || position < 1 || position > 1000)) {
     return NextResponse.json({ error: 'Choose a position from 1 to 1000, or leave the brand hidden.' }, { status: 400 });
   }
@@ -68,11 +73,14 @@ export async function PATCH(request: Request) {
   // Older admin clients omit this field; preserve the existing banner in that case.
   const bannerUpdate = bannerUrl === undefined ? {} : { popular_banner_url: bannerUrl };
   let query = supabaseAdmin.from('brands')
-    .update({ popular_position: position, popular_image_url: imageUrl, ...bannerUpdate }).eq('id', id);
+    .update({ popular_position: position, popular_image_url: imageUrl, ...bannerUpdate, ...(body.name === undefined ? {} : { name }) }).eq('id', id);
   if (position !== null) query = query.eq('is_active', true);
   const { data, error } = await query.select(fields).maybeSingle();
   if (error?.code === '23505') {
-    return NextResponse.json({ error: 'That position is already taken. Choose another.' }, { status: 409 });
+    const message = error.message.includes('brands_name_unique')
+      ? 'A brand with that name already exists.'
+      : 'That position is already taken. Choose another.';
+    return NextResponse.json({ error: message }, { status: 409 });
   }
   if (error?.code === '23514') {
     return NextResponse.json({ error: 'Add an image or an existing brand logo before showing this brand.' }, { status: 400 });

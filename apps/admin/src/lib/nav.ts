@@ -1,5 +1,6 @@
 import type { IconComponent } from '@/components/icons';
 import {
+  PackageSearch,
   AlarmClock,
   Banknote,
   Bell,
@@ -89,6 +90,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/customers', label: 'Customers', icon: Users },
       { href: '/reviews', label: 'Store reviews', icon: Star },
       { href: '/support', label: 'Support', icon: Ticket },
+      { href: '/product-requests', label: 'Product requests', icon: PackageSearch },
       { href: '/customer-deletions', label: 'Account deletions', icon: UserX },
     ],
   },

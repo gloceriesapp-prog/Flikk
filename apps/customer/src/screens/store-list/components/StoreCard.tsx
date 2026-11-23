@@ -66,6 +66,8 @@ export function StoreCard({ store }: Props) {
   <View
     className="
       rounded-[28px]
+      border
+      border-[#ECEEF1]
       bg-white
       shadow-sm
       shadow-black/[0.05]

@@ -1,5 +1,4 @@
 export const FESTIVAL_OFFER_LIMIT = 6;
-export const FESTIVAL_OFFER_CARD_WIDTH = 140;
 
 // Missing, invalid or equal comparison prices cannot become an offer. The
 // collection applies this before balancing/limiting, so full-price listings

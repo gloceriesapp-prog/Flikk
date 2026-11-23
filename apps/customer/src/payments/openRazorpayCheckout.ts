@@ -32,7 +32,7 @@ export async function openRazorpayCheckout(order: RazorpayOrder, method: Payment
     if (error instanceof Error) throw error;
     const reason = error && typeof error === 'object' && 'reason' in error ? error.reason : null;
     throw new Error(reason === 'payment_cancelled'
-      ? 'Payment was cancelled. Your order is saved; check its status before paying again.'
+      ? 'Payment was cancelled, so the order isn’t placed yet. Check its status before paying again.'
       : 'Payment was not completed. Check your saved order before trying again.');
   } finally {
     checkoutOpen = false;

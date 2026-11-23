@@ -120,6 +120,29 @@ export const CATALOG_LAST_UPDATED_LABEL = 'Updated 1 Jun, 26';
 // POST /partner/products actually expects per size, distinct from this
 // screen's own label-based ProductVariant editing UI.
 export type BackendUnitType = 'g' | 'kg' | 'ml' | 'l' | 'pc';
+export const PACK_UNITS = ['g', 'kg', 'ml', 'L', 'pc'] as const;
+
+export function readPackSize(label: string) {
+  const match = /^(\d*(?:\.\d*)?)\s*(g|kg|ml|l|pc)$/i.exec(label.trim());
+  const unit = PACK_UNITS.find((option) => option.toLowerCase() === match?.[2]?.toLowerCase());
+  return unit && match ? { quantity: match[1]!, unit } : null;
+}
+
+export function packSizeError(variants: ProductVariant[]): string | null {
+  const sizes = new Set<string>();
+  for (const [index, variant] of variants.entries()) {
+    const size = readPackSize(variant.label);
+    const quantity = Number(size?.quantity);
+    if (!size || !Number.isFinite(quantity) || quantity <= 0) {
+      return `Enter a positive pack quantity for size ${index + 1}.`;
+    }
+    const key = `${size.unit}:${quantity}`;
+    if (sizes.has(key)) return 'Each pack size can only be added once.';
+    sizes.add(key);
+  }
+  return null;
+}
+
 export interface BackendVariantInput {
   // Real product_variants.id when editing a loaded pack, so the backend
   // updates it in place (keeping its stock) instead of replacing it.
@@ -132,15 +155,12 @@ export interface BackendVariantInput {
   stockQuantity?: number;
 }
 
-// Every label this screen ever produces comes from standardSizeOptions
-// above (never typed free-hand) — always "<number> <g|kg|ml|L>" — so this
-// parse is exhaustive over what a shop owner can actually pick, not a
-// general-purpose unit parser.
+// Preset and custom sizes share the same number-and-unit format.
 export function parseVariantLabel(label: string, price: number, originalPrice?: number): BackendVariantInput {
-  const match = /^(\d+(?:\.\d+)?)\s*(g|kg|ml|l|pc)$/i.exec(label.trim());
-  if (!match) throw new Error(`Unrecognized size "${label}".`);
-  const [, qty, unit] = match;
-  return { unitType: unit.toLowerCase() as BackendUnitType, quantity: Number(qty), price, originalPrice };
+  const size = readPackSize(label);
+  const quantity = Number(size?.quantity);
+  if (!size || !Number.isFinite(quantity) || quantity <= 0) throw new Error(`Unrecognized size "${label}".`);
+  return { unitType: size.unit === 'L' ? 'l' : size.unit, quantity, price, originalPrice };
 }
 
 const PACK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

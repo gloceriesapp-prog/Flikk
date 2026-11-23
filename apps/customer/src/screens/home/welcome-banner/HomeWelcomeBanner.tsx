@@ -8,11 +8,7 @@ import { useCopy, useCopyImage } from '../../../api/appConfig';
 // consumed copy key — see backend copyKeys.test.ts).
 const WELCOME_ARTWORK_URI = 'https://images.gloceries.com/appsui/Your%20Shops.png';
 
-export function HomeWelcomeBanner({
-  backgroundColor,
-}: {
-  backgroundColor: string;
-}) {
+export function HomeWelcomeBanner() {
   const uri = useCopyImage('home.welcome.imageUrl', WELCOME_ARTWORK_URI);
   const label = useCopy('home.welcome.label');
 
@@ -20,14 +16,15 @@ export function HomeWelcomeBanner({
     <View
       style={{
         width: '100%',
-        aspectRatio: 2172 / 724,
-        backgroundColor,
+        // Admin uploads 16:9 artwork (e.g. 1920x1080); the frame matches it
+        // exactly so nothing is cropped and no empty bands show.
+        aspectRatio: 16 / 9,
       }}
     >
       <Image
         source={{ uri }}
         style={StyleSheet.absoluteFill}
-        resizeMode="contain"
+        resizeMode="cover"
         transition={0}
         priority="high"
         accessible

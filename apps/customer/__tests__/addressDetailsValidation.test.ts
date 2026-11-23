@@ -6,7 +6,7 @@ it('requires the address and receiver details before confirmation', () => {
 });
 it('rejects unusable receiver numbers and oversized delivery details', () => {
   for (const recipientPhone of ['123', '1234567890', '+91900000000a']) expect(addressDetailsReady({ ...details, recipientPhone })).toBe(false);
-  expect(addressDetailsReady({ ...details, street: 'x'.repeat(141) })).toBe(false);
+  expect(addressDetailsReady({ ...details, street: 'x'.repeat(301) })).toBe(false);
   expect(addressDetailsReady({ ...details, recipientPhone: '9000000000' })).toBe(true);
 });
 
@@ -14,4 +14,9 @@ it('allows empty floor and entrance directions, while retaining their length lim
   expect(addressDetailsReady({ ...details, instructions: '' })).toBe(true);
   expect(addressDetailsReady({ ...details, instructions: '  ' })).toBe(true);
   expect(addressDetailsReady({ ...details, instructions: 'x'.repeat(301) })).toBe(false);
+});
+
+it('accepts a longer map locality while keeping the complete saved address within the server limit', () => {
+  expect(addressDetailsReady({ ...details, street: 'x'.repeat(160) })).toBe(true);
+  expect(addressDetailsReady({ ...details, building: 'x'.repeat(150), street: 'x'.repeat(149) })).toBe(false);
 });

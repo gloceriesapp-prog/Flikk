@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../theme/typography';
 // Verifies the code sent by LoginScreen, then persists the session and hands
 // off to the app shell. See specs/00-foundation/auth-and-roles.md for the flow.
 //
@@ -98,20 +99,24 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
         <View className="flex-1 gap-5 px-6 pb-safe-offset-6 pt-safe-offset-4">
-          {/* Back — plain top-left circle now (no hero photo to float over). */}
-          <Pressable accessibilityRole="button" accessibilityLabel="Go back"
-            onPress={() => navigation.goBack()}
-            hitSlop={12}
-            className="h-11 w-11 items-center justify-center rounded-full bg-gray-100"
-          >
-            <IconlyArrowLeft size={20} color={colors.ink} />
-          </Pressable>
+          {/* Header: plain back arrow on the left, title centred. */}
+          <View className="h-11 flex-row items-center">
+            <Pressable accessibilityRole="button" accessibilityLabel="Go back"
+              onPress={() => navigation.goBack()}
+              hitSlop={12}
+              className="z-10 h-11 w-11 items-start justify-center"
+            >
+              <IconlyArrowLeft size={24} color={colors.ink} />
+            </Pressable>
+            <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+              <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} text-ink`}>OTP Verification</Text>
+            </View>
+          </View>
 
-          <View className="gap-1.5">
-            <Text className="text-2xl font-semibold leading-8 text-ink">Verify your number.</Text>
-            <Text className="text-sm text-ink/55">
-              Code sent to <Text className="font-semibold text-ink">{phone}</Text> · valid for 10 minutes
-            </Text>
+          {/* Where the code went, centred under the header. */}
+          <View className="mt-4 items-center gap-1">
+            <Text className="text-center text-[15px] leading-[21px] text-ink/60">We have sent a verification code to</Text>
+            <Text className="text-center text-[16px] font-bold leading-[22px] text-ink">{phone}</Text>
           </View>
 
           <OtpBoxInput value={code} onChangeText={handleCodeChange} autoFocus />

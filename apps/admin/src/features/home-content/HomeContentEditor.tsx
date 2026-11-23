@@ -7,6 +7,7 @@ import {
   addMissingFestivalSections,
   createFestivalSections,
   TAB_KEYS,
+  DEFAULT_FRESH_TABS,
   validateContent,
   type HomeContentDocument,
   type HomeContentKey,
@@ -309,6 +310,18 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
                 onClick={() => setDraft({ ...draft, headerImageUrl: '' })}>Use default header image</button>}
             </div>
           </div>
+          {tab === 'fresh' && (
+            <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-base font-semibold text-slate-900">Fresh choices</h2>
+              <p className="text-sm text-slate-600">Name the two choices. Select a section below to choose its destination, heading and vegetables. Publish to update the app.</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(['everyday', 'village'] as const).map(mode => <Field key={mode} label={mode === 'everyday' ? 'Market choice title' : 'Village choice title'}>
+                  <input className={inputClass} maxLength={24} value={(draft.freshTabs ?? DEFAULT_FRESH_TABS)[mode]}
+                    onChange={event => setDraft({ ...draft, freshTabs: { ...(draft.freshTabs ?? DEFAULT_FRESH_TABS), [mode]: event.target.value } })} />
+                </Field>)}
+              </div>
+            </div>
+          )}
           {tab === 'festivals' && (
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5">
               <div className="max-w-2xl text-sm text-slate-600">
@@ -405,15 +418,16 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
             </aside>
             <main className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
               {selected ? (
-                <SectionEditor
+                <SectionEditor sections={draft.sections} freshTabs={draft.freshTabs}
                   key={`${tab}-${selected.id}-${record.revision}`}
                   value={selected}
                   tabKey={tab}
+                  tabTitle={draft.tabTitle.trim() || tab}
                   onChange={(value) =>
-                    setDraft({
-                      ...draft,
-                      sections: draft.sections.map((s) => (s.id === value.id ? value : s)),
-                    })
+                    setDraft((current) => current && ({
+                      ...current,
+                      sections: current.sections.map((s) => (s.id === value.id ? value : s)),
+                    }))
                   }
                 />
               ) : (

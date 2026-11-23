@@ -39,7 +39,7 @@ export const ProductRow = memo(function ProductRow({ product, onPressView }: Pro
 
       <View className="flex-1 gap-1.5">
         <Text className="text-[15px] font-medium text-ink" numberOfLines={1}>
-          {product.name}
+          {product.name || 'Unnamed product'}
         </Text>
 
         <View className="flex-row flex-wrap items-center gap-2">

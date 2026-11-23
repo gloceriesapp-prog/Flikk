@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { savedMapAddress, mapAddressLabel } from '../../features/delivery-address/mapAddress';
 import { useAuthStore } from '../../store/useAuthStore';
 // Reached from Home's own "Delivering to" header tap — per an explicit
@@ -181,7 +182,7 @@ export function SelectLocationScreen({ navigation }: Props) {
         >
           <IconlyArrowLeft size={20} color={colors.ink} />
         </Pressable>
-        <Text className="text-[18.5px] font-semibold text-ink">Select your location</Text>
+        <Text className={`${PAGE_TITLE_CLASS_NAME} text-ink`}>Select your location</Text>
       </View>
 
       <View className="px-5 pb-4 pt-1">

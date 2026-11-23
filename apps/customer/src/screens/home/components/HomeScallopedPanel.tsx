@@ -22,7 +22,7 @@ export function HomeScallopedPanel({ title, subtitle, backgroundColor, headerIma
           ))}
         </View>
 
-        <View className="relative justify-center px-5 pb-5 pt-8" style={headerImageUrl ? { minHeight: 112 } : undefined}>
+        <View className="relative justify-center px-4 pb-5 pt-8" style={headerImageUrl ? { minHeight: 112 } : undefined}>
           {headerImageUrl && (
             <View
               pointerEvents="none"

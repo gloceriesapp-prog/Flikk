@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Loader2 } from '@/components/icons';
+import { uploadPhoto } from '@/lib/productPhotoUpload';
 
 export function ProductImageUpload({
   imageUrl,
@@ -16,7 +17,6 @@ export function ProductImageUpload({
 }: {
   imageUrl: string | undefined;
   onChange: (url: string, bgColor: string | null) => void | Promise<void>;
-  // Gallery "add photo" tile (ProductGalleryEditor) — same upload, smaller box.
   small?: boolean;
   onUploadingChange?: (uploading: boolean) => void;
   // Shown over the photo (cut-out status, components/inventory/usePhotoStatus).
@@ -45,19 +45,14 @@ export function ProductImageUpload({
     onUploadingChange?.(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('bucket', bucket);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error ?? 'Upload failed.');
-      setWarning(typeof body.warning === 'string' ? body.warning : null);
+      const photo = await uploadPhoto(file, bucket);
+      setWarning(photo.warning ?? null);
       setUploaded(true);
-      await onChange(body.url as string, (body.bgColor as string | null) ?? null);
+      await onChange(photo.url, photo.bgColor);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed — try again.');
-      setPreview(null);
     } finally {
+      setPreview(null);
       setUploading(false);
       onUploadingChange?.(false);
     }

@@ -1,3 +1,4 @@
+import { SECTION_TITLE_TEXT_CLASS } from '../../screens/home/components/SectionTitle';
 import { Text, View } from 'react-native';
 import { CategoryTile } from './CategoryTile';
 import type { RemoteCategorySection } from './useCategorySections';
@@ -24,7 +25,7 @@ export function CategorySectionGroup({ section }: Props) {
       {/* Same visual spec as home/components/SectionTitle, kept inline (no
           px-5) because this wrapper already owns the px-4 gutter the grid's
           negative-margin math bleeds into. */}
-      <Text className="mb-4 px-1 text-xl font-bold tracking-tight text-ink/90">{section.name}</Text>
+      <Text accessibilityRole="header" className={`mb-4 px-1 ${SECTION_TITLE_TEXT_CLASS}`}>{section.name}</Text>
       <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
         {section.categories.map((item) => (
           <View key={item.id} style={{ width: '25%', paddingHorizontal: GAP / 2, paddingBottom: 20 }}>

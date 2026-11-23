@@ -62,7 +62,7 @@ const fetchWithAgent: typeof fetch = measureDatabaseFetch((input, init) => {
 // Role-scoping is enforced in application code (see middleware/auth.ts) since
 // every request here already carries a verified role.
 export const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
-  auth: { persistSession: false },
+  auth: { persistSession: false, autoRefreshToken: false },
   global: { fetch: fetchWithAgent },
 });
 
@@ -78,8 +78,12 @@ export const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey
 // for the rest of the process's life. Isolating the two GoTrue calls onto
 // their own client instance keeps that mutation from ever touching the
 // client the rest of the app relies on staying service_role.
+// autoRefreshToken off: outside a browser it defaults on and starts a timer
+// that keeps refreshing the last session this client signed in or refreshed.
+// That spent the customer's refresh token behind the phone's back, so the
+// phone's next refresh came back "already used" and the app logged out.
 export const supabaseAuth = createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
-  auth: { persistSession: false },
+  auth: { persistSession: false, autoRefreshToken: false },
   global: { fetch: fetchWithAgent },
 });
 

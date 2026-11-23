@@ -14,7 +14,7 @@ export function QuickCategoryCard({ category, onSelect, imageUrl, imageBottomBle
       accessibilityRole="button"
       accessibilityLabel={`Browse ${category.label}`}
       onPress={() => onSelect(category.id)}
-      className="h-[112px] w-full overflow-hidden rounded-[22px]  bg-white pt-1 active:bg-[#F7F8FA]"
+      className="h-[104px] w-full overflow-hidden rounded-[22px]  bg-white pt-1 active:bg-[#F7F8FA]"
     >
       <Text className="px-3 text-center text-[15px] font-bold leading-[20px] text-black" numberOfLines={2}>{category.label}</Text>
       {imageUrl && (

@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../../theme/typography';
 import { colors } from '../../../theme/tokens';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { IconlyHeadphone } from '../../../components/icons/iconly';
@@ -24,7 +25,7 @@ export function PurchaseHistoryHeader({ status, onSelectStatus, search, onHelp }
   return (
     <View className="bg-white">
       <View className="min-h-[55px] flex-row items-center justify-between gap-3 px-4 py-2">
-        <Text accessibilityRole="header" className="flex-1 text-[22px] font-bold tracking-tight text-ink">
+        <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-ink`}>
           Purchase History
         </Text>
         <Pressable

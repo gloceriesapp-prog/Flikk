@@ -19,6 +19,7 @@ describe('partner rupee input', () => {
  });
  it('rejects invalid prices and MRP below selling price', () => {
   expect(validVariantPrices([{ price: 14.5, originalPrice: 15.25 }])).toBe(true);
+  expect(validVariantPrices([{ price: 0, originalPrice: 15.25 }])).toBe(true);
   for (const price of [0, -1, Infinity, NaN]) expect(validVariantPrices([{ price }])).toBe(false);
   expect(validVariantPrices([{ price: 14.5, originalPrice: 14.49 }])).toBe(false);
  });

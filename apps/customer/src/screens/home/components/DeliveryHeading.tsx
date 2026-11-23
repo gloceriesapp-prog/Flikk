@@ -99,8 +99,9 @@ function DeliveryEstimate({ minutes, light, onIntroComplete, onFullWidth }: { mi
 }
 
 const styles = StyleSheet.create({
-  // Keep ETA typography stable; only the badge wraps when the row is too narrow.
-  heading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 7, rowGap: 4, width: '100%' },
+  // One line always: the ETA keeps its size and the badge sits beside it,
+  // shrinking (label truncates) on narrow phones instead of wrapping below.
+  heading: { flexDirection: 'row', alignItems: 'center', columnGap: 6, width: '100%' },
   estimate: { flexShrink: 0, maxWidth: '100%' },
   container: { width: '100%', minHeight: 28 },
   text: { fontFamily: GILROY.extrabold, fontSize: 22, lineHeight: 28, includeFontPadding: false },

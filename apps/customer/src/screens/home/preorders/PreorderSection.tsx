@@ -1,5 +1,6 @@
+import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from '../products/horizontalProductLayout';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View , useWindowDimensions } from 'react-native';
 import { DEFAULT_PREORDER_BANNER } from '../../../../../../packages/home-content/sectionLayout.js';
 import { AppImage } from '../../../components/AppImage';
 import { bookingDates, dayOpen } from '../../../store/preorder';
@@ -8,11 +9,11 @@ import { ProductCard } from '../products/ProductCard';
 import { usePreorders } from './usePreorders';
 
 const PREVIEW_LIMIT = 4;
-const CARD_WIDTH = 'w-32';
-const CARD_SNAP_INTERVAL = 128 + 12;
 const PREORDER_BACKGROUND = '#E7F2FC';
 
 export function PreorderSection({ title, bannerImageUrl }: { title: string; bannerImageUrl?: string | null }) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(viewportWidth);
   const { data } = usePreorders();
   const [failedBanner, setFailedBanner] = useState<string>();
   const banner = bannerImageUrl && bannerImageUrl !== failedBanner ? bannerImageUrl : DEFAULT_PREORDER_BANNER;
@@ -40,13 +41,16 @@ export function PreorderSection({ title, bannerImageUrl }: { title: string; bann
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="items-start gap-3 px-4 pt-4"
-        snapToInterval={CARD_SNAP_INTERVAL}
+        contentContainerClassName="items-start px-4 pt-4"
+        contentContainerStyle={{ gap: HORIZONTAL_PRODUCT_CARD_GAP }}
+        snapToInterval={cardWidth + HORIZONTAL_PRODUCT_CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
       >
         {preview.map((product) => (
-          <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} />
+          <View key={product.id} style={{ width: cardWidth }}>
+            <ProductCard product={product} widthClassName="w-full" />
+          </View>
         ))}
       </ScrollView>
 

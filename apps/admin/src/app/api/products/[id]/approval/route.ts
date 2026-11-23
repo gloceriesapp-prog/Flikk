@@ -21,13 +21,21 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     // only find it by search. Older partner submissions may lack a subcategory.
     // It must also have a photo: products without one are never shown.
     if (approve) {
-      const { data: product, error: readError } = await supabaseAdmin.from('products').select('sub_category_id, image_url').eq('id', id).maybeSingle();
+      const { data: product, error: readError } = await supabaseAdmin.from('products').select('name, sub_category_id, image_url, stock_tracking_enabled, product_variants(stock_quantity)').eq('id', id).maybeSingle();
       if (readError || !product) throw new Error('Could not find that product.');
+      if (!product.name?.trim()) {
+        return NextResponse.json({ error: 'Add a product name before approving it.' }, { status: 409 });
+      }
       if (!product.image_url?.trim()) {
         return NextResponse.json({ error: 'Add a photo to this product before approving it.' }, { status: 409 });
       }
       if (!product.sub_category_id) {
         return NextResponse.json({ error: 'Edit this product and pick its Category › Sub-category before approving it.' }, { status: 409 });
+      }
+      const packs = product.product_variants ?? [];
+      const countedAtProductLevel = packs.length === 1 && product.stock_tracking_enabled;
+      if (!countedAtProductLevel && packs.some((pack) => pack.stock_quantity == null)) {
+        return NextResponse.json({ error: 'Enter packs in stock for every size before approving it.' }, { status: 409 });
       }
     }
 

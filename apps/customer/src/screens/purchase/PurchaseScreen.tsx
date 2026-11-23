@@ -7,7 +7,8 @@ import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
 import { ActivityIndicator, AppState, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { moveNavBar } from '../home/category-page/useHomeBrowseScroll';
 import { FlashList, type FlashListProps } from '@shopify/flash-list';
 import { AppImage as Image } from '../../components/AppImage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -165,6 +166,7 @@ export function PurchaseScreen({ navigation }: Props) {
   // (itself copied from HomeScreen.tsx) — direction-based, not a plain
   // "scrolled past N px", so it reads as intentional here too.
   const prevScrollY = useSharedValue(0);
+  const navTarget = useSharedValue(0);
   const navHidden = useSharedValue(0);
   const SCROLL_HIDE_THRESHOLD = 6;
 
@@ -172,13 +174,8 @@ export function PurchaseScreen({ navigation }: Props) {
     const y = event.contentOffset.y;
 
     const delta = y - prevScrollY.value;
-    if (y < 40) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta > SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta < -SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    }
+    if (y < 40 || delta < -SCROLL_HIDE_THRESHOLD) moveNavBar(navHidden, navTarget, 0);
+    else if (delta > SCROLL_HIDE_THRESHOLD) moveNavBar(navHidden, navTarget, 1);
     prevScrollY.value = y;
   });
 

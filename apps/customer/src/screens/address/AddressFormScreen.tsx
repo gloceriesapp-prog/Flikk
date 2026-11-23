@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { locationFromAddress } from '../../features/delivery-address/mapAddress';
 import { useLocationStore } from '../../store/useLocationStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -6,11 +7,10 @@ import { useAuthStore } from '../../store/useAuthStore';
 // time this screen shows). Collects everything a real quick-commerce app
 // asks for once, per this session's own explicit field list:
 //
-// Required: full address text (building/street, prefilled from the map's
-// reverse geocode but editable), recipient name, recipient phone
-// (prefilled from the account's own verified number, editable for
-// "delivering to someone else"). Building, street/area, landmark,
-// and address label are required. Floor/entrance directions are optional.
+// Required: house/building, map-filled area, landmark, recipient name and phone.
+// The area follows the selected pin; only building and landmark are typed.
+// Recipient phone is prefilled from the verified account number and can
+// be changed for another recipient. Existing instructions are preserved on edit.
 //
 // A "Confirm your address" sheet (ConfirmAddressSheet) stands between
 // tapping Save and the real POST /addresses call — catching a typo before
@@ -23,7 +23,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 // With route.params.address it edits that saved address (PATCH) instead.
 
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -34,6 +34,7 @@ import { fetchAccountInfo } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { AppStackParamList } from '../../navigation/types';
 import { addressDetailsReady } from './addressDetailsValidation';
+import { buildingFromSavedAddress } from './addressFormDetails';
 import {
   composeDeliveryInstructions,
   parseDeliveryInstructions,
@@ -58,14 +59,10 @@ export function AddressFormScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
-  // Edit mode prefills the saved line1 whole — it can't be split back into building/street.
-  const [building, setBuilding] = useState(editing?.line1 ?? '');
-  // Not prefilled from addressLabel — LocationDetailsCard's own pin-preview
-  // row already shows the full reverse-geocoded label right below this
-  // field, so pre-filling street with the same text just duplicated it
-  // twice on screen. Left blank for the user to type the actual street
-  // name, same as building.
-  const [street, setStreet] = useState('');
+  // Area follows the selected pin, including a changed pin passed to this
+  // existing screen. It is never an unrelated manually entered locality.
+  const street = addressLabel?.trim() || editing?.map_address?.trim() || '';
+  const [building, setBuilding] = useState(() => buildingFromSavedAddress(editing?.line1 ?? '', street));
   const [landmark, setLandmark] = useState(editing?.landmark ?? '');
   // Editing shows the saved receiver fields directly so they're visible and editable.
   const [orderingFor, setOrderingFor] = useState<OrderingFor>(editing ? 'someone_else' : 'myself');
@@ -75,19 +72,13 @@ export function AddressFormScreen({ route, navigation }: Props) {
   const [accountPhone, setAccountPhone] = useState<string | null>(null);
   const [label, setLabel] = useState(editing ? (editingPreset ? editing.label : 'Other') : 'Home');
   const [customName, setCustomName] = useState(editing && !editingPreset ? editing.label : '');
-  const [instructions, setInstructions] = useState(
+  const [instructions] = useState(
     () => parseDeliveryInstructions(editing?.delivery_instructions).custom,
   );
   const [deliveryOptions, setDeliveryOptions] = useState<DeliveryInstructionId[]>(
     () => parseDeliveryInstructions(editing?.delivery_instructions).selected,
   );
   const deliveryInstructions = composeDeliveryInstructions(instructions, deliveryOptions);
-  const optionTextLength = composeDeliveryInstructions('', deliveryOptions).length;
-  const instructionsMaxLength = Math.max(
-    instructions.length,
-    300 - optionTextLength - (optionTextLength ? 1 : 0),
-  );
-
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -219,10 +210,10 @@ export function AddressFormScreen({ route, navigation }: Props) {
           <IconlyArrowLeft size={21} color={colors.ink} />
         </Pressable>
         <View className="flex-1">
-          <Text accessibilityRole="header" className="text-[18px] font-bold leading-6 text-ink" numberOfLines={1}>
+          <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} leading-6 text-ink`} numberOfLines={1}>
             {city}
           </Text>
-          <Text className="text-[13px] leading-5 text-ink/65" numberOfLines={1}>
+          <Text className={`${Platform.OS === 'ios' ? 'text-[14px]' : 'text-[13px]'} leading-5 text-ink/65`} numberOfLines={1}>
             {addressLabel}
           </Text>
         </View>
@@ -290,15 +281,10 @@ export function AddressFormScreen({ route, navigation }: Props) {
 
         <LocationDetailsCard
           building={building}
-          street={street}
+          area={street}
           landmark={landmark}
-          instructions={instructions}
-          instructionsMaxLength={instructionsMaxLength}
-          pinnedArea={addressLabel}
           onChangeBuilding={setBuilding}
-          onChangeStreet={setStreet}
           onChangeLandmark={setLandmark}
-          onChangeInstructions={setInstructions}
           // ponytail: editing keeps the saved pin; moving it means adding a new address
           // until LocationSearch can carry an address id through to this form.
           onChangePin={
@@ -343,7 +329,7 @@ export function AddressFormScreen({ route, navigation }: Props) {
       <ConfirmAddressSheet
         visible={confirmVisible}
         label={savedLabel}
-        fullAddress={`${line1}\n${addressLabel}\nLandmark: ${landmark.trim()}`}
+        fullAddress={`${line1}\nLandmark: ${landmark.trim()}`}
         recipientName={recipientName.trim()}
         recipientPhone={recipientPhone.trim()}
         instructions={deliveryInstructions}

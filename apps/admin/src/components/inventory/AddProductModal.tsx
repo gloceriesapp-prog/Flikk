@@ -24,9 +24,9 @@ import { BrandPicker } from './BrandPicker';
 import { CatalogueNameInput } from './CatalogueNameInput';
 import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
-import { ProductImageUpload } from './ProductImageUpload';
 import { ImageStyleChoiceField, type ImageStyleChoice } from './PremiumImagePanel';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
+import { appendProductPhotos, swapFirstGalleryPhoto } from '@/lib/productPhotoUpload';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { ProductFlavoursEditor } from './ProductFlavoursEditor';
@@ -76,11 +76,13 @@ function makeEmptyDraft(stores: StoreOption[]) {
 export function AddProductModal({
   stores,
   existingProducts,
+  quickTabTitle,
   onClose,
   onAdd,
 }: {
   stores: StoreOption[];
   existingProducts: Product[];
+  quickTabTitle?: string;
   onClose: () => void;
   // homeKeys: Home sections to pick the new product in once it is created.
   // imageStyle: Premium opens the generate step once the product exists.
@@ -88,20 +90,24 @@ export function AddProductModal({
 }) {
   const [draft, setDraft] = useState(() => makeEmptyDraft(stores));
   const [imageStyle, setImageStyle] = useState<ImageStyleChoice>({ style: 'standard' });
+  const quickTabOnly = quickTabTitle !== undefined;
+  const category = quickTabTitle ?? draft.category;
   const setPlacement = useCallback((placement: CataloguePlacement) => setDraft((d) => ({ ...d, ...placement })), []);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [flavourUploading, setFlavourUploading] = useState(false);
-  const homeChoice = useHomeSectionChoice();
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const photosUploading = flavourUploading || galleryUploading;
+  const homeChoice = useHomeSectionChoice(undefined, !quickTabOnly);
 
   async function handleAdd() {
-    if (flavourUploading || submitting) return;
+    if (photosUploading || submitting) return;
     const name = draft.name.trim();
     const store = stores.find((s) => s.id === draft.storeId);
     if (!name || !store) return;
 
     const alreadyListed = existingProducts.some(
-      (p) => p.storeId === draft.storeId && p.name.trim().toLowerCase() === name.toLowerCase(),
+      (p) => !p.quickTabKey && p.storeId === draft.storeId && p.name.trim().toLowerCase() === name.toLowerCase(),
     );
     if (alreadyListed) {
       setError(`${name} is already listed in ${store.name}.`);
@@ -112,7 +118,7 @@ export function AddProductModal({
     if (!defaultVariant) return;
     // Checkout only sells counted packs: without a count for every size the
     // product would be approved but unorderable.
-    if (!draft.subCategoryId) {
+    if (!quickTabOnly && !draft.subCategoryId) {
       setError('Pick where this product is listed (Category › Sub-category).');
       return;
     }
@@ -122,7 +128,7 @@ export function AddProductModal({
     }
 
     try {
-      validateProductInput(draft);
+      validateProductInput({ ...draft, category });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Check the product details.');
       return;
@@ -134,7 +140,7 @@ export function AddProductModal({
       await onAdd({
         name,
         localName: draft.localName.trim() || undefined,
-        category: draft.category,
+        category,
         description: draft.description.trim() || undefined,
         storeId: store.id,
         // Denormalized from the default (first) variant — see
@@ -172,15 +178,16 @@ export function AddProductModal({
 
   // Portalled to <body> so the overlay covers the whole screen, not just the
   // transformed page area.
+  const close = () => { if (!submitting) onClose(); };
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={close}>
       <div
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <h3 className="text-lg font-semibold text-ink">Add product</h3>
-          <button type="button" onClick={onClose} className="text-muted hover:text-ink" aria-label="Close">
+          <button type="button" onClick={close} disabled={submitting} className="text-muted hover:text-ink" aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -202,32 +209,34 @@ export function AddProductModal({
             ))}
           </select>
 
-          <div className="flex items-center gap-3">
-            <ProductImageUpload
-              imageUrl={draft.imageUrl}
-              onChange={(imageUrl, bgColor) => setDraft({ ...draft, imageUrl, bgColor: bgColor ?? undefined })}
-            />
-            <CatalogueNameInput
-              value={draft.name}
-              onChange={(name) => {
-                setError(null);
-                setDraft((d) => ({ ...d, name }));
-              }}
-              onPick={(item) => {
-                setError(null);
-                setDraft((d) => ({ ...d, name: item.name, catalogueItemId: item.id }));
-                if (item.subCategoryId && item.categoryName) setPlacement({ subCategoryId: item.subCategoryId, category: item.categoryName });
-              }}
-            />
-          </div>
-
-          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} onChange={setImageStyle} />}
-
           <ProductGalleryEditor
+            coverUrl={draft.imageUrl}
+            coverFields={
+              <CatalogueNameInput
+                value={draft.name}
+                onChange={(name) => {
+                  setError(null);
+                  setDraft((d) => ({ ...d, name }));
+                }}
+                onPick={(item) => {
+                  setError(null);
+                  setDraft((d) => ({ ...d, name: item.name, catalogueItemId: quickTabOnly ? undefined : item.id }));
+                  if (!quickTabOnly && item.subCategoryId && item.categoryName) setPlacement({ subCategoryId: item.subCategoryId, category: item.categoryName });
+                }}
+              />
+            }
             urls={draft.extraImageUrls ?? []}
             hasCover={Boolean(draft.imageUrl)}
-            onChange={(extraImageUrls) => setDraft({ ...draft, extraImageUrls })}
+            onChange={(extraImageUrls) => setDraft((current) => ({ ...current, extraImageUrls }))}
+            onSwapCover={() => setDraft((current) => {
+              const photos = swapFirstGalleryPhoto(current);
+              return photos ? { ...current, ...photos, bgColor: undefined } : current;
+            })}
+            onUpload={(photos, replaceCover) => setDraft((current) => ({ ...current, ...appendProductPhotos(current, photos, replaceCover) }))}
+            onUploadingChange={setGalleryUploading}
           />
+
+          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} category={category} onChange={setImageStyle} />}
 
           <input
             value={draft.localName}
@@ -237,12 +246,17 @@ export function AddProductModal({
             aria-label="Local name"
           />
 
-          <CataloguePicker subCategoryId={draft.subCategoryId} onChange={setPlacement} />
+          {quickTabOnly ? (
+            <label className="grid gap-1 text-sm font-medium">
+              Quick category
+              <input className={FIELD_CLASS} value={category} readOnly />
+            </label>
+          ) : <CataloguePicker subCategoryId={draft.subCategoryId} onChange={setPlacement} />}
 
           <BrandPicker brandId={draft.brandId} onChange={(brandId) => setDraft((d) => ({ ...d, brandId }))} />
 
           <ChickenOptionsEditor
-            category={draft.category}
+            category={category}
             enabled={draft.cutOptionsEnabled ?? false}
             bulkMinKg={draft.bulkMinKg ?? null}
             onChange={(next) => setDraft({ ...draft, ...next })}
@@ -256,12 +270,12 @@ export function AddProductModal({
             aria-label="Description"
           />
 
-          <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
+          <ProductVariantsEditor category={category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
           <ProductFlavoursEditor variants={draft.variants} options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
 
           <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
-          <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} variants={draft.variants} onVariantsChange={(variants) => setDraft({ ...draft, variants })} />
+          {!quickTabOnly && <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} variants={draft.variants} onVariantsChange={(variants) => setDraft({ ...draft, variants })} />}
 
           {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
             <label className="flex items-center gap-2 text-sm text-ink">
@@ -314,20 +328,21 @@ export function AddProductModal({
             ))}
           </select>
 
-          <div className="flex flex-col gap-2 border-t border-border pt-4">
+          {quickTabOnly ? <p className="text-xs text-muted">Publish this quick category to show the product here and in customer search.</p> : <div className="flex flex-col gap-2 border-t border-border pt-4">
             <div>
               <p className="text-sm font-medium text-ink">Show on Home</p>
               <p className="text-xs text-muted">Pick the Home sections this product should appear in. Reorder them on the &ldquo;All&rdquo; tab layout page.</p>
             </div>
             <HomeSectionChecklist choice={homeChoice} compact />
-          </div>
+          </div>}
           {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-danger">{error}</p>}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
+            disabled={submitting}
             className="rounded-full border border-border px-4 py-2 text-sm font-medium text-ink-soft hover:bg-accent"
           >
             Cancel
@@ -335,10 +350,10 @@ export function AddProductModal({
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!draft.name.trim() || submitting || flavourUploading}
+            disabled={!draft.name.trim() || submitting || photosUploading}
             className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
           >
-            {flavourUploading ? 'Uploading photos…' : submitting ? 'Adding…' : 'Add'}
+            {photosUploading ? 'Uploading photos…' : submitting ? 'Adding…' : 'Add'}
           </button>
         </div>
       </div>

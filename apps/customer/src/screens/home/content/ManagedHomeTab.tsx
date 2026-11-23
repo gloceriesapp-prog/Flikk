@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,6 +25,8 @@ import { mapContentProduct } from './productMapping';
 import { HomeGrownBackground } from '../fresh/home-grown-nearby/HomeGrownBackground';
 import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
 import { BROWSE_LOADING_COPY } from '../loading/BrowseLoadingText';
+import { FreshProduceTabs } from '../fresh/components/FreshProduceTabs';
+import { partitionFreshSections, type FreshProduceMode } from '../fresh/freshProduceSections';
 
 type Inventory = ReturnType<typeof useNearbyGroceryInventory>;
 function ManagedSection({
@@ -241,10 +244,25 @@ function PublishedTab({
   content: HomeContentDocument;
 }) {
   const inventory = useNearbyGroceryInventory(tabKey);
+  const [freshMode, setFreshMode] = useState<FreshProduceMode>('everyday');
   // Reveal one complete first-load layout. Cached shelves remain on screen
   // during refetches; a slow shop must not create a spinner in every section.
   if (inventory.isLoading)
     return <View className="pt-8"><ContentState {...inventory} loadingMessage={BROWSE_LOADING_COPY[tabKey as keyof typeof BROWSE_LOADING_COPY] ?? BROWSE_LOADING_COPY.all} /></View>;
+  if (tabKey === 'fresh') {
+    const sections = partitionFreshSections(content.sections);
+    const selectedSections = freshMode === 'village' ? sections.village : sections.everyday;
+    const render = (section: HomeContentSection) => <ManagedSection key={section.id} tabKey={tabKey} section={section} inventory={inventory} />;
+    return <View>
+      {sections.intro.map(render)}
+      <FreshProduceTabs value={freshMode} onChange={setFreshMode} titles={content.freshTabs} />
+      {selectedSections.length ? selectedSections.map(render) : (
+        <View className="px-5 py-8"><Text className="text-center text-[14px] leading-[21px] text-ink/60">{freshMode === 'village' ? 'Village-grown vegetables will appear here when available nearby.' : 'Vegetables will appear here when available nearby.'}</Text></View>
+      )}
+      {sections.footer.map(render)}
+      {!sections.footer.length && <View className="h-44" />}
+    </View>;
+  }
   return (
     <View>
       {content.sections

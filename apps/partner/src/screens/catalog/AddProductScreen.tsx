@@ -31,13 +31,12 @@ import { ApiError } from '../../api/client';
 import { getSessionEpoch, isCurrentSession } from '../../store/sessionScope';
 import { useCatalogStore } from '../../store/useCatalogStore';
 import {
-  hasUncountedVariant,
+  packSizeError,
   standardSizeOptions,
   withStockCount,
   withStockToggle,
   type ProductVariant,
 } from './data';
-import { suggestedMrp } from './pricing';
 import { AddSizeButton } from '../product-detail/components/AddSizeButton';
 import { ProductVariantCard } from '../product-detail/components/ProductVariantCard';
 import type { AppStackParamList } from '../../navigation/types';
@@ -65,8 +64,14 @@ function CatalogueChoice({ label, options, selected, open, onToggle, onSelect }:
         accessibilityState={{ expanded: open, disabled: !options.length }}
         className="rounded-2xl border border-black/10 px-4 py-3"
       >
-        <Text className="text-base text-ink">{options.find((option) => option.id === selected)?.name ?? `Select ${label.toLowerCase()}`}</Text>
+        <Text className="text-base text-ink">{options.find((option) => option.id === selected)?.name ?? `Select ${label.toLowerCase()} (optional)`}</Text>
       </Pressable>
+      {open && selected !== '' && (
+        <Pressable accessibilityRole="button" onPress={() => onSelect('')}
+          className="rounded-xl bg-gray-100 px-4 py-3">
+          <Text className="text-sm text-ink">Clear {label.toLowerCase()}</Text>
+        </Pressable>
+      )}
       {open && options.map((option) => (
         <Pressable key={option.id} onPress={() => onSelect(option.id)} accessibilityRole="button"
           accessibilityState={{ selected: option.id === selected }} className="rounded-xl bg-gray-100 px-4 py-3">
@@ -96,7 +101,6 @@ export function AddProductScreen({ navigation }: Props) {
   const [takingPhoto, setTakingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
-  const [sizePickerOpen, setSizePickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -104,7 +108,7 @@ export function AddProductScreen({ navigation }: Props) {
   const category = selectedCategory?.name ?? '';
   const addedLabels = new Set(variants.map((v) => v.label));
   const availableSizes = standardSizeOptions(category, variants).filter((label) => !addedLabels.has(label));
-  const canSubmit = !!(name.trim() && subCategoryId && variants.length && photos.length && !submitting && !takingPhoto);
+  const canSubmit = variants.length > 0 && photos.length > 0 && !submitting && !takingPhoto;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -164,9 +168,13 @@ export function AddProductScreen({ navigation }: Props) {
   }
 
   function addVariant(label: string) {
+    if (addedLabels.has(label)) {
+      setFormError('This size is already added.');
+      return;
+    }
+    setFormError(null);
     Haptics.selectionAsync();
     setVariants((prev) => [...prev, { id: `new-${label}-${Date.now()}`, label, price: 0, isInStock: true }]);
-    setSizePickerOpen(false);
   }
 
   function removeVariant(variantId: string) {
@@ -176,16 +184,7 @@ export function AddProductScreen({ navigation }: Props) {
   function setVariantPrice(variantId: string, rawPrice: string) {
     const price = rawPrice === '' || rawPrice === '.' ? 0 : parseMoneyInput(rawPrice);
     if (price === null) return;
-    setVariants((prev) =>
-      prev.map((v) => {
-        if (v.id !== variantId) return v;
-        // Auto-fills a suggested MRP the moment a price is typed, only
-        // while this variant's own MRP is still untouched — never
-        // overwrites a real value the shop owner already entered.
-        const originalPrice = v.originalPrice === undefined ? suggestedMrp(category, price) : v.originalPrice;
-        return { ...v, price, originalPrice };
-      }),
-    );
+    setVariants((prev) => prev.map((v) => v.id === variantId ? { ...v, price } : v));
   }
 
   function setVariantMrp(variantId: string, rawMrp: string) {
@@ -205,11 +204,13 @@ export function AddProductScreen({ navigation }: Props) {
 
   async function handleSubmit() {
     if (!canSubmit || submitInProgress.current || captureInProgress.current) return;
-    if (!validVariantPrices(variants)) { setFormError("Enter a positive price for every size. MRP must be at least the selling price."); return; }
-    // Checkout only sells counted packs — without a count this product
-    // could be approved yet never orderable.
-    if (hasUncountedVariant(variants)) {
-      setFormError('Enter how many packs you have for every size (0 if none).');
+    const sizeError = packSizeError(variants);
+    if (sizeError) {
+      setFormError(sizeError);
+      return;
+    }
+    if (!validVariantPrices(variants)) {
+      setFormError('Enter a store price or MRP for every size. MRP must be at least the store price.');
       return;
     }
     setFormError(null);
@@ -231,7 +232,7 @@ export function AddProductScreen({ navigation }: Props) {
         if (!isCurrentSession(epoch)) return;
         photoAssetIds.push(assetId);
       }
-      const added = await addProduct({ name, subCategoryId, catalogueItemId, photoAssetIds, variants });
+      const added = await addProduct({ name, categoryId, subCategoryId, catalogueItemId, photoAssetIds, variants });
       if (!added) {
         setFormError(`${name.trim()} is already listed in your store.`);
         return;
@@ -265,7 +266,7 @@ export function AddProductScreen({ navigation }: Props) {
 
           <ScrollView className="flex-1" contentContainerClassName="gap-5 px-5 pb-6" keyboardShouldPersistTaps="handled">
             <View className="gap-2">
-              <Text className="text-base font-medium text-ink">Product name</Text>
+              <Text className="text-base font-medium text-ink">Product name (optional)</Text>
               <TextInput
                 value={name}
                 onChangeText={(text) => { setName(text); setCatalogueItemId(undefined); setSuggestions([]); }}
@@ -297,7 +298,7 @@ export function AddProductScreen({ navigation }: Props) {
             ) : categories === null ? (
               <ActivityIndicator accessibilityLabel="Loading categories" color={colors.ink} />
             ) : categories.length === 0 ? (
-              <Text className="text-sm text-danger">No categories are available. Contact support.</Text>
+              <Text className="text-sm text-danger">No categories available. Admin can assign one during review.</Text>
             ) : (
               <>
                 <CatalogueChoice label="Category" options={categories} selected={categoryId} open={openPicker === 'category'}
@@ -332,12 +333,16 @@ export function AddProductScreen({ navigation }: Props) {
                 </View>
               </View>
 
-              {variants.map((variant) => (
+              {variants.map((variant, index) => (
                 <ProductVariantCard
                   key={variant.id}
                   variant={variant}
+                  index={index}
                   canRemove
+                  stockOptional
                   onToggleStock={(isInStock) => setVariantStock(variant.id, isInStock)}
+                  onChangeSize={(label) => setVariants((previous) => previous.map((item) =>
+                    item.id === variant.id ? { ...item, label } : item))}
                   onChangePrice={(text) => setVariantPrice(variant.id, text)}
                   onChangeMrp={(text) => setVariantMrp(variant.id, text)}
                   onChangeQuantity={(text) => setVariantQuantity(variant.id, text)}
@@ -347,8 +352,6 @@ export function AddProductScreen({ navigation }: Props) {
 
               <AddSizeButton
                 availableSizes={availableSizes}
-                isOpen={sizePickerOpen}
-                onToggleOpen={() => setSizePickerOpen((open) => !open)}
                 onPickSize={addVariant}
               />
             </View>

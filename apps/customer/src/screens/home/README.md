@@ -4,7 +4,7 @@
 home/
   HomeScreen.tsx           composes everything below, owns navigation
   components/
-    HomeHeader.tsx          top block: sticky, wraps everything below
+    ../top-header/AppTopHeader.tsx  shared Home/Store top block (mounted by HomeNavigationShell)
     EtaBadge.tsx             "⚡ 9 mins"
     LocationSelector.tsx     reads useLocationStore, taps through to LocationSearch
     ProfileAvatarButton.tsx  stub — no Profile screen (PRD C11) yet

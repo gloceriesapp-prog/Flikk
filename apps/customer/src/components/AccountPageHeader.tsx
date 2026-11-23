@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../theme/typography';
 import { Pressable, Text, View } from 'react-native';
 import { IconlyArrowLeft } from './icons/iconly';
 import { colors } from '../theme/tokens';
@@ -20,7 +21,7 @@ export function AccountPageHeader({ title, onBack, backLabel = 'Go back' }: Prop
       >
         <IconlyArrowLeft size={21} color={colors.ink} />
       </Pressable>
-      <Text accessibilityRole="header" className="flex-1 text-center text-[20px] font-bold leading-6 tracking-tight text-ink">
+      <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-center leading-6 text-ink`}>
         {title}
       </Text>
       <View className="w-11" />

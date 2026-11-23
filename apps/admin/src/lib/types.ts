@@ -367,6 +367,7 @@ export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 // inventory sync with store POS is explicitly out of scope until MVP
 // validates). stockStatus is store-reported, not live-polled.
 export interface Product {
+  quickTabKey?: string;
   id: string;
   name: string;
   category: string;
@@ -489,7 +490,7 @@ export const SERVING_LABEL: Record<Serving, string> = { chilled: 'Chilled', room
 // One flavour of a product, with optional store-price overrides per pack.
 export interface ProductOption {
   stockQuantity?: number | null;
-  priceOverrides?: Record<string, { price: number; originalPrice?: number }>;
+  priceOverrides?: Record<string, { price?: number; originalPrice?: number }>;
   /** Stable identity for an unsaved editor row; never persisted. */
   editorId?: string;
   extraImageUrls?: string[];

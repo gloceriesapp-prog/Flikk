@@ -37,7 +37,7 @@ interface Props {
   onPress: () => void;
   isClosed?: boolean;
   // 'all' tab = light pastel header → dark text/icons; every other tab is a
-  // dark gradient → white text/icons (HomeHeader.tsx's own note).
+  // dark gradient → white text/icons (top-header/AppTopHeader.tsx's own note).
   light?: boolean;
 }
 

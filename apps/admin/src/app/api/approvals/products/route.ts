@@ -13,7 +13,8 @@
 // gets the same Product shape Inventory already renders.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
+import { productColumns, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
+import { withQuickTabScope } from '@/lib/supabase/quickTabScope';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
@@ -21,9 +22,9 @@ export async function GET() {
   if (denied) return denied;
   try {
     const [pendingRes, imageRes, editsRes] = await Promise.all([
-      supabaseAdmin.from('products').select(PRODUCT_SELECT).eq('approval_status', 'pending').order('name'),
-      supabaseAdmin.from('products').select(PRODUCT_SELECT).not('pending_image_url', 'is', null).order('name'),
-      supabaseAdmin.from('products').select(PRODUCT_SELECT).not('pending_changes', 'is', null).order('pending_changes_at'),
+      withQuickTabScope(scoped => supabaseAdmin.from('products').select(productColumns(scoped)).eq('approval_status', 'pending').order('name')),
+      withQuickTabScope(scoped => supabaseAdmin.from('products').select(productColumns(scoped)).not('pending_image_url', 'is', null).order('name')),
+      withQuickTabScope(scoped => supabaseAdmin.from('products').select(productColumns(scoped)).not('pending_changes', 'is', null).order('pending_changes_at')),
     ]);
     if (pendingRes.error) throw pendingRes.error;
     if (imageRes.error) throw imageRes.error;

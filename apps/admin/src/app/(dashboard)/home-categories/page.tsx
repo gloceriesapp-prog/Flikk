@@ -15,7 +15,7 @@ import Link from 'next/link';
 
 import { useCallback, useEffect, useState } from 'react';
 import { QuickCategorySettings } from '@/components/home/QuickCategorySettings';
-import { Check, Pencil, Plus, Trash2 } from '@/components/icons';
+import { Check, ChevronDown, Pencil, Plus, Trash2 } from '@/components/icons';
 import type { HomeTab, HomeTabBanner, HomeTabTile, HomeTabTileLinkType } from '@/lib/types';
 import { fetchHomeTabBanners, fetchHomeTabs, fetchHomeTabTiles } from '@/lib/supabase/homeTabs';
 import { fetchCategorySections } from '@/lib/supabase/categorySections';
@@ -261,6 +261,35 @@ export default function HomeCategoriesPage() {
     }
   }
 
+  // Order of the customer Home top row (after the fixed All tab). Swap the
+  // two neighbours, then save 0..n-1 for every tab whose position changed.
+  async function handleMoveTab(index: number, step: -1 | 1) {
+    const target = index + step;
+    if (target < 0 || target >= tabs.length) return;
+    const next = [...tabs];
+    [next[index], next[target]] = [next[target], next[index]];
+    setTabs(next);
+    setError(null);
+    try {
+      for (const [position, tab] of next.entries()) {
+        if (tab.sortOrder === position) continue;
+        const res = await fetch(`/api/home-tabs/${tab.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: tab.name, sortOrder: position, isActive: tab.isActive }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.error ?? 'Reorder failed.');
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the new order — try again.');
+    } finally {
+      await loadTabs();
+    }
+  }
+
   async function handleDeleteTab(id: string) {
     setError(null);
     try {
@@ -440,12 +469,18 @@ export default function HomeCategoriesPage() {
         {/* Left pane — the tab list itself */}
         <div className="flex flex-col gap-3 card p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tabs</p>
-          <p className="-mt-2 text-[11px] text-muted">Top tab row — title only, like Blinkit/Instamart. Photos go on the tiles below.</p>
+          <p className="-mt-2 text-[11px] text-muted">Customer Home top row, in this order after All. Use the arrows to change the order; the picture is the card image set on each category.</p>
 
           <div className="flex flex-col gap-1.5">
             {loading && <p className="text-sm text-muted">Loading…</p>}
             {!loading && tabs.length === 0 && <p className="text-sm text-muted">No tabs yet — add one below.</p>}
-            {tabs.map((tab) => (
+            {!loading && (
+              <a href="/app-content" className="flex items-center gap-2.5 rounded-2xl border border-dashed border-border px-3 py-2.5 text-left hover:bg-accent/60">
+                <span className="h-8 w-8 shrink-0 rounded-lg border border-dashed border-border" aria-hidden="true" />
+                <span className="flex-1 text-sm font-medium text-ink">All <span className="text-[11px] font-normal text-muted">— always first. Picture: App content → home.categoryTabs.allImageUrl</span></span>
+              </a>
+            )}
+            {tabs.map((tab, index) => (
               <div
                 key={tab.id}
                 role="button"
@@ -511,6 +546,32 @@ export default function HomeCategoriesPage() {
                     <Pencil size={13} />
                   </button>
                 )}
+                <span className="flex flex-col">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleMoveTab(index, -1);
+                    }}
+                    className="text-muted hover:text-ink disabled:opacity-30"
+                    aria-label={`Move ${tab.name} up`}
+                  >
+                    <ChevronDown size={13} className="rotate-180" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === tabs.length - 1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleMoveTab(index, 1);
+                    }}
+                    className="text-muted hover:text-ink disabled:opacity-30"
+                    aria-label={`Move ${tab.name} down`}
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                </span>
                 <button
                   type="button"
                   onClick={(e) => {

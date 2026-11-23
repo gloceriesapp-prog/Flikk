@@ -17,7 +17,7 @@ interface Props {
 
 export function HomeSectionButton({ label, items = [], onPress, plain = false }: Props) {
   return (
-    <View className={plain ? "px-3 pt-3" : "px-5 pb-3 pt-5"}>
+    <View className={plain ? "px-3 pt-3" : "px-4 pb-3 pt-5"}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}

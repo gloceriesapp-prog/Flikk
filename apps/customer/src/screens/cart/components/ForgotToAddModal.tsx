@@ -23,7 +23,7 @@
 
 import { BlurView } from 'expo-blur';
 import { Cancel01Icon } from '@hugeicons/core-free-icons';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../../components/AppIcon';
 import { ProductCard } from '../../home/products/ProductCard';
@@ -77,7 +77,7 @@ export function ForgotToAddModal({ visible, cartItemIds, onClose }: Props) {
 
         <View className="flex-1 bg-white">
           <ScrollView contentContainerClassName="px-5 pb-10 pt-5">
-            <Text className="mb-4 pt-6 pb-3 text-[17px] font-semibold text-ink">You might also need</Text>
+            <Text className="mb-4 pt-6 pb-3 font-bold tracking-tight text-ink/90" accessibilityRole="header" style={{ fontSize: Platform.OS === 'ios' ? 18 : 17 }}>You might also need</Text>
 
             <View className="flex-row flex-wrap gap-x-2.5 gap-y-5">
               {candidates.map((product) => (

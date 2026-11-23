@@ -12,10 +12,14 @@ export function CataloguePicker({
   kind,
   value,
   onChange,
+  tab,
+  onScopeAvailable,
 }: {
   kind: 'products' | 'categories' | 'stores';
   value: string[];
   onChange: (ids: string[]) => void;
+  tab?: string;
+  onScopeAvailable?: (available: boolean) => void;
 }) {
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<CatalogueItem[]>([]);
@@ -24,42 +28,42 @@ export function CataloguePicker({
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const idKey = value.join(',');
+  const [selectedError, setSelectedError] = useState('');
+  const idKey = [...value].sort().join(',');
   const [resolvedIdKey, setResolvedIdKey] = useState('');
   const [missingSelectedIds, setMissingSelectedIds] = useState<string[]>([]);
   useEffect(() => {
     if (!idKey) return;
-    const controller = new AbortController();
-    void fetch(`/api/home-content/catalogue?kind=${kind}&ids=${encodeURIComponent(idKey)}`, {
-      signal: controller.signal,
-    })
+    let active = true;
+    void fetch(`/api/home-content/catalogue?kind=${kind}&ids=${encodeURIComponent(idKey)}`)
       .then(async (response) => {
         if (!response.ok) throw new Error('Could not load selected items.');
         const data = await response.json();
-        if (controller.signal.aborted) return;
+        if (!active) return;
+        setSelectedError('');
         setSelected(old => ({ ...old, ...Object.fromEntries(data.items.map((item: CatalogueItem) => [item.id, item])) }));
         const found = new Set(data.items.map((item: CatalogueItem) => item.id));
         setMissingSelectedIds(idKey.split(',').filter(id => !found.has(id)));
         setResolvedIdKey(idKey);
       })
       .catch((err) => {
-        if (!controller.signal.aborted) setError(err.message);
+        if (active) setSelectedError(err instanceof Error ? err.message : 'Could not load selected items.');
       });
-    return () => controller.abort();
+    return () => { active = false; };
   }, [idKey, kind]);
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
     const timer = setTimeout(() => {
       setLoading(true);
       setError('');
       void fetch(
-        `/api/home-content/catalogue?kind=${kind}&q=${encodeURIComponent(search)}&offset=${offset}`,
-        { signal: controller.signal },
+        `/api/home-content/catalogue?kind=${kind}&q=${encodeURIComponent(search)}&offset=${offset}${tab ? `&tab=${encodeURIComponent(tab)}` : ''}`,
       )
         .then(async (response) => {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error);
-          if (controller.signal.aborted) return;
+          if (!active) return;
+          if (typeof data.supportsQuickTabScope === 'boolean') onScopeAvailable?.(data.supportsQuickTabScope);
           setItems((old) => (offset === 0 ? data.items : [...old, ...data.items]));
           setNextOffset(data.nextOffset);
           setSelected((old) => ({
@@ -68,17 +72,17 @@ export function CataloguePicker({
           }));
         })
         .catch((err) => {
-          if (!controller.signal.aborted) setError(err.message);
+          if (active) setError(err instanceof Error ? err.message : 'Could not load the catalogue.');
         })
         .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
+          if (active) setLoading(false);
         });
     }, 250);
     return () => {
       clearTimeout(timer);
-      controller.abort();
+      active = false;
     };
-  }, [kind, search, offset]);
+  }, [kind, search, offset, tab, onScopeAvailable]);
   function move(index: number, delta: number) {
     const copy = [...value];
     [copy[index], copy[index + delta]] = [copy[index + delta], copy[index]];
@@ -136,6 +140,7 @@ export function CataloguePicker({
           ))}
         </ul>
       )}
+      {value.length > 0 && selectedError && <p role="alert" className="mb-2 text-xs text-red-600">{selectedError}</p>}
       <input
         aria-label={`Search ${kind}`}
         placeholder={`Search ${kind}…`}

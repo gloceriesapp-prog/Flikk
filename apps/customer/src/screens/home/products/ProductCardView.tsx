@@ -1,11 +1,11 @@
 import { memo, useState } from 'react';
-import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductImageGallery } from '../../../components/ProductImageGallery';
-import { AppIcon } from '../../../components/AppIcon';
 import { stockLabel } from '../../../components/stockLabel';
 import { ProductPriceRow } from '../../../components/ProductPriceRow';
+import { PriceHighlight } from './PriceHighlight';
+import { ProductCardCartControl } from './ProductCardCartControl';
 import { discountPercentLabel } from '../../../components/priceComparison';
 import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
@@ -14,16 +14,12 @@ import { preorderMinimumLabel } from '../../../store/preorderQuantity';
 import { useProductAvailability } from './useProductAvailability';
 import type { Product } from './types';
 
-// Categories where a veg/non-veg mark is meaningful — only these show the dot.
-// (veg/non-veg indicator removed from the card per design)
-
 interface Props {
   product: Product;
   widthClassName?: string;
   showDiscountBadge?: boolean;
   showImage?: boolean;
-  // Festival-rail variant: ADD button is a bold + icon (not text).
-  // Every other Home row leaves this off and keeps the full card.
+  // Smaller typography for narrow festival rails; actions keep one layout.
   compact?: boolean;
   // Festival panel sits on a dark maroon bg — switch the background-less
   // detail text (name/price/%OFF) to light treatments so it stays readable.
@@ -60,8 +56,15 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
   } = product;
 
 
-  const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
-  const [selectedSize] = useState(chips[0]);
+  // Count real, distinct pack sizes, not photos or added flavours.
+  const packs = product.variants?.length ? product.variants.map(variant => variant.label) : sizeOptions ?? [weight];
+  const optionCount = Math.max(1, new Set(packs.map(label => label.trim().toLowerCase()).filter(Boolean)).size);
+  const packCount = optionCount;
+  const additionalSizeCount = packCount - 1;
+  const sizeOptionLabel = weight.trim() && additionalSizeCount > 0
+    ? `(${additionalSizeCount} ${additionalSizeCount === 1 ? 'option' : 'options'})` : null;
+  const hasPackChoices = packCount > 1;
+  const chooseOptions = !!product.options?.length || hasPackChoices;
 
   const discount = discountPercentLabel(price, originalPrice);
   const stockStatus = isAvailable
@@ -73,88 +76,54 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
-  const cartControl = !isAvailable ? null : quantity === 0 || !!product.options?.length ? (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
-      onPress={(event) => {
-        event.stopPropagation();
+  const cartControl = !isAvailable ? null : (
+    <ProductCardCartControl name={name} quantity={quantity} chooseOptions={chooseOptions} compact={compact}
+      onAdd={() => {
         if (product.options?.length && onAdd) { onAdd(); return; }
-        if (mustPickInDetail(product)) {
-          onPress?.();
-          return;
-        }
-        addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
+        if (hasPackChoices || mustPickInDetail(product)) { onPress?.(); return; }
+        addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
       }}
-      className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
-    >
-      {compact ? (
-        <AppIcon icon={Add01Icon} size={18} color="#241712" fill="#155dfc" strokeWidth={3.5} />
-      ) : (
-        <AppIcon icon={Add01Icon} size={20} color="#155dfc" fill="#155dfc" strokeWidth={3} />
-      )}
-    </Pressable>
-  ) : (
-    <View className="flex-row items-center gap-2.5 rounded-[8px] border border-[#155dfc] bg-white px-3 py-2">
-      <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`} onPress={() => decrementItem(lineId)} hitSlop={12}>
-        <AppIcon icon={MinusSignIcon} size={20} color="#155dfc" strokeWidth={2.5} />
-      </Pressable>
-      <Text className="min-w-[12px] text-center text-[13px] font-extrabold text-[#155dfc]">{quantity}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`} onPress={() => incrementItem(lineId)} hitSlop={12}>
-        <AppIcon icon={Add01Icon} size={20} color="#155dfc" strokeWidth={2.5} />
-      </Pressable>
-    </View>
+      onIncrement={() => incrementItem(lineId)} onDecrement={() => decrementItem(lineId)} />
   );
 
   return (
     <Pressable onPress={onPress} className={`${widthClassName} gap-0`}>
 
-      {/* Pin the cart control to the image when it is visible. */}
+      {/* Let the control overlap the outside corner; reserve space below it. */}
       {showImage && (
         <View className="relative mb-2">
-          <View className="aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
-            <ProductImageGallery images={product.imageUrls ?? (imageUrl ? [imageUrl] : [])} />
-          </View>
-
-          {freshnessTag && (
-            <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
-              <Text className="text-[9px] font-semibold text-ink">{freshnessTag}</Text>
+          <View className="w-full overflow-hidden border border-[#E3E6EE] bg-[#F8F9FC]" style={{ borderRadius: 16, borderCurve: 'continuous' }}>
+            <View className="aspect-[4/4.5] w-full">
+              <ProductImageGallery images={product.imageUrls ?? (imageUrl ? [imageUrl] : [])} />
+              {typeof isVeg === 'boolean' && <View pointerEvents="none" className="absolute right-2 top-2 rounded-[3px] border bg-white p-0.5" style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}>
+                <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+              </View>}
             </View>
-          )}
-
-          <View className="absolute bottom-0 right-0 z-10">{cartControl}</View>
+            <View className="h-10 flex-row items-center justify-between gap-1 border-t border-[#E3E6EE] px-2">
+              <View className="min-w-0 flex-1">
+                <Text numberOfLines={2} className="text-[11px] font-bold leading-[14px] text-[#333840]">{weight}</Text>
+                {sizeOptionLabel && <Text className="text-[9px] font-medium leading-[12px] text-[#73809B]">{sizeOptionLabel}</Text>}
+              </View>
+            </View>
+          </View>
+          {cartControl && <View className="absolute z-10" style={{ right: -6, bottom: -2, paddingTop: 1, paddingHorizontal: 1, borderRadius: 26, backgroundColor: '#FFFFFF' }}>{cartControl}</View>}
         </View>
       )}
 
-      {/* Pack, price and product name, followed by confirmed low stock. */}
+      {/* Pricing, name and stock keep their existing hierarchy. */}
       <View className="gap-1 px-0.5 pt-0">
-        {/* Dietary mark in its own tile on the left; the pack size fills the
-            rest of the row, centred. Both tiles share one height and tint. */}
-        <View className="mb-0.5 flex-row items-center gap-1.5">
-          {/* Veg / non-veg mark — square outline + center dot, standard Indian
-              food-label convention. Only when set in Admin; otherwise the
-              pack-size tile takes the whole row. */}
-          {isVeg !== undefined && (
-            <View className="h-[22px] w-[26px] items-center justify-center rounded-[6px] bg-[#F1F1F4]">
-              <View
-                className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border bg-white"
-                style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
-              >
-                <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
-              </View>
-            </View>
-          )}
-          <View className="h-[22px] flex-1 items-center justify-center rounded-[6px] bg-[#F1F1F4] px-1.5">
-            <Text numberOfLines={1} className="text-[11px] font-semibold text-black/65">{weight}</Text>
-          </View>
-        </View>
+        {!showImage && <View>
+          <Text className={`text-[11px] font-semibold ${onDark ? 'text-white/70' : 'text-black/65'}`}>{weight}</Text>
+          {sizeOptionLabel && <Text className={`text-[9px] font-medium leading-[12px] ${onDark ? 'text-white/60' : 'text-[#73809B]'}`}>{sizeOptionLabel}</Text>}
+        </View>}
 
         {/* Price, discount and per-kg/litre price read as one block: no gap
             between them, and only a small gap before the product name. */}
         <View>
           <ProductPriceRow price={price} originalPrice={originalPrice} size={17} onDark={onDark} showDiscount={false} />
-          {/* Discount on its own line under the price, so the price row never shrinks to fit it. */}
-          {discount ? (
-            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className={`text-[12px] font-bold leading-[15px] ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discount}% OFF on MRP</Text>
-          ) : null}
+          {/* Discount and freshness tag share one line under the price (so the
+              price row never shrinks); with both, they take turns. */}
+          <PriceHighlight discount={discount} freshnessTag={freshnessTag} onDark={onDark} />
           {product.unitPriceLabel && (
             <Text className={`text-[11px] font-medium leading-[14px] ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`}>{product.unitPriceLabel}</Text>
           )}
@@ -173,7 +142,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
           </View>
         ) : null}
       </View>
-      {!showImage && cartControl && <View className="mt-2 self-start">{cartControl}</View>}
+      {!showImage && cartControl && <View className="mt-2 self-end">{cartControl}</View>}
     </Pressable>
   );
 }

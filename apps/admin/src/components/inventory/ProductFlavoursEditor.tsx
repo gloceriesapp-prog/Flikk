@@ -9,7 +9,8 @@ import { useLayoutEffect, useRef } from 'react';
 import { Plus, X } from '@/components/icons';
 import { FlavourPricesEditor } from './FlavourPricesEditor';
 import type { ProductOption, ProductVariant } from '@/lib/types';
-import { MAX_EXTRA_IMAGES, MAX_PRODUCT_OPTIONS } from '@/lib/productValidation';
+import { MAX_PRODUCT_OPTIONS } from '@/lib/productValidation';
+import { appendProductPhotos, swapFirstGalleryPhoto } from '@/lib/productPhotoUpload';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 
@@ -71,22 +72,23 @@ export function ProductFlavoursEditor({ options, variants = [], onChange, onBusy
             </button>
           </div>
           <label className="text-xs font-semibold text-ink">
-            Stock available (packs)
+            Flavour stock quantity (packs)
             <input type="number" min="0" max="1000000" step="1" value={option.stockQuantity ?? ''}
               onChange={(e) => update(keyOf(option), () => ({ stockQuantity: e.target.value === '' ? null : Number(e.target.value) }))}
-              placeholder="Use product stock" aria-label={`Flavour ${index + 1} stock available`} className={`${FIELD_CLASS} mt-1`} />
-            <span className="mt-1 block font-normal text-muted">Blank uses product stock. Zero makes this flavour unavailable. A count limits this flavour across all pack sizes; product and pack stock still apply.</span>
+              placeholder="Use shared stock" aria-label={`Flavour ${index + 1} stock quantity`} className={`${FIELD_CLASS} mt-1`} />
+            <span className="mt-1 block font-normal text-muted">This count applies across pack sizes. Leave blank to use shared stock, or enter 0 to mark this flavour out of stock.</span>
           </label>
           <FlavourPricesEditor prices={option.priceOverrides} variants={variants} onChange={(priceOverrides) => update(keyOf(option), () => ({ priceOverrides }))} />
           <ProductGalleryEditor
             urls={option.extraImageUrls ?? []}
             hasCover={!!option.imageUrl}
             onChange={(extraImageUrls) => update(keyOf(option), () => ({ extraImageUrls }))}
+            onSwapCover={() => update(keyOf(option), (current) => swapFirstGalleryPhoto(current) ?? {})}
             onUploadingChange={busy}
-            onUpload={(url) => update(keyOf(option), (current) => ({
-              extraImageUrls: [...new Set([...(current.extraImageUrls ?? []), url])]
-                .filter((image) => image !== current.imageUrl).slice(0, MAX_EXTRA_IMAGES),
-            }))}
+            onUpload={(photos) => update(keyOf(option), (current) => {
+              const { imageUrl, extraImageUrls } = appendProductPhotos(current, photos);
+              return { imageUrl, extraImageUrls };
+            })}
           />
         </div>
       ))}
