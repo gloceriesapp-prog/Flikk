@@ -11,6 +11,7 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { applyCustomerPrices } from '../lib/customerPrice.js';
+import { premiumSectionKeys, withPremiumCard } from '../lib/premiumCards.js';
 
 export const homeFestivalSectionRouter = Router();
 
@@ -40,9 +41,11 @@ homeFestivalSectionRouter.get('/', async (_req, res, next) => {
       .order('sort_order');
     if (linksError) throw linksError;
 
+    const products = (links ?? []).map((link) => link.products);
+    const premium = (await premiumSectionKeys()).has('festival-picks');
     res.json({
       title: section.title,
-      products: applyCustomerPrices((links ?? []).map((link) => link.products)),
+      products: applyCustomerPrices(premium ? products.map(withPremiumCard) : products),
     });
   } catch (err) {
     next(err);

@@ -1,32 +1,58 @@
-// Premium background (Photoroom) for one product's main photo, admin only
-// (lib/photoroom.ts, migration 20261122090000). The rembg cut-out stays the
-// standard photo: a premium photo goes on the product only when the admin
-// picks it ("use"), and switching back puts the standard photo back. A failed
-// Generate leaves the product as it was and records the reason.
+// Premium background (Photoroom) for one product, admin only (lib/photoroom.ts,
+// migrations 20261122090000, 20261123090000). The rembg cut-out stays the
+// standard photo. A premium photo reaches the product only when the admin
+// picks it ("use"): as the second gallery photo (default, the rembg photo
+// stays main) or as the main photo; products.premium_image_url records it
+// for home sections that show premium cards. Switching back removes it. A
+// failed Generate leaves the product as it was and records the reason.
 //   GET  ?productId=   enabled, usage, cap, current style, attempts
+<<<<<<< HEAD
 //   POST {action:'generate', productId, preset, color?}
 //        text preset: + headline, textColor, background (720x810 PNG data URL
 //        drawn in the admin from the headline)
 //   POST {action:'use', productId, attemptId|null}   null = standard
+=======
+//   POST {action:'generate', productId, preset, color?, prompt?}
+//        prompt: the edited first part; the safety text is always added
+//        text preset: + headline, textColor, background (720x810 PNG data URL
+//        drawn in the admin from the headline)
+//   POST {action:'use', productId, attemptId|null, placement?}   null = standard
+//        placement: 'gallery' (default) | 'main'
+>>>>>>> origin/feat/photoroom-category-presets
 //   POST {action:'cap', monthlyCap}
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { storePublicImage } from '@/features/media/publicImages';
+import { MAX_EXTRA_IMAGES } from '@/lib/productValidation';
 import {
+<<<<<<< HEAD
   PhotoroomError, callPhotoroom, capReached, checkFrame, headlineBackground, headlineLines, isPreset, monthStart, nextMonthLabel, photoroomKey, scrub,
+=======
+  PhotoroomError, categoryPreset, cleanPromptBase, presetBase, type PresetId, callPhotoroom, capReached, checkFrame, headlineBackground, headlineLines, isPreset, monthStart, nextMonthLabel, photoroomKey, scrub,
+>>>>>>> origin/feat/photoroom-category-presets
 } from '@/lib/photoroom';
 
+type Placement = 'gallery' | 'main';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 
+<<<<<<< HEAD
 export interface PremiumAttempt { id: string; preset: string; color: string | null; headline: string | null; status: 'done' | 'failed'; url: string | null; error: string | null; createdAt: string }
+=======
+export interface PremiumAttempt { id: string; preset: string; color: string | null; headline: string | null; prompt: string | null; status: 'done' | 'failed'; url: string | null; error: string | null; createdAt: string }
+>>>>>>> origin/feat/photoroom-category-presets
 export interface PremiumState {
   enabled: boolean;
   used: number;
   cap: number;
   capMessage: string | null;
   style: 'standard' | 'premium';
+  // Where the picked premium photo shows, when it does.
+  placement: Placement | null;
+  premiumUrl: string | null;
+  // Pre-selected from the product's category.
+  suggestedPreset: PresetId;
   standardUrl: string | null;
   attempts: PremiumAttempt[];
 }
@@ -57,29 +83,47 @@ async function standardUrl(productId: string, attempts: { standard_url: string |
 
 async function attemptsOf(productId: string) {
   const { data, error } = await supabaseAdmin.from('product_premium_images')
+<<<<<<< HEAD
     .select('id, preset, color, headline, status, url, error, standard_url, created_at').eq('product_id', productId)
+=======
+    .select('id, preset, color, headline, prompt, status, url, error, standard_url, created_at').eq('product_id', productId)
+>>>>>>> origin/feat/photoroom-category-presets
     .order('created_at', { ascending: false }).limit(12);
   if (error) throw error;
   return data ?? [];
 }
 
+function placementOf(product: { image_url?: string | null; extra_image_urls?: string[] | null } | null, premium: Set<string>): Placement | null {
+  if (product?.image_url && premium.has(product.image_url)) return 'main';
+  return product?.extra_image_urls?.some((url) => premium.has(url)) ? 'gallery' : null;
+}
+
 async function state(productId: string | null): Promise<PremiumState> {
   const enabled = photoroomKey() !== null;
-  if (!enabled) return { enabled, used: 0, cap: 0, capMessage: null, style: 'standard', standardUrl: null, attempts: [] };
+  if (!enabled) return { enabled, used: 0, cap: 0, capMessage: null, style: 'standard', placement: null, premiumUrl: null, suggestedPreset: 'studio', standardUrl: null, attempts: [] };
   const { used, cap } = await usage();
   const base = { enabled, used, cap, capMessage: capMessage(used, cap) };
-  if (!productId) return { ...base, style: 'standard', standardUrl: null, attempts: [] };
+  if (!productId) return { ...base, style: 'standard', placement: null, premiumUrl: null, suggestedPreset: 'studio', standardUrl: null, attempts: [] };
   const [rows, product] = await Promise.all([
     attemptsOf(productId),
-    supabaseAdmin.from('products').select('image_url').eq('id', productId).maybeSingle(),
+    supabaseAdmin.from('products').select('image_url, extra_image_urls, category').eq('id', productId).maybeSingle(),
   ]);
   if (product.error) throw product.error;
-  const current = product.data?.image_url as string | null | undefined;
+  const premium = new Set(rows.map((r) => r.url).filter((u): u is string => !!u));
+  const placement = placementOf(product.data, premium);
+  const shown = placement === 'main' ? product.data?.image_url : product.data?.extra_image_urls?.find((url: string) => premium.has(url));
   return {
     ...base,
-    style: rows.some((r) => r.url && r.url === current) ? 'premium' : 'standard',
+    style: placement ? 'premium' : 'standard',
+    placement,
+    premiumUrl: (shown as string | undefined) ?? null,
+    suggestedPreset: categoryPreset(product.data?.category as string | null | undefined),
     standardUrl: await standardUrl(productId, rows),
+<<<<<<< HEAD
     attempts: rows.map((r) => ({ id: r.id, preset: r.preset, color: r.color, headline: r.headline, status: r.status, url: r.url, error: r.error, createdAt: r.created_at })),
+=======
+    attempts: rows.map((r) => ({ id: r.id, preset: r.preset, color: r.color, headline: r.headline, prompt: r.prompt, status: r.status, url: r.url, error: r.error, createdAt: r.created_at })),
+>>>>>>> origin/feat/photoroom-category-presets
   };
 }
 
@@ -116,18 +160,35 @@ export async function POST(request: Request) {
   if (body.action === 'use') {
     const attemptId = body.attemptId;
     if (attemptId !== null && (typeof attemptId !== 'string' || !UUID.test(attemptId))) return NextResponse.json({ error: 'Invalid photo.' }, { status: 400 });
+    const placement: Placement = body.placement === 'main' ? 'main' : 'gallery';
     try {
-      const rows = await attemptsOf(productId);
+      const [rows, product] = await Promise.all([
+        attemptsOf(productId),
+        supabaseAdmin.from('products').select('image_url, extra_image_urls').eq('id', productId).maybeSingle(),
+      ]);
+      if (product.error) throw product.error;
+      if (!product.data) return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
       const standard = await standardUrl(productId, rows);
-      const target = attemptId === null ? standard : rows.find((r) => r.id === attemptId && r.status === 'done')?.url ?? null;
-      if (!target) return NextResponse.json({ error: attemptId === null ? 'No standard photo to switch back to.' : 'That premium photo is not available.' }, { status: 409 });
-      // Only swap between this product's own standard and premium photos, so
-      // a newer upload is never overwritten.
-      const own = [standard, ...rows.map((r) => r.url)].filter((u): u is string => !!u);
-      const { data, error } = await supabaseAdmin.from('products').update({ image_url: target }).eq('id', productId).in('image_url', own).select('id');
+      const premium = new Set(rows.map((r) => r.url).filter((u): u is string => !!u));
+      const current = (product.data.image_url as string | null) ?? null;
+      const extras = ((product.data.extra_image_urls as string[] | null) ?? []).filter((url) => !premium.has(url));
+      const target = attemptId === null ? null : rows.find((r) => r.id === attemptId && r.status === 'done')?.url ?? null;
+      if (attemptId !== null && !target) return NextResponse.json({ error: 'That premium photo is not available.' }, { status: 409 });
+      // The main photo: the premium one for "Main photo", else the standard
+      // (rembg) photo back if a premium one is there now.
+      const main = target && placement === 'main' ? target : current && premium.has(current) ? standard : current;
+      if (!main && current) return NextResponse.json({ error: 'No standard photo to switch back to.' }, { status: 409 });
+      if (target && placement === 'gallery' && extras.length >= MAX_EXTRA_IMAGES) {
+        return NextResponse.json({ error: `The gallery is full (${MAX_EXTRA_IMAGES} photos). Remove one, then try again.` }, { status: 409 });
+      }
+      const extraImageUrls = target && placement === 'gallery' ? [target, ...extras] : extras;
+      // Only if the main photo is still what was read, so a newer upload is
+      // never overwritten.
+      const update = supabaseAdmin.from('products').update({ image_url: main, extra_image_urls: extraImageUrls, premium_image_url: target }).eq('id', productId);
+      const { data, error } = await (current === null ? update.is('image_url', null) : update.eq('image_url', current)).select('id');
       if (error) throw error;
       if (!data?.length) return NextResponse.json({ error: 'The product has a newer photo. Reopen it and try again.' }, { status: 409 });
-      return NextResponse.json({ imageUrl: target, state: await state(productId) });
+      return NextResponse.json({ imageUrl: main, extraImageUrls, state: await state(productId) });
     } catch {
       return NextResponse.json({ error: 'Could not switch the photo.' }, { status: 500 });
     }
@@ -139,6 +200,11 @@ export async function POST(request: Request) {
   if (!isPreset(preset)) return NextResponse.json({ error: 'Pick a background.' }, { status: 400 });
   const lines = preset === 'text' ? headlineLines(body.headline) : null;
   if (preset === 'text' && !lines) return NextResponse.json({ error: 'Type a headline: up to 2 lines, 40 characters.' }, { status: 400 });
+<<<<<<< HEAD
+=======
+  const promptBase = preset !== 'text' && body.prompt !== undefined && body.prompt !== null ? cleanPromptBase(body.prompt) : null;
+  if (preset !== 'text' && body.prompt != null && !promptBase) return NextResponse.json({ error: 'Background description: 3 to 200 characters, one line.' }, { status: 400 });
+>>>>>>> origin/feat/photoroom-category-presets
   const textColor = preset === 'text' && typeof body.textColor === 'string' && HEX.test(body.textColor) ? body.textColor : null;
 
   try {
@@ -167,7 +233,11 @@ export async function POST(request: Request) {
       const image = await fetch(source, { signal: AbortSignal.timeout(20_000) });
       if (!image.ok) throw new PhotoroomError('Could not read the product photo.');
       const background = preset === 'text' ? await headlineBackground(body.background) : undefined;
+<<<<<<< HEAD
       const bytes = await callPhotoroom(await image.blob(), { preset, color, background }, { key });
+=======
+      const bytes = await callPhotoroom(await image.blob(), { preset, color, background, prompt: promptBase }, { key });
+>>>>>>> origin/feat/photoroom-category-presets
       await checkFrame(bytes);
       url = (await storePublicImage({ folder: 'products', bytes })).url;
     } catch (error) {
@@ -176,7 +246,11 @@ export async function POST(request: Request) {
     }
     const { error } = await supabaseAdmin.from('product_premium_images').insert({
       product_id: productId, preset, color: preset === 'pastel' || preset === 'text' ? color : null,
+<<<<<<< HEAD
       headline: lines?.join(' ') ?? null, text_color: textColor,
+=======
+      headline: lines?.join(' ') ?? null, text_color: textColor, prompt: promptBase ?? (preset === 'text' ? null : presetBase(preset, color)),
+>>>>>>> origin/feat/photoroom-category-presets
       status: url ? 'done' : 'failed', url, error: failure, standard_url: standard,
     });
     if (error) throw error;

@@ -1,10 +1,15 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { Request, RequestHandler, Response } from 'express';
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), nearby: vi.fn(), fromBrand: vi.fn(), fromProducts: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), nearby: vi.fn(), fromBrand: vi.fn(), fromProducts: vi.fn(), premiumKeys: [] as string[] }));
 vi.mock('../db/supabase.js', () => ({ supabase: {
   rpc: mocks.rpc,
   from: (table: string) => {
     if (table === 'brands') return mocks.fromBrand();
+    if (table === 'home_sections') {
+      const sections = { select: () => sections, eq: () => sections,
+        then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: mocks.premiumKeys.map(key => ({ key })), error: null }).then(resolve) };
+      return sections;
+    }
     const override = mocks.fromProducts();
     if (override) return override;
     const builder = { select: () => builder, in: () => builder, eq: () => builder, is: () => builder,
@@ -20,7 +25,7 @@ async function request(path: string, query: Record<string, string>, params: Reco
   await handler({ query, params } as unknown as Request, res, next); return { res, next };
 }
 const pin = { lat: '13.27', lng: '74.75' };
-beforeEach(() => { mocks.fromBrand.mockReset(); mocks.fromProducts.mockReset(); mocks.rpc.mockReset().mockResolvedValue({ data: [{ id: 'p1' }, { id: 'p2' }], error: null }); mocks.nearby.mockReset().mockResolvedValue([{ id: 's1' }]); });
+beforeEach(() => { mocks.premiumKeys = []; mocks.fromBrand.mockReset(); mocks.fromProducts.mockReset(); mocks.rpc.mockReset().mockResolvedValue({ data: [{ id: 'p1' }, { id: 'p2' }], error: null }); mocks.nearby.mockReset().mockResolvedValue([{ id: 's1' }]); });
 it('accepts only 7- or 30-day popularity windows', () => {
   expect(popularityDays(undefined)).toBe(7); expect(popularityDays('30')).toBe(30);
   for (const value of ['14', '0', ['7']]) expect(() => popularityDays(value)).toThrow();
@@ -47,6 +52,27 @@ it('home picks group pinned products by section in pin order, only from delivery
   mocks.rpc.mockClear();
   const empty = await request('/home-picks', {});
   expect(mocks.rpc).not.toHaveBeenCalled(); expect(empty.res.json).toHaveBeenCalledWith({});
+});
+
+it('premium photos show only in sections switched to premium cards; grids keep the rembg photo', async () => {
+  const rows = [
+    { id: 'p1', image_url: 'https://img/rembg-1.webp', premium_image_url: 'https://img/premium-1.webp' },
+    { id: 'p2', image_url: 'https://img/rembg-2.webp', premium_image_url: null },
+  ];
+  const products = { select: () => products, in: () => products, eq: () => products, is: () => products,
+    then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve) };
+  mocks.fromProducts.mockReturnValue(products);
+  mocks.premiumKeys = ['custom-coastal'];
+  mocks.rpc.mockResolvedValueOnce({ data: [
+    { section_key: 'custom-coastal', id: 'p1' }, { section_key: 'custom-coastal', id: 'p2' }, { section_key: 'everyday-essentials', id: 'p1' },
+  ], error: null });
+  const { res } = await request('/home-picks', pin);
+  const picks = vi.mocked(res.json).mock.calls[0][0] as Record<string, { id: string; image_url: string }[]>;
+  // Premium section: premium photo where there is one, rembg otherwise.
+  expect(picks['custom-coastal'].map(p => p.image_url)).toEqual(['https://img/premium-1.webp', 'https://img/rembg-2.webp']);
+  // Grid section: the same product keeps its rembg photo.
+  expect(picks['everyday-essentials'].map(p => p.image_url)).toEqual(['https://img/rembg-1.webp']);
+  expect(rows[0].image_url).toBe('https://img/rembg-1.webp');
 });
 
 it('uses category-aware previews when the client supports category navigation', async () => {

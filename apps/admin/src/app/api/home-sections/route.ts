@@ -27,11 +27,13 @@ interface HomeSectionRow {
   is_custom?: boolean;
   source_category_id?: string | null;
   pinned_only: boolean;
+  // Cards show the product's premium (Photoroom) photo when it has one.
+  use_premium_images: boolean;
   starts_at: string | null;
   ends_at: string | null;
 }
 
-const SELECT = 'key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at, display_layout, banner_image_url, source_category_id';
+const SELECT = 'key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, use_premium_images, starts_at, ends_at, display_layout, banner_image_url, source_category_id';
 
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -118,6 +120,7 @@ export async function PUT(request: Request) {
           // Sent so the upsert's insert half satisfies home_sections_custom_key_check.
           is_custom: isCustomSection(key),
           pinned_only: Boolean(r.pinned_only),
+          use_premium_images: Boolean(r.use_premium_images),
           ...(sourceCategoryId === undefined ? {} : { source_category_id: sourceCategoryId }),
           starts_at: scheduleToIso(r.starts_at),
           ends_at: scheduleToIso(r.ends_at),

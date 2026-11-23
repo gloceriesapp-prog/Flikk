@@ -26,6 +26,10 @@
       "sha256": "fa28290e0859c3301178e3869fdca8f1b80984c1441d1cd9c9782edc7114ee97"
     },
     {
+      "file": "091_legacy_schema_prerequisites.sql",
+      "sha256": "a6199a48c169e5cb783de5a28d0c672ca713d053c39978ebb679fefdd836c006"
+    },
+    {
       "file": "007_draft_owner_shop_license.sql",
       "sha256": "88946900d49f507d8d5ca988f6e5fdb905c68c079fe84ac685508334c9e44aa0"
     },
@@ -364,10 +368,6 @@
     {
       "file": "090_bounded_repeat_purchase_candidates.sql",
       "sha256": "b298ab931e2366295e4eb5bef6186e3ef2533446962be2e977212583624ed326"
-    },
-    {
-      "file": "091_legacy_schema_prerequisites.sql",
-      "sha256": "a6199a48c169e5cb783de5a28d0c672ca713d053c39978ebb679fefdd836c006"
     },
     {
       "file": "092_private_application_rpcs.sql",
@@ -808,6 +808,10 @@
     {
       "file": "20261122100000_product_premium_text.sql",
       "sha256": "11d97ef2c4ee7cacdcc0d8a04912031f4b012d6afe000b37685f7bc32e9f96cb"
+    },
+    {
+      "file": "20261123090000_premium_category_presets.sql",
+      "sha256": "8a0c72d1ca643cca3b3d310296aef2123db1391a18f4a051b9dab15d4385b31e"
     },
     {
       "file": "20261123120000_checkout_fee_display.sql",
