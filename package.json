@@ -12,9 +12,9 @@
     "local:content": "node scripts/pull-content.mjs"
   },
   "devDependencies": {
-    "expo-location": "~57.0.22",
+    "expo-location": "~57.0.24",
     "patch-package": "^8.0.1",
-    "expo-notifications": "~57.0.24",
+    "expo-notifications": "~57.0.26",
     "expo-updates": "~57.0.28"
   },
   "overrides": {
@@ -23,10 +23,10 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
-    "expo": "~57.0.33",
-    "expo-location": "~57.0.22",
+    "expo": "~57.0.34",
+    "expo-location": "~57.0.24",
     "@sentry/react-native": "~7.11.0",
     "expo-audio": "~57.0.5",
-    "expo-notifications": "~57.0.24"
+    "expo-notifications": "~57.0.26"
   }
 }
