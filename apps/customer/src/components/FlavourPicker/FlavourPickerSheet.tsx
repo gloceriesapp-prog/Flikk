@@ -7,7 +7,9 @@ import { IconlyClose } from '../icons/IconlyClose';
 import { ProductServingOptions } from '../ProductDetailSheet/ProductServingOptions';
 import { ProductCutOptions } from '../ProductDetailSheet/ProductCutOptions';
 import { ProductPreorderOptions } from '../ProductDetailSheet/ProductPreorderOptions';
-import { flavourChoices } from '../ProductDetailSheet/flavourSelection';
+import { MAIN_PRODUCT_CHOICE, flavourChoices } from '../ProductDetailSheet/flavourSelection';
+import { CartBar } from '../CartBar/CartBar';
+import { useCartStore } from '../../store/useCartStore';
 import { flavourPacks } from './flavourPricing';
 import type { Product } from '../../screens/home/products/types';
 import { quickAddCut, type CutSize, type Serving } from '../../store/cartIdentity';
@@ -23,10 +25,14 @@ export function FlavourPickerSheet(props: Props) {
 function FlavourPickerContent({ product, onClose, isAvailable, availabilityLabel }: Props) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const cartQuantity = useCartStore(state => state.items.reduce((total, item) => total + item.quantity, 0));
   const [serving, setServing] = useState<Serving | undefined>(product.servingOptions?.[0]);
   const [cut, setCut] = useState<CutSize>(quickAddCut(product) ?? 'medium');
   const [preorder, setPreorder] = useState<CartPreorder>();
-  const choices = flavourChoices(product).flatMap(option => flavourPacks(product).map(pack => ({ option, pack })));
+  const flavours = flavourChoices(product);
+  const options = flavours.length ? flavours : [{ id: MAIN_PRODUCT_CHOICE, name: product.name,
+    imageUrl: product.imageUrl, isAvailable: product.isAvailable !== false }];
+  const choices = options.flatMap(option => flavourPacks(product).map(pack => ({ option, pack })));
   return <Modal transparent animationType="slide" visible statusBarTranslucent onRequestClose={onClose}>
     <View style={styles.overlay}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close flavour picker" />
@@ -39,7 +45,7 @@ function FlavourPickerContent({ product, onClose, isAvailable, availabilityLabel
           style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={styles.list} columnWrapperStyle={{ gap: 12 }}
           showsVerticalScrollIndicator={false} initialNumToRender={4} windowSize={3}
           ListHeaderComponent={<View style={{ gap: 14, marginBottom: 12 }}>
-            <Text style={styles.hint}>Choose your flavour and pack</Text>
+            <Text style={styles.hint}>{product.options?.length ? 'Choose your flavour and pack' : 'Choose your pack'}</Text>
             {product.servingOptions?.length ? <ProductServingOptions options={product.servingOptions} selected={serving} onSelect={setServing} /> : null}
             {product.cutOptions ? <ProductCutOptions selected={cut} onSelect={setCut} bulkMinKg={product.bulkMinKg} /> : null}
             {product.preorder ? <ProductPreorderOptions minQty={product.preorder.minQty} leadDays={product.preorder.leadDays} value={preorder} onChange={setPreorder} /> : null}
@@ -47,6 +53,7 @@ function FlavourPickerContent({ product, onClose, isAvailable, availabilityLabel
           renderItem={({ item }) => <FlavourPickerCard product={product} {...item} isAvailable={isAvailable}
             availabilityLabel={availabilityLabel} cut={product.cutOptions ? cut : undefined}
             serving={(product.servingOptions?.length ?? 0) > 1 ? serving : undefined} preorder={preorder} />} />
+        {cartQuantity > 0 && <View style={styles.cartFooter}><CartBar onBeforeNavigate={onClose} /></View>}
       </View>
     </View>
   </Modal>;

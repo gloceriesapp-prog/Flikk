@@ -8,12 +8,13 @@ import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage as Image } from '../../../components/AppImage';
+import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { discountPercentLabel, priceComparison } from '../../../components/priceComparison';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { addToCart } from '../../../store/addToCart';
 import { useCartStore } from '../../../store/useCartStore';
-import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut, requiresProductSelection } from '../../../store/cartIdentity';
 import { useProductAvailability } from '../products/useProductAvailability';
 import type { Product } from '../products/types';
 
@@ -60,6 +61,7 @@ export function DealCard({ product }: { product: Product }) {
   const cardWidth = horizontalProductCardWidth(viewportWidth);
   const { id, name, weight, price, originalPrice, imageUrl, storeId, storeName, isVeg } = product;
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const { mrp } = priceComparison(price, originalPrice);
   const percentOff = discountPercentLabel(price, originalPrice);
@@ -72,8 +74,8 @@ export function DealCard({ product }: { product: Product }) {
   const decrementItem = useCartStore((state) => state.decrementItem);
 
   function handleAdd() {
-    // Flavours / chilled-or-not: open the detail view to pick.
-    if (mustPickInDetail(product)) { setIsDetailOpen(true); return; }
+    // Keep Add choices separate from product-body navigation.
+    if (requiresProductSelection(product)) { setIsPickerOpen(true); return; }
     addToCart({
       isAvailable: availability.isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize,
       name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl,
@@ -114,7 +116,7 @@ export function DealCard({ product }: { product: Product }) {
               <View className="bg-white px-3 py-2.5" style={CORNER}>
                 <Text className="text-[12px] font-bold text-[#B42318]">{availability.label}</Text>
               </View>
-            ) : quantity === 0 ? (
+            ) : quantity === 0 || requiresProductSelection(product) ? (
               <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`} hitSlop={6}
                 onPress={(event) => { event.stopPropagation(); handleAdd(); }}
                 className="h-10 min-w-[76px] items-center justify-center border bg-white px-4 active:opacity-80" style={[CORNER, { borderColor: BLUE }]}>
@@ -151,6 +153,7 @@ export function DealCard({ product }: { product: Product }) {
         </View>
       </Pressable>
 
+      <FlavourPickerSheet product={product} visible={isPickerOpen} onClose={() => setIsPickerOpen(false)} isAvailable={availability.isAvailable} availabilityLabel={availability.label} />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>
   );

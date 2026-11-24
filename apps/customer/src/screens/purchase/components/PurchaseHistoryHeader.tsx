@@ -1,7 +1,9 @@
 import { PAGE_TITLE_CLASS_NAME } from '../../../theme/typography';
 import { colors } from '../../../theme/tokens';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { IconlyHeadphone } from '../../../components/icons/iconly';
+import { useRef } from 'react';
+import { Search01Icon } from '@hugeicons/core-free-icons';
+import { AppIcon } from '../../../components/AppIcon';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import type { OrderStatusFilter } from './OrderFilterSheet';
 import { PurchaseSearchBar } from './PurchaseSearchBar';
 
@@ -16,30 +18,28 @@ interface Props {
   status: OrderStatusFilter;
   onSelectStatus: (status: OrderStatusFilter) => void;
   search: React.ComponentProps<typeof PurchaseSearchBar> | null;
-  onHelp: () => void;
 }
 
-export function PurchaseHistoryHeader({ status, onSelectStatus, search, onHelp }: Props) {
+export function PurchaseHistoryHeader({ status, onSelectStatus, search }: Props) {
+  const searchInput = useRef<TextInput>(null);
   const selectedStatus = status === 'failed' ? 'all' : status;
 
   return (
     <View className="bg-white">
-      <View className="min-h-[55px] flex-row items-center justify-between gap-3 px-4 py-2">
-        <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-ink`}>
+      <View className="flex-row items-center justify-between gap-3 px-5 pb-2 pt-2">
+        <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-ink/90`}>
           Purchase History
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Order help"
-          onPress={onHelp}
-          hitSlop={6}
-          className="h-9 w-9 items-center justify-center rounded-full bg-[#F1F3F6] active:bg-[#E5E9EF]"
+          accessibilityLabel="Search orders"
+          onPress={() => searchInput.current?.focus()}
+          hitSlop={10}
+          className="h-9 w-9 items-center justify-center"
         >
-          <IconlyHeadphone size={19} />
+          <AppIcon icon={Search01Icon} size={22} color={colors.ink} />
         </Pressable>
       </View>
-
-      <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.divider }} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerClassName="gap-1 px-4 pt-1">
         {TABS.map(tab => {
@@ -60,7 +60,7 @@ export function PurchaseHistoryHeader({ status, onSelectStatus, search, onHelp }
         })}
       </ScrollView>
 
-      {search && <View className="px-4 pb-3 pt-3"><PurchaseSearchBar {...search} /></View>}
+      {search && <View className="px-4 pb-3 pt-3"><PurchaseSearchBar {...search} inputRef={searchInput} /></View>}
     </View>
   );
 }
