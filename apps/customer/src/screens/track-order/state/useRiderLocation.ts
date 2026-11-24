@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,6 +10,8 @@ import { RIDER_LOCATION_POLL_MS } from './riderLocationView';
 
 // Let the backend's one-minute unavailable-route cache expire first.
 const ROUTE_RETRY_MS = 65_000;
+// A rider off the drawn road gets a fresh rider -> customer route at most this often.
+const REROUTE_MIN_MS = 30_000;
 const CAN_SHOW_ROAD_ROUTE = Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && usesGoogleMaps();
 const retry = (count: number, error: unknown) => count < 1 && ![401, 403, 404, 410].includes((error as { status?: number }).status ?? 0);
 
@@ -60,7 +63,15 @@ export function useRiderLocation(id: string, isTrip: boolean, trackable: boolean
     gcTime: 0,
     retry: false,
   });
+  const { refetch, isFetching } = route;
+  const lastReroute = useRef(0);
+  const reroute = useCallback(() => {
+    if (isFetching || Date.now() - lastReroute.current < REROUTE_MIN_MS) return;
+    lastReroute.current = Date.now();
+    void refetch();
+  }, [isFetching, refetch]);
   return {
+    reroute,
     data: trackable ? query.data : undefined,
     route: trackable && outForDelivery && active ? route.data : undefined,
     fetchedAt: query.dataUpdatedAt,

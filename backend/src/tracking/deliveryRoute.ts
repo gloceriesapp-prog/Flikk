@@ -11,10 +11,10 @@ const MAX_ROUTES = 1000;
 // on this replica. Entries expire even if the order is never viewed again.
 const routes = new Map<string, Promise<LatLng[] | null>>();
 
-async function loadRoute(pickup: LatLng, destination: LatLng): Promise<LatLng[] | null> {
+async function loadRoute(origin: LatLng, destination: LatLng): Promise<LatLng[] | null> {
   try {
     if (await claimMapsBudget('provider') > 0) return null;
-    const route = await fetchRoute(pickup, destination, 'HIGH_QUALITY');
+    const route = await fetchRoute(origin, destination, 'HIGH_QUALITY');
     return route && route.points.length >= 2 ? route.points : null;
   } catch {
     // A quota store outage must not take down live order tracking.
@@ -22,18 +22,22 @@ async function loadRoute(pickup: LatLng, destination: LatLng): Promise<LatLng[] 
   }
 }
 
-export function deliveryRoute(legId: string, pickup: LatLng, destination: LatLng): Promise<LatLng[] | null> {
+// `origin` is the rider's fresh position once out for delivery (else the
+// store). Keyed to a ~100 m cell so a moving rider reuses one calculation
+// per cell instead of costing a provider call per GPS ping.
+export function deliveryRoute(legId: string, origin: LatLng, destination: LatLng): Promise<LatLng[] | null> {
   if (!env.googleRoutesApiKey) return Promise.resolve(null);
-  if (pickup.latitude === destination.latitude && pickup.longitude === destination.longitude) {
+  if (origin.latitude === destination.latitude && origin.longitude === destination.longitude) {
     return Promise.resolve(null);
   }
 
-  const key = [legId, pickup.latitude, pickup.longitude, destination.latitude, destination.longitude].join(':');
+  const cell = (value: number) => value.toFixed(3);
+  const key = [legId, cell(origin.latitude), cell(origin.longitude), destination.latitude, destination.longitude].join(':');
   const pending = routes.get(key);
   if (pending) return pending;
   if (routes.size >= MAX_ROUTES) return Promise.resolve(null);
 
-  const result = loadRoute(pickup, destination).then(points => {
+  const result = loadRoute(origin, destination).then(points => {
     setTimeout(() => routes.delete(key), points ? ROUTE_TTL_MS : UNAVAILABLE_TTL_MS).unref();
     return points;
   });

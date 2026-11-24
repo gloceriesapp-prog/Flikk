@@ -93,6 +93,20 @@ describe('GET /orders/:id/rider-location', () => {
     expect(body.route).toEqual(points);
   });
 
+  it('routes from the rider\'s fresh position, falling back to the store when GPS is stale', async () => {
+    const destination = { latitude: 12.97, longitude: 77.59 };
+    mocks.deliveryRoute.mockResolvedValue(null);
+    order('out_for_delivery', { stores: { lat: 12.95, lng: 77.58 } });
+
+    rider(20);
+    await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
+    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.98, longitude: 77.6 }, destination);
+
+    rider(RIDER_LOCATION_STALE_SECONDS + 1);
+    await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
+    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.95, longitude: 77.58 }, destination);
+  });
+
   it('never exposes rider identity or contact details', async () => {
     order('out_for_delivery'); rider(5);
     const { body } = await call(riderLocationOrdersRouter, ORDER);

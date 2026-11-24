@@ -45,3 +45,12 @@ it('keeps the provider quota failure off the tracking path and throttles retries
   expect(await route()).toEqual(points);
   expect(mocks.fetchRoute).toHaveBeenCalledOnce();
 });
+
+it('reuses one calculation while the rider moves within the same ~100 m cell', async () => {
+  const route = (latitude: number) => deliveryRoute('leg-c', { latitude, longitude: 74.74 }, destination);
+  await route(13.3301);
+  await route(13.3304);
+  expect(mocks.fetchRoute).toHaveBeenCalledOnce();
+  await route(13.3321);
+  expect(mocks.fetchRoute).toHaveBeenCalledTimes(2);
+});

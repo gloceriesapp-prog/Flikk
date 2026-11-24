@@ -108,11 +108,14 @@ function send(res: import('express').Response, body: RiderLocationResponse) {
 }
 
 // Route geometry is opt-in so the ten-second GPS poll stays lightweight.
+// It runs from the rider's fresh position to the customer, so the line
+// always starts where the rider is; the store is only the fallback origin.
 async function withRoute(requested: boolean, legId: string, body: RiderLocationResponse): Promise<RiderLocationResponse> {
-  const { pickup, destination } = body;
-  if (!requested || !pickup || !destination) return body;
+  const { pickup, destination, rider_location: rider } = body;
+  const origin = rider && !rider.stale ? rider : pickup;
+  if (!requested || !origin || !destination) return body;
   const route = await deliveryRoute(legId,
-    { latitude: pickup.lat, longitude: pickup.lng },
+    { latitude: origin.lat, longitude: origin.lng },
     { latitude: destination.lat, longitude: destination.lng },
   );
   return { ...body, route };
