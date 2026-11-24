@@ -7,7 +7,7 @@ import { ProductPriceRow } from '../../../components/ProductPriceRow';
 import { PriceHighlight } from './PriceHighlight';
 import { ProductCardCartControl } from './ProductCardCartControl';
 import { discountPercentLabel } from '../../../components/priceComparison';
-import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut, requiresProductSelection } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
 import { preorderMinimumLabel } from '../../../store/preorderQuantity';
@@ -63,8 +63,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
   const additionalSizeCount = packCount - 1;
   const sizeOptionLabel = weight.trim() && additionalSizeCount > 0
     ? `(${additionalSizeCount} ${additionalSizeCount === 1 ? 'option' : 'options'})` : null;
-  const hasPackChoices = packCount > 1;
-  const chooseOptions = !!product.options?.length || hasPackChoices;
+  const chooseOptions = requiresProductSelection(product);
 
   const discount = discountPercentLabel(price, originalPrice);
   const stockStatus = isAvailable
@@ -79,8 +78,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
   const cartControl = !isAvailable ? null : (
     <ProductCardCartControl name={name} quantity={quantity} chooseOptions={chooseOptions} compact={compact}
       onAdd={() => {
-        if (product.options?.length && onAdd) { onAdd(); return; }
-        if (hasPackChoices || mustPickInDetail(product)) { onPress?.(); return; }
+        if (chooseOptions) { onAdd?.(); return; }
         addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
       }}
       onIncrement={() => incrementItem(lineId)} onDecrement={() => decrementItem(lineId)} />

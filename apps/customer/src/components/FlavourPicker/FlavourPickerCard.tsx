@@ -39,7 +39,7 @@ export function FlavourPickerCard({ product, option, pack, isAvailable, availabi
       <View style={styles.add}>
         {quantity > 0 ? <View style={styles.stepper}>
           <Pressable onPress={() => decrement(id)} accessibilityRole="button" accessibilityLabel={`Remove ${option.name}, ${pack.label}`} style={styles.step}><Text style={styles.actionText}>−</Text></Pressable>
-          <Text style={styles.actionText}>{quantity}</Text>
+          <Text style={[styles.actionText, styles.quantity]}>{quantity}</Text>
           <Pressable onPress={add} disabled={unavailable || needsSlot || atStockLimit} accessibilityRole="button" accessibilityLabel={`Add another ${option.name}, ${pack.label}`} style={styles.step}><Text style={styles.actionText}>+</Text></Pressable>
         </View> : <Pressable onPress={add} disabled={unavailable || needsSlot || atStockLimit} accessibilityRole="button"
           accessibilityLabel={`Add ${option.name}, ${pack.label} to cart`} style={[styles.addButton, (unavailable || needsSlot) && styles.disabled]}>

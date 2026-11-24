@@ -2,20 +2,21 @@
 // the empty input; the Filter action opens the order status/time sheet.
 
 import { FilterIcon, Search01Icon } from '@hugeicons/core-free-icons';
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { PurchaseSearchHint } from './PurchaseSearchHint';
 
 interface Props {
+  inputRef?: Ref<TextInput>;
   value: string;
   onChangeText: (text: string) => void;
   onOpenFilter: () => void;
   isFilterActive: boolean;
 }
 
-export function PurchaseSearchBar({ value, onChangeText, onOpenFilter, isFilterActive }: Props) {
+export function PurchaseSearchBar({ value, onChangeText, onOpenFilter, isFilterActive, inputRef }: Props) {
   const [isInputFocused, setIsInputFocused] = useState(false);
 
   return (
@@ -23,6 +24,7 @@ export function PurchaseSearchBar({ value, onChangeText, onOpenFilter, isFilterA
       <AppIcon icon={Search01Icon} size={18} color={colors.ink} />
       <View className="ml-2.5 h-full flex-1" style={{ minWidth: 0, overflow: 'hidden' }}>
         <TextInput
+          ref={inputRef}
           value={value}
           onChangeText={onChangeText}
           onFocus={() => setIsInputFocused(true)}

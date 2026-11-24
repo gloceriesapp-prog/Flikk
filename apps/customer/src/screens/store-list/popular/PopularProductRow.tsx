@@ -27,10 +27,11 @@ import { RupeePrice } from '../../../components/RupeePrice';
 import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
+import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { addToCart } from '../../../store/addToCart';
-import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut, requiresProductSelection } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
 import type { Product } from '../../home/products/types';
 
@@ -48,12 +49,12 @@ function AddControl({ product, onChooseFlavour }: { product: Product; onChooseFl
   const decrementItem = useCartStore((state) => state.decrementItem);
 
   if (product.isAvailable === false) return <Text className="text-[11px] font-bold text-[#B42318]">Out of stock</Text>;
-  if (quantity === 0) {
+  if (quantity === 0 || requiresProductSelection(product)) {
     return (
       <Pressable
         onPress={() =>
-          // Flavours / chilled-or-not: open the detail view to pick.
-          mustPickInDetail(product) ? onChooseFlavour() : addToCart({
+          // Add opens purchase choices; tapping the product opens details.
+          requiresProductSelection(product) ? onChooseFlavour() : addToCart({
             isAvailable: product.isAvailable,
             id: lineId,
             productId: product.id,
@@ -93,6 +94,7 @@ function AddControl({ product, onChooseFlavour }: { product: Product; onChooseFl
 
 export function PopularProductRow({ product, allowAdd = true, onPress }: Props) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   return (
     <>
@@ -121,7 +123,7 @@ export function PopularProductRow({ product, allowAdd = true, onPress }: Props) 
             unit (what to tap, what it costs), not two independent row
             sections that need the same breathing room as image-to-title. */}
         <View className="flex-row items-center gap-1">
-          {allowAdd ? <AddControl product={product} onChooseFlavour={onPress ?? (() => setIsDetailOpen(true))} /> : <Text className="text-[11px] font-medium text-ink/45">Closed</Text>}
+          {allowAdd ? <AddControl product={product} onChooseFlavour={() => setIsPickerOpen(true)} /> : <Text className="text-[11px] font-medium text-ink/45">Closed</Text>}
 
           {/* Right-aligned again — price belongs flush at the row's true
               end, not tucked next to AddControl — but the box is now just
@@ -143,6 +145,7 @@ export function PopularProductRow({ product, allowAdd = true, onPress }: Props) 
           </View>
         </View>
       </View>
+      <FlavourPickerSheet product={product} visible={isPickerOpen} onClose={() => setIsPickerOpen(false)} isAvailable={product.isAvailable !== false} />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>
   );
