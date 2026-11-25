@@ -26,7 +26,7 @@ it('shares one provider calculation between concurrent viewers and expires the c
   expect(await Promise.all([route(), route(), route()])).toEqual([points, points, points]);
   expect(await route()).toEqual(points);
   expect(mocks.fetchRoute).toHaveBeenCalledOnce();
-  expect(mocks.fetchRoute).toHaveBeenCalledWith(pickup, destination, 'HIGH_QUALITY');
+  expect(mocks.fetchRoute).toHaveBeenCalledWith(pickup, destination, 'HIGH_QUALITY', { travelMode: 'TWO_WHEELER', shortest: true });
   expect(mocks.claimMapsBudget).toHaveBeenCalledOnce();
 
   await vi.advanceTimersByTimeAsync(60 * 60_000);
