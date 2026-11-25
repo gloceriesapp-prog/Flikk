@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn(), promo: vi.fn(), eligibility: vi.fn(), controls: vi.fn(), slots: vi.fn() }));
+const mocks = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn(), promo: vi.fn(), eligibility: vi.fn(), controls: vi.fn(), slots: vi.fn(), catalog: vi.fn(), stores: vi.fn() }));
 vi.mock('../config/env.js', () => ({ env: { supabaseServiceRoleKey: 'test-secret' } }));
 vi.mock('./checkoutEligibilityService.js', () => ({ requireCheckoutEligibilitySnapshot: mocks.eligibility }));
-vi.mock('./checkoutCatalog.js', () => ({ loadCheckoutItems: mocks.load }));
+vi.mock('./checkoutCatalog.js', () => ({ loadCheckoutItems: mocks.load, readCheckoutCatalog: mocks.catalog }));
+vi.mock('../db/supabase.js', () => ({ supabase: { from: () => ({ select: () => ({ in: mocks.stores }) }) } }));
 vi.mock('./deliverySettings.js', () => ({ getDeliverySettings: mocks.settings }));
 vi.mock('../routes/promos.js', () => ({ lookupPromoForCheckout: mocks.promo }));
 vi.mock('./platformSettings.js', () => ({ getCheckoutControls: mocks.controls }));
 vi.mock('./preorders.js', () => ({ isMorningCart: (items: { morning_slot?: boolean }[]) => items.every((item) => item.morning_slot), activeMorningSlots: mocks.slots }));
-import { confirmCheckoutQuote, createCheckoutQuote } from './checkoutQuoteService.js';
+import { confirmCheckoutQuote, createCheckoutQuote, createGuestEstimate } from './checkoutQuoteService.js';
 const productId = '00000000-0000-4000-8000-000000000001';
 const input = [{ product_id: productId, quantity: 2, expected_unit_price: 20 }];
 beforeEach(() => {
@@ -18,6 +19,19 @@ beforeEach(() => {
   mocks.settings.mockResolvedValue({ flatDeliveryFee: 20, handlingFee: 5, freeDeliveryEnabled: false, freeDeliveryThreshold: 100 });
   mocks.promo.mockResolvedValue({ promoCodeId: 'promo', discountAmount: 10 });
   mocks.controls.mockResolvedValue({ codEnabled: true, onlinePaymentsEnabled: true, minOrderValue: 0 });
+});
+describe('guest estimate', () => {
+  it('prices the cart on the server for the pin, with no promo, tip or token', async () => {
+    mocks.catalog.mockResolvedValue([{ id: productId, price: 30 }]);
+    mocks.stores.mockResolvedValue({ data: [{ id: 'shop', lat: 13.2, lng: 74.7 }], error: null });
+    const estimate = await createGuestEstimate(input, { latitude: 13.21, longitude: 74.71 });
+    expect(mocks.load).toHaveBeenCalledWith([{ product_id: productId, variant_id: null, quantity: 2 }], undefined, [{ id: productId, price: 30 }]);
+    expect(mocks.promo).not.toHaveBeenCalled();
+    expect(estimate.bill.itemTotal).toBe(60);
+    expect(estimate.bill.discountAmount).toBe(0);
+    expect(estimate.bill.deliveryDistanceKm).not.toBeNull();
+    expect(estimate).not.toHaveProperty('token');
+  });
 });
 describe('morning slot', () => {
   it('lists morning slots only for a cart that can be booked into one', async () => {
