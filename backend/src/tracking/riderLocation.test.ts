@@ -89,7 +89,7 @@ describe('GET /orders/:id/rider-location', () => {
 
     const { body } = await call(riderLocationOrdersRouter, ORDER, 'owner', requestRoute);
     expect(mocks.deliveryRoute).toHaveBeenCalledOnce();
-    expect(mocks.deliveryRoute).toHaveBeenCalledWith(ORDER, pickup, destination);
+    expect(mocks.deliveryRoute).toHaveBeenCalledWith(ORDER, pickup, destination, false);
     expect(body.route).toEqual(points);
   });
 
@@ -100,11 +100,18 @@ describe('GET /orders/:id/rider-location', () => {
 
     rider(20);
     await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
-    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.98, longitude: 77.6 }, destination);
+    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.98, longitude: 77.6 }, destination, false);
 
     rider(RIDER_LOCATION_STALE_SECONDS + 1);
     await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
-    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.95, longitude: 77.58 }, destination);
+    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.95, longitude: 77.58 }, destination, false);
+
+    // A re-route is only asked from a fresh rider position, never the store.
+    await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1', reroute: '1' });
+    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.95, longitude: 77.58 }, destination, false);
+    rider(20);
+    await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1', reroute: '1' });
+    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.98, longitude: 77.6 }, destination, true);
   });
 
   it('never exposes rider identity or contact details', async () => {
