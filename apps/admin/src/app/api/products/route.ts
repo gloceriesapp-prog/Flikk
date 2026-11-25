@@ -15,7 +15,7 @@ import { isHomeContentKey } from '@/lib/homeContent';
 import { CatalogueSaveError, catalogueErrorStatus, resolveCatalogueCategory, resolveQuickTabCategory, saveCatalogueProduct, saveProductExtras, saveProductOptions, saveVariantMarkups } from '@/lib/catalogueSave';
 import { productColumns, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
 import { withQuickTabScope } from '@/lib/supabase/quickTabScope';
-import { toCommissionWaiver, toCutOptions, toExtraImageUrls, toProductOptions, toBrand, toCatalogueItemLink, toPreorder, toServingOptions, toUnitPriceFlag, toVariantMarkups, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+import { toCommissionWaiver, toCutOptions, toExtraImageUrls, toProductOptions, toBrand, toCatalogueItemLink, toPreorder, toMorningSlot, toServingOptions, toUnitPriceFlag, toVariantMarkups, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
 // Inventory/festival reads. Service role + admin check, not the browser anon
 // client: RLS hides pending products' sizes and inactive stores from anon.
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const extraImageUrls = toExtraImageUrls(input);
     // Validated before anything is written.
     const options = toProductOptions(input);
-    const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input), ...toCommissionWaiver(input), ...toUnitPriceFlag(input), ...toServingOptions(input), ...toPreorder(input), ...toBrand(input), ...toCatalogueItemLink(input) };
+    const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input), ...toCommissionWaiver(input), ...toUnitPriceFlag(input), ...toMorningSlot(input), ...toServingOptions(input), ...toPreorder(input), ...toBrand(input), ...toCatalogueItemLink(input) };
     const row = { ...toProductRow(input), approval_status: 'approved' };
     const variants = toVariantPayload(input.variants);
     const markups = toVariantMarkups(input.variants);

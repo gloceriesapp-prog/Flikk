@@ -59,6 +59,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     cutOptionsEnabled: false,
     waiveCommission: false,
     showUnitPrice: false,
+    morningSlot: false,
     servingOptions: [] as Serving[],
     preorderEnabled: false,
     preorderMinQty: 1,
@@ -158,6 +159,7 @@ export function AddProductModal({
         cutOptionsEnabled: draft.cutOptionsEnabled,
         waiveCommission: draft.waiveCommission,
         showUnitPrice: draft.showUnitPrice,
+        morningSlot: draft.morningSlot,
         servingOptions: draft.servingOptions,
         preorderEnabled: draft.preorderEnabled,
         preorderMinQty: draft.preorderMinQty,
@@ -295,6 +297,18 @@ export function AddProductModal({
             />
             Show price per kg / L / piece on the card (e.g. ₹63.6/kg)
           </label>
+          {!draft.preorderEnabled && <label className="flex items-start gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={draft.morningSlot ?? false}
+              onChange={(e) => setDraft({ ...draft, morningSlot: e.target.checked })}
+            />
+            <span>
+              Morning delivery slot (milk, bread, fish)
+              <span className="block text-xs text-muted">A cart of only these items from one shop can be booked for the early morning slot instead of quick delivery.</span>
+            </span>
+          </label>}
 
           {/* Same field the customer app's ProductCard reads. Optional for
               every category: left as "Not set", the product shows no
