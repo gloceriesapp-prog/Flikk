@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn(), promo: vi.fn(), eligibility: vi.fn(), controls: vi.fn() }));
+const mocks = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn(), promo: vi.fn(), eligibility: vi.fn(), controls: vi.fn(), slots: vi.fn() }));
 vi.mock('../config/env.js', () => ({ env: { supabaseServiceRoleKey: 'test-secret' } }));
 vi.mock('./checkoutEligibilityService.js', () => ({ requireCheckoutEligibilitySnapshot: mocks.eligibility }));
 vi.mock('./checkoutCatalog.js', () => ({ loadCheckoutItems: mocks.load }));
 vi.mock('./deliverySettings.js', () => ({ getDeliverySettings: mocks.settings }));
 vi.mock('../routes/promos.js', () => ({ lookupPromoForCheckout: mocks.promo }));
 vi.mock('./platformSettings.js', () => ({ getCheckoutControls: mocks.controls }));
+vi.mock('./preorders.js', () => ({ isMorningCart: (items: { morning_slot?: boolean }[]) => items.every((item) => item.morning_slot), activeMorningSlots: mocks.slots }));
 import { confirmCheckoutQuote, createCheckoutQuote } from './checkoutQuoteService.js';
 const productId = '00000000-0000-4000-8000-000000000001';
 const input = [{ product_id: productId, quantity: 2, expected_unit_price: 20 }];
@@ -17,6 +18,17 @@ beforeEach(() => {
   mocks.settings.mockResolvedValue({ flatDeliveryFee: 20, handlingFee: 5, freeDeliveryEnabled: false, freeDeliveryThreshold: 100 });
   mocks.promo.mockResolvedValue({ promoCodeId: 'promo', discountAmount: 10 });
   mocks.controls.mockResolvedValue({ codEnabled: true, onlinePaymentsEnabled: true, minOrderValue: 0 });
+});
+describe('morning slot', () => {
+  it('lists morning slots only for a cart that can be booked into one', async () => {
+    const slot = { id: 'slot', label: '7 – 9 AM', starts_minute: 420, ends_minute: 540 };
+    mocks.slots.mockResolvedValue([slot]);
+    expect((await createCheckoutQuote(input, 'customer')).morningSlots).toEqual([]);
+    expect(mocks.slots).not.toHaveBeenCalled();
+    mocks.load.mockResolvedValue([{ product_id: productId, quantity: 2, variant_id: null, store_id: 'shop',
+      unit_price_at_order: 30, unit_at_order: '500 g', variant_mrp_at_order: 35, morning_slot: true }]);
+    expect((await createCheckoutQuote(input, 'customer')).morningSlots).toEqual([slot]);
+  });
 });
 describe('quote and placement share the same server calculation', () => {
   it('returns changed catalogue prices for review without trusting the expected price', async () => {
