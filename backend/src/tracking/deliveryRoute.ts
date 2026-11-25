@@ -14,7 +14,8 @@ const routes = new Map<string, Promise<LatLng[] | null>>();
 async function loadRoute(origin: LatLng, destination: LatLng): Promise<LatLng[] | null> {
   try {
     if (await claimMapsBudget('provider') > 0) return null;
-    const route = await fetchRoute(origin, destination, 'HIGH_QUALITY', { travelMode: 'TWO_WHEELER', shortest: true });
+    // Basic car route (cheapest Routes tier): one call per delivery.
+    const route = await fetchRoute(origin, destination, 'HIGH_QUALITY');
     return route && route.points.length >= 2 ? route.points : null;
   } catch {
     // A quota store outage must not take down live order tracking.
@@ -22,17 +23,18 @@ async function loadRoute(origin: LatLng, destination: LatLng): Promise<LatLng[] 
   }
 }
 
-// `origin` is the rider's fresh position once out for delivery (else the
-// store). Keyed to a ~100 m cell so a moving rider reuses one calculation
-// per cell instead of costing a provider call per GPS ping.
+// One road route per delivery leg and address: the first request after
+// pickup computes it from the rider's position then (else the store), and
+// every later request for that leg, from any viewer or app reopen, reuses it
+// for an hour even as the rider moves. That keeps Google at about one call
+// per order; a rider who leaves the road gets the app's free dashed line.
 export function deliveryRoute(legId: string, origin: LatLng, destination: LatLng): Promise<LatLng[] | null> {
   if (!env.googleRoutesApiKey) return Promise.resolve(null);
   if (origin.latitude === destination.latitude && origin.longitude === destination.longitude) {
     return Promise.resolve(null);
   }
 
-  const cell = (value: number) => value.toFixed(3);
-  const key = [legId, cell(origin.latitude), cell(origin.longitude), destination.latitude, destination.longitude].join(':');
+  const key = [legId, destination.latitude, destination.longitude].join(':');
   const pending = routes.get(key);
   if (pending) return pending;
   if (routes.size >= MAX_ROUTES) return Promise.resolve(null);
