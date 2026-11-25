@@ -820,6 +820,10 @@
     {
       "file": "20261125090000_morning_slot.sql",
       "sha256": "07288b523a05081e40ac7c84e5e77ed38abfbcc5a88310be46960170764843aa"
+    },
+    {
+      "file": "20261126090000_delivery_routes.sql",
+      "sha256": "38d7034d219183f51cdc575bf76477be3c6eeee99c85ea8fb9f435c56271bddb"
     }
   ]
 }
