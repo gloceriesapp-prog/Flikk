@@ -45,3 +45,17 @@ export function reorderByRank<T extends { id: string }>(rankedIds: string[], row
   const rowById = new Map(rows.map((row) => [row.id, row]));
   return rankedIds.map((id) => rowById.get(id)).filter((row): row is T => row != null);
 }
+
+// Re-order tab (GET /orders/reorder-items): every product from this
+// customer's recent orders, newest order first, each product once. Unlike
+// Buy It Again it keeps orders still on the way and scheduled pre-orders.
+export function recentOrderProductIds(orders: { order_items?: { product_id: string | null }[] | null }[], limit: number): string[] {
+  const ids = new Set<string>();
+  for (const order of orders) {
+    for (const item of order.order_items ?? []) {
+      if (item.product_id) ids.add(item.product_id);
+      if (ids.size >= limit) return [...ids];
+    }
+  }
+  return [...ids];
+}

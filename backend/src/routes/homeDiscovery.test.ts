@@ -11,7 +11,7 @@ vi.mock('../customer-experience/browse.js', async (original) => ({ ...(await ori
 vi.mock('../db/supabase.js', () => ({ supabase: {
   rpc: mocks.rpc,
   from: (table: string) => {
-    const builder = { select: () => builder, eq: () => builder, in: () => builder, order: () => builder, limit: () => builder,
+    const builder = { select: () => builder, eq: () => builder, in: () => builder, order: () => builder, limit: () => builder, not: () => builder, or: () => builder, is: () => builder,
       then: (resolve: (v: unknown) => unknown) => Promise.resolve({ data: mocks.tables[table] ?? [], error: null }).then(resolve) };
     return builder;
   },
@@ -40,6 +40,19 @@ it('buy-it-again answers [] without a pin and scopes candidates to stores delive
   await get(ordersRouter, '/buy-it-again', { lat: '13.2', lng: '74.7' });
   expect(mocks.deliveryStores).toHaveBeenLastCalledWith({ lat: '13.2', lng: '74.7' });
   expect(mocks.rpc).toHaveBeenCalledWith('repeat_purchase_candidates', expect.objectContaining({ p_stores: ['s1'] }));
+});
+
+it('reorder-items lists live products from recent orders, newest first, pin-scoped', async () => {
+  mocks.deliveryStores.mockResolvedValueOnce([]);
+  expect((await get(ordersRouter, '/reorder-items')).json).toEqual([]);
+  mocks.deliveryStores.mockResolvedValueOnce(['s1']);
+  mocks.tables = {
+    orders: [{ order_items: [{ product_id: 'p2' }] }, { order_items: [{ product_id: 'p1' }, { product_id: 'p2' }] }],
+    products: [{ id: 'p1', price: 10 }, { id: 'p2', price: 20 }],
+  };
+  const { json, next } = await get(ordersRouter, '/reorder-items', { lat: '13.2', lng: '74.7' });
+  expect(next).not.toHaveBeenCalled();
+  expect(json.map((row: { id: string }) => row.id)).toEqual(['p2', 'p1']);
 });
 
 it('migration 097 keeps deactivated stores out of nearby discovery and exposes created_at', () => {
