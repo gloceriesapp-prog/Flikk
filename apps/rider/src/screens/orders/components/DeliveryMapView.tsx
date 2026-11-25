@@ -6,15 +6,16 @@
 // their fixed address, since nothing in this build has the customer's
 // device broadcasting anything.
 //
-// The line between the two pins follows the real road route (GET /rider/route
-// → Google Directions, proxied server-side). It's fetched ONCE from the first
-// GPS fix to the destination — not re-routed on every 3s tick, which would
-// burn Directions quota for a line that barely changes. Until that response
-// lands (and if routing is unavailable — no key, quota, offline) the map draws
-// the straight great-circle connector between the two pins as a fallback, so
-// the line is always present, just road-shaped once the route arrives. Real
-// turn-by-turn still hands OFF to the rider's maps app (openNavigation); this
-// in-app line is "am I roughly on track / how far," not voice nav.
+// The line between the two pins is the shared saved road route for this leg
+// (GET /rider/orders/:id/route): the very same line the customer sees on
+// their track screen. The server works each leg out once; this map asks for
+// it on the first GPS fix and then checks every ROUTE_CHECK_MS for a new
+// version (the server re-routes a rider who left the road, for both apps).
+// Neither the check nor reopening the map costs a Google call. The part of
+// the road already ridden is hidden, so the line starts at the rider. Until
+// the route lands (or if routing is unavailable) the map draws a straight
+// dashed connector. Real turn-by-turn still hands OFF to the rider's maps
+// app (openNavigation); this in-app line is "am I on track / how far".
 //
 // Camera behaviour is Uber-driver-app "nav mode", not a static both-pins
 // overview: once a fix lands, the camera follows the rider tightly zoomed
@@ -38,7 +39,8 @@ import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { GRAYSCALE_MAP_STYLE } from '../../../location/mapStyle';
 import { watchRiderLocation, type Coordinates } from '../../../location/riderLocation';
-import { fetchRoute } from '../../../api/directions';
+import { fetchOrderRoute } from '../../../api/directions';
+import { roadAhead } from './roadAhead';
 
 const DELTA = 0.01;
 // Tight nav-mode zoom once the rider's own position is known — Google Maps
@@ -56,7 +58,13 @@ const FOLLOW_ZOOM = 17;
 const HAS_IOS_GOOGLE_MAPS = Constants.expoConfig?.extra?.hasIosGoogleMaps === true;
 const USES_GOOGLE_MAPS = Platform.OS === 'android' || HAS_IOS_GOOGLE_MAPS;
 
+// How often the map checks the shared route for a re-route (no Google cost).
+const ROUTE_CHECK_MS = 20_000;
+
 interface Props {
+  // The order this map belongs to: the server keeps one shared route per
+  // order and leg (pickup for a store destination, drop for the customer).
+  orderId: string;
   // The fixed point the rider is heading to — a store (pickup leg) or the
   // customer (drop leg). destinationKind only changes the pin's look/tint,
   // not the follow-camera behaviour.
@@ -76,11 +84,12 @@ interface Props {
   onRouteInfo?: (info: { durationMin: number | null; distanceKm: number | null }) => void;
 }
 
-export function DeliveryMapView({ destination, destinationKind = 'customer', fullScreen, onRiderMove, onRouteInfo }: Props) {
+export function DeliveryMapView({ orderId, destination, destinationKind = 'customer', fullScreen, onRiderMove, onRouteInfo }: Props) {
   const mapRef = useRef<MapView>(null);
   const [riderCoords, setRiderCoords] = useState<Coordinates | null>(null);
   const [routeCoords, setRouteCoords] = useState<Coordinates[] | null>(null);
-  const routeFetchedRef = useRef(false);
+  const routeVersion = useRef<number | null>(null);
+  const hasFix = riderCoords !== null;
   const [permissionDenied, setPermissionDenied] = useState(false);
   const isStore = destinationKind === 'store';
 
@@ -128,30 +137,36 @@ export function DeliveryMapView({ destination, destinationKind = 'customer', ful
     );
   }, [riderCoords]);
 
-  // Fetch the road route ONCE, from the first fix to the destination. Guarded
-  // by a ref so the 3s GPS ticks don't re-hit Directions. On any failure the
-  // straight fallback line below just stays — routeCoords stays null — and
-  // onRouteInfo fires with nulls so the parent keeps its own flat-speed ETA.
+  // Load the shared route once the first fix is in (the server uses the
+  // rider's reported position to work it out), then check for re-routes.
+  // Only a new version redraws; a failed check keeps the current line.
   useEffect(() => {
-    if (!riderCoords || routeFetchedRef.current) return;
-    routeFetchedRef.current = true;
+    if (!hasFix) return;
     let cancelled = false;
-    fetchRoute(riderCoords, destination)
+    const leg = isStore ? 'pickup' : 'drop';
+    const load = () => fetchOrderRoute(orderId, leg)
       .then((route) => {
-        if (cancelled) return;
-        if (route.polyline.length > 0) setRouteCoords(route.polyline);
+        if (cancelled || route.version === null || route.version === routeVersion.current) {
+          if (!cancelled && route.version === null && routeVersion.current === null) onRouteInfo?.({ durationMin: null, distanceKm: null });
+          return;
+        }
+        routeVersion.current = route.version;
+        if (route.polyline.length >= 2) setRouteCoords(route.polyline);
         onRouteInfo?.({ durationMin: route.durationMin, distanceKm: route.distanceKm });
       })
       .catch(() => {
-        if (!cancelled) onRouteInfo?.({ durationMin: null, distanceKm: null });
+        if (!cancelled && routeVersion.current === null) onRouteInfo?.({ durationMin: null, distanceKm: null });
       });
+    void load();
+    const timer = setInterval(() => { void load(); }, ROUTE_CHECK_MS);
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
     // onRouteInfo intentionally excluded — an inline fn from the parent must
-    // not re-trigger the one-shot route fetch on every render.
+    // not restart the route checks on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [riderCoords, destination]);
+  }, [hasFix, orderId, isStore]);
 
   if (permissionDenied) {
     return (
@@ -174,7 +189,7 @@ export function DeliveryMapView({ destination, destinationKind = 'customer', ful
       >
         {riderCoords ? (
           <Polyline
-            coordinates={routeCoords ?? [riderCoords, destination]}
+            coordinates={routeCoords ? roadAhead(routeCoords, riderCoords) : [riderCoords, destination]}
             strokeColor={isStore ? colors.limeDeep : colors.coral}
             strokeWidth={3}
             lineDashPattern={routeCoords ? undefined : [8, 6]}

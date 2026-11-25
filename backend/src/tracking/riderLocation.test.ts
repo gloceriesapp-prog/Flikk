@@ -3,12 +3,12 @@ import type { RequestHandler, Response, Router } from 'express';
 import type { AuthedRequest } from '../middleware/auth.js';
 
 const mocks = vi.hoisted(() => ({
-  deliveryRoute: vi.fn(),
+  legRoute: vi.fn(),
   rows: new Map<string, Record<string, unknown>[]>(),
   selects: [] as { table: string; select: string }[],
   errors: new Map<string, { message: string }>(),
 }));
-vi.mock('./deliveryRoute.js', () => ({ deliveryRoute: mocks.deliveryRoute }));
+vi.mock('./legRoutes.js', () => ({ legRoute: mocks.legRoute }));
 vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn() }));
 vi.mock('../db/supabase.js', () => ({ supabase: { from: (table: string) => {
   const filters: [string, unknown][] = [];
@@ -52,7 +52,7 @@ function rider(secondsAgo: number | null, extra: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(NOW);
-  mocks.deliveryRoute.mockReset();
+  mocks.legRoute.mockReset();
   mocks.rows.clear(); mocks.selects.length = 0; mocks.errors.clear();
 });
 afterEach(() => { vi.useRealTimers(); });
@@ -65,6 +65,8 @@ describe('GET /orders/:id/rider-location', () => {
     expect(res.set).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
     expect(body).toEqual({
       active: true,
+      leg: 'drop',
+      route_version: null,
       rider_location: { lat: 12.98, lng: 77.6, updated_at: ago(20), age_seconds: 20, stale: false },
       destination: { lat: 12.97, lng: 77.59 },
       pickup: { lat: 12.95, lng: 77.58 },
@@ -72,46 +74,41 @@ describe('GET /orders/:id/rider-location', () => {
     });
   });
 
-  it('only calculates a route for the owner after pickup and outside GPS polling', async () => {
-    const pickup = { latitude: 12.95, longitude: 77.58 };
-    const destination = { latitude: 12.97, longitude: 77.59 };
-    const points = [pickup, destination];
-    mocks.deliveryRoute.mockResolvedValue(points);
-    const stores = { lat: pickup.latitude, lng: pickup.longitude };
-    const requestRoute = { route: '1' };
+  it('uses the shared leg route: rider -> store before pickup, rider -> customer after', async () => {
+    const store = { latitude: 12.95, longitude: 77.58 };
+    const home = { latitude: 12.97, longitude: 77.59 };
+    const riderAt = { latitude: 12.98, longitude: 77.6 };
+    mocks.legRoute.mockResolvedValue({ leg: 'pickup', points: [riderAt, store], version: 2, distanceM: 900, durationS: 180 });
+    const stores = { lat: store.latitude, lng: store.longitude };
+    rider(20);
 
-    order('packed', { stores });
-    await call(riderLocationOrdersRouter, ORDER, 'owner', requestRoute);
+    // A rider heading to the store: their position and the pickup route.
+    order('packed', { stores, picked_up_at: null });
+    let { body } = await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
+    expect(mocks.legRoute).toHaveBeenLastCalledWith(ORDER, 'pickup', riderAt, store, { point: riderAt, at: ago(20) }, true);
+    expect(body).toMatchObject({ active: true, leg: 'pickup', route_version: 2, route: [riderAt, store], rider_location: { lat: 12.98 } });
+
+    // The light poll checks the route (version) without asking for points.
+    ({ body } = await call(riderLocationOrdersRouter, ORDER));
+    expect(mocks.legRoute).toHaveBeenLastCalledWith(ORDER, 'pickup', riderAt, store, { point: riderAt, at: ago(20) }, false);
+    expect(body).not.toHaveProperty('route');
+
+    // After pickup: the drop leg, from the rider to the customer.
     order('out_for_delivery', { stores });
-    await call(riderLocationOrdersRouter, ORDER, 'another-customer', requestRoute);
-    await call(riderLocationOrdersRouter, ORDER);
-    expect(mocks.deliveryRoute).not.toHaveBeenCalled();
+    await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
+    expect(mocks.legRoute).toHaveBeenLastCalledWith(ORDER, 'drop', riderAt, home, { point: riderAt, at: ago(20) }, true);
 
-    const { body } = await call(riderLocationOrdersRouter, ORDER, 'owner', requestRoute);
-    expect(mocks.deliveryRoute).toHaveBeenCalledOnce();
-    expect(mocks.deliveryRoute).toHaveBeenCalledWith(ORDER, pickup, destination, false);
-    expect(body.route).toEqual(points);
+    // Another customer never reaches the route.
+    mocks.legRoute.mockClear();
+    await call(riderLocationOrdersRouter, ORDER, 'another-customer', { route: '1' });
+    expect(mocks.legRoute).not.toHaveBeenCalled();
   });
 
-  it('routes from the rider\'s fresh position, falling back to the store when GPS is stale', async () => {
-    const destination = { latitude: 12.97, longitude: 77.59 };
-    mocks.deliveryRoute.mockResolvedValue(null);
+  it('drops from the store when the rider GPS is stale, with no fix to judge the road by', async () => {
     order('out_for_delivery', { stores: { lat: 12.95, lng: 77.58 } });
-
-    rider(20);
-    await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
-    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.98, longitude: 77.6 }, destination, false);
-
     rider(RIDER_LOCATION_STALE_SECONDS + 1);
     await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
-    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.95, longitude: 77.58 }, destination, false);
-
-    // A re-route is only asked from a fresh rider position, never the store.
-    await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1', reroute: '1' });
-    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.95, longitude: 77.58 }, destination, false);
-    rider(20);
-    await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1', reroute: '1' });
-    expect(mocks.deliveryRoute).toHaveBeenLastCalledWith(ORDER, { latitude: 12.98, longitude: 77.6 }, destination, true);
+    expect(mocks.legRoute).toHaveBeenLastCalledWith(ORDER, 'drop', { latitude: 12.95, longitude: 77.58 }, { latitude: 12.97, longitude: 77.59 }, null, true);
   });
 
   it('never exposes rider identity or contact details', async () => {
@@ -138,8 +135,8 @@ describe('GET /orders/:id/rider-location', () => {
     expect(mocks.selects).toHaveLength(0);
   });
 
-  it.each(['placed', 'packed'])('returns only the pins before pickup (%s)', async status => {
-    order(status, { picked_up_at: null, stores: { lat: 12.95, lng: 77.58 } }); rider(5);
+  it.each(['placed', 'packed'])('returns only the pins before a rider is assigned (%s)', async status => {
+    order(status, { picked_up_at: null, rider_id: null, stores: { lat: 12.95, lng: 77.58 } }); rider(5);
     const { body } = await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
     expect(body).toEqual({
       active: false, rider_location: null,
@@ -147,7 +144,7 @@ describe('GET /orders/:id/rider-location', () => {
       stale_after_seconds: RIDER_LOCATION_STALE_SECONDS,
     });
     expect(mocks.selects.some(s => s.table === 'riders')).toBe(false);
-    expect(mocks.deliveryRoute).not.toHaveBeenCalled();
+    expect(mocks.legRoute).not.toHaveBeenCalled();
   });
 
   it.each(['delivered', 'failed', 'cancelled'])('returns null once the order is %s', async status => {
@@ -224,18 +221,19 @@ describe('GET /trips/:id/rider-location', () => {
     expect(mocks.selects.map(s => s.table)).toEqual(['trips']);
   });
 
-  it('shows the remaining store pins during pickup and clears them after delivery', async () => {
+  it('shows the rider heading to the next store, pins only without a rider, and clears after delivery', async () => {
     legs(
       { status: 'out_for_delivery' },
       { status: 'packed', picked_up_at: null, stores: { lat: 12.93, lng: 77.57 } },
     );
     rider(10);
     const { body } = await call(riderLocationTripsRouter, TRIP, 'owner', { route: '1' });
-    expect(body).toMatchObject({
-      active: false, rider_location: null,
-      pickup: { lat: 12.93, lng: 77.57 }, destination: { lat: 12.97, lng: 77.59 },
-    });
-    expect(mocks.deliveryRoute).not.toHaveBeenCalled();
+    expect(body).toMatchObject({ active: true, leg: 'pickup', pickup: { lat: 12.93, lng: 77.57 }, rider_location: { lat: 12.98 } });
+    expect(mocks.legRoute).toHaveBeenLastCalledWith('leg-1', 'pickup', { latitude: 12.98, longitude: 77.6 }, { latitude: 12.93, longitude: 77.57 }, expect.anything(), true);
+
+    legs({ status: 'packed', picked_up_at: null, rider_id: null, stores: { lat: 12.93, lng: 77.57 } });
+    expect((await call(riderLocationTripsRouter, TRIP)).body).toMatchObject({ active: false, rider_location: null, pickup: { lat: 12.93, lng: 77.57 } });
+    mocks.selects.length = 0;
     legs({ status: 'delivered' }, { status: 'delivered' });
     expect((await call(riderLocationTripsRouter, TRIP)).body).toMatchObject({ active: false, rider_location: null });
     expect(mocks.selects.some(s => s.table === 'riders')).toBe(false);

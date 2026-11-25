@@ -5,12 +5,14 @@
 // rules are deliberately narrow:
 //   * the caller must be the order's / trip's own customer (404 otherwise,
 //     same as GET /orders/:id/live — existence is never confirmed);
-//   * before pickup, return only the store and delivery pins;
-//   * a rider position is only returned while the order (or, for a trip, a leg) is
-//     out_for_delivery — never while placed/packed (the rider may still be
-//     at home or on another job) and never after delivered/failed/cancelled;
-//   * a ping older than the leg's picked_up_at is withheld too, so the first
-//     poll after pickup can't reveal where the rider was beforehand;
+//   * before a rider is assigned, return only the store and delivery pins;
+//   * once a rider is assigned to this order (heading to the store) and
+//     while it is out_for_delivery, return the rider's position and the
+//     shared road route for that leg (legRoutes.ts: pickup = rider -> store,
+//     drop = rider -> customer), the same route the rider app draws; never
+//     after delivered/failed/cancelled;
+//   * after pickup, a ping older than picked_up_at is withheld, so the first
+//     drop-leg poll can't show a position from before pickup;
 //   * positions older than the dispatch freshness window are flagged stale.
 // The payload carries coordinates and timestamps only — no rider id, name,
 // phone or status; the track screen already has the rider card for that.
@@ -18,7 +20,7 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import type { LatLng } from '../lib/routeDirections.js';
-import { deliveryRoute } from './deliveryRoute.js';
+import { legRoute, type Leg } from './legRoutes.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 
 // Same window every dispatch RPC treats as "fresh" (rider_dispatch_offers /
@@ -33,8 +35,13 @@ export interface RiderLocation extends Coordinates {
   stale: boolean;
 }
 export interface RiderLocationResponse {
-  // true only while an out_for_delivery order/leg exists for this customer.
+  // true while a rider is heading to the store or out for delivery.
   active: boolean;
+  // Which leg the map shows: rider -> store, or rider -> customer.
+  leg?: Leg | null;
+  // Version of that leg's saved route; it changes when the rider is
+  // re-routed, telling the app to fetch the route again (?route=1).
+  route_version?: number | null;
   rider_location: RiderLocation | null;
   // The order's own delivery-address pin (the customer's own data), so the
   // map can frame rider + destination without another detail fetch.
@@ -50,7 +57,7 @@ interface AddressSource { delivery_address_at_order?: unknown; addresses?: unkno
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const unavailable = () => new AppError(503, 'TRACKING_UNAVAILABLE', 'Tracking is temporarily unavailable. Please retry.');
 const inactive = (): RiderLocationResponse => ({ active: false, rider_location: null, destination: null, stale_after_seconds: RIDER_LOCATION_STALE_SECONDS });
-const isBeforePickup = (status: string) => status === 'placed' || status === 'packed';
+export const isBeforePickup = (status: string) => status === 'placed' || status === 'packed';
 
 // numeric columns can arrive as strings; (0,0) is a never-set GPS default.
 export function toCoordinates(lat: unknown, lng: unknown): Coordinates | null {
@@ -73,7 +80,7 @@ export function destinationOf(row: AddressSource): Coordinates | null {
   return null;
 }
 
-function pickupOf(stores: StoreCoordinates | StoreCoordinates[] | null): Coordinates | null {
+export function pickupOf(stores: StoreCoordinates | StoreCoordinates[] | null): Coordinates | null {
   const store = Array.isArray(stores) ? stores[0] : stores;
   return toCoordinates(store?.lat, store?.lng);
 }
@@ -95,7 +102,7 @@ export function riderLocationView(rider: RiderRow | null, pickedUpAt: string | n
   return { ...coords, updated_at: new Date(updated).toISOString(), age_seconds: age, stale: age > RIDER_LOCATION_STALE_SECONDS };
 }
 
-async function readRider(riderId: string): Promise<RiderRow | null> {
+export async function readRider(riderId: string): Promise<RiderRow | null> {
   const { data, error } = await supabase.from('riders')
     .select('current_lat,current_lng,last_location_update').eq('user_id', riderId).maybeSingle();
   if (error) throw unavailable();
@@ -107,21 +114,25 @@ function send(res: import('express').Response, body: RiderLocationResponse) {
   res.json(body);
 }
 
-// Route geometry is opt-in so the ten-second GPS poll stays lightweight.
-// It runs from the rider's fresh position to the customer, so the line
-// always starts where the rider is; the store is only the fallback origin.
-// ?route=1 returns the delivery's road route; ?route=1&reroute=1 asks for a
-// fresh one from the rider's position (bounded in deliveryRoute).
-async function withRoute(query: AuthedRequest['query'], legId: string, body: RiderLocationResponse): Promise<RiderLocationResponse> {
-  const { pickup, destination, rider_location: rider } = body;
-  const origin = rider && !rider.stale ? rider : pickup;
-  if (query.route !== '1' || !origin || !destination) return body;
-  const route = await deliveryRoute(legId,
-    { latitude: origin.lat, longitude: origin.lng },
-    { latitude: destination.lat, longitude: destination.lng },
-    query.reroute === '1' && !!rider && !rider.stale,
+// One leg's tracking payload. The route itself (points) is opt-in with
+// ?route=1 so the five-second position poll stays light; every poll still
+// checks the rider against the saved road (re-routing if they left it) and
+// returns its version.
+async function legPayload(query: AuthedRequest['query'], orderId: string, leg: Leg, rider: RiderLocation | null,
+  pickup: Coordinates | null, destination: Coordinates | null): Promise<RiderLocationResponse> {
+  const body: RiderLocationResponse = { active: true, leg, rider_location: rider, destination, pickup, route_version: null, stale_after_seconds: RIDER_LOCATION_STALE_SECONDS };
+  const target = leg === 'pickup' ? pickup : destination;
+  if (!target) return body;
+  const fresh = rider && !rider.stale ? rider : null;
+  // Pickup starts at the rider; drop starts at the rider, else the store.
+  const origin = fresh ?? (leg === 'drop' ? pickup : null);
+  const route = await legRoute(orderId, leg,
+    origin ? { latitude: origin.lat, longitude: origin.lng } : null,
+    { latitude: target.lat, longitude: target.lng },
+    fresh ? { point: { latitude: fresh.lat, longitude: fresh.lng }, at: fresh.updated_at } : null,
+    query.route === '1',
   );
-  return { ...body, route };
+  return { ...body, route_version: route?.version ?? null, ...(query.route === '1' ? { route: route?.points ?? null } : {}) };
 }
 
 export const riderLocationOrdersRouter = Router();
@@ -136,16 +147,12 @@ riderLocationOrdersRouter.get('/:id/rider-location', requireAuth, requireRole('c
       .eq('id', id).eq('customer_id', req.user!.id).maybeSingle();
     if (error) throw unavailable();
     if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
-    if (isBeforePickup(order.status)) return send(res, beforePickup(order, order.stores));
-    if (order.status !== 'out_for_delivery') return send(res, inactive());
-    const rider = order.rider_id ? await readRider(order.rider_id) : null;
-    send(res, await withRoute(req.query, order.id, {
-      active: true,
-      rider_location: riderLocationView(rider, order.picked_up_at),
-      destination: destinationOf(order),
-      pickup: pickupOf(order.stores),
-      stale_after_seconds: RIDER_LOCATION_STALE_SECONDS,
-    }));
+    if (isBeforePickup(order.status) && !order.rider_id) return send(res, beforePickup(order, order.stores));
+    if (!isBeforePickup(order.status) && order.status !== 'out_for_delivery') return send(res, inactive());
+    const leg: Leg = isBeforePickup(order.status) ? 'pickup' : 'drop';
+    const rider = await readRider(order.rider_id!);
+    send(res, await legPayload(req.query, order.id, leg, riderLocationView(rider, leg === 'drop' ? order.picked_up_at : null),
+      pickupOf(order.stores), destinationOf(order)));
   } catch (err) { next(err); }
 });
 
@@ -169,19 +176,16 @@ riderLocationTripsRouter.get('/:id/rider-location', requireAuth, requireRole('cu
       const pending = pendingLegs.find(l => l.status === 'packed' && pickupOf(l.stores))
         ?? pendingLegs.find(l => pickupOf(l.stores))
         ?? firstPending;
-      return send(res, beforePickup(trip, pending.stores));
+      // A rider heading to this store: rider -> store leg, same as the rider app.
+      if (!pending.rider_id) return send(res, beforePickup(trip, pending.stores));
+      const rider = await readRider(pending.rider_id);
+      return send(res, await legPayload(req.query, pending.id, 'pickup', riderLocationView(rider, null), pickupOf(pending.stores), destinationOf(trip)));
     }
     // After all pickups, use the most recent pickup that has a rider.
     const activeLegs = (legs ?? []).filter(l => l.status === 'out_for_delivery');
     const leg = activeLegs.find(l => l.rider_id) ?? activeLegs[0];
     if (!leg) return send(res, inactive());
     const rider = leg.rider_id ? await readRider(leg.rider_id) : null;
-    send(res, await withRoute(req.query, leg.id, {
-      active: true,
-      rider_location: riderLocationView(rider, leg.picked_up_at),
-      destination: destinationOf(trip),
-      pickup: pickupOf(leg.stores),
-      stale_after_seconds: RIDER_LOCATION_STALE_SECONDS,
-    }));
+    send(res, await legPayload(req.query, leg.id, 'drop', riderLocationView(rider, leg.picked_up_at), pickupOf(leg.stores), destinationOf(trip)));
   } catch (err) { next(err); }
 });
