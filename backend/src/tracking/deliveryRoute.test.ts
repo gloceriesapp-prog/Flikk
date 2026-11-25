@@ -26,7 +26,7 @@ it('shares one provider calculation between concurrent viewers and expires the c
   expect(await Promise.all([route(), route(), route()])).toEqual([points, points, points]);
   expect(await route()).toEqual(points);
   expect(mocks.fetchRoute).toHaveBeenCalledOnce();
-  expect(mocks.fetchRoute).toHaveBeenCalledWith(pickup, destination, 'HIGH_QUALITY', { travelMode: 'TWO_WHEELER', shortest: true });
+  expect(mocks.fetchRoute).toHaveBeenCalledWith(pickup, destination, 'HIGH_QUALITY');
   expect(mocks.claimMapsBudget).toHaveBeenCalledOnce();
 
   await vi.advanceTimersByTimeAsync(60 * 60_000);
@@ -46,11 +46,15 @@ it('keeps the provider quota failure off the tracking path and throttles retries
   expect(mocks.fetchRoute).toHaveBeenCalledOnce();
 });
 
-it('reuses one calculation while the rider moves within the same ~100 m cell', async () => {
+it('costs one provider call per delivery however far the rider moves', async () => {
   const route = (latitude: number) => deliveryRoute('leg-c', { latitude, longitude: 74.74 }, destination);
   await route(13.3301);
   await route(13.3304);
-  expect(mocks.fetchRoute).toHaveBeenCalledOnce();
   await route(13.3321);
+  await route(13.3389);
+  expect(mocks.fetchRoute).toHaveBeenCalledOnce();
+  expect(mocks.fetchRoute).toHaveBeenCalledWith({ latitude: 13.3301, longitude: 74.74 }, destination, 'HIGH_QUALITY');
+  // A different leg (another order) is its own route.
+  await deliveryRoute('leg-d', { latitude: 13.3301, longitude: 74.74 }, destination);
   expect(mocks.fetchRoute).toHaveBeenCalledTimes(2);
 });
