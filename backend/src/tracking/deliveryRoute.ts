@@ -14,7 +14,7 @@ const routes = new Map<string, Promise<LatLng[] | null>>();
 async function loadRoute(origin: LatLng, destination: LatLng): Promise<LatLng[] | null> {
   try {
     if (await claimMapsBudget('provider') > 0) return null;
-    const route = await fetchRoute(origin, destination, 'HIGH_QUALITY');
+    const route = await fetchRoute(origin, destination, 'HIGH_QUALITY', { travelMode: 'TWO_WHEELER', shortest: true });
     return route && route.points.length >= 2 ? route.points : null;
   } catch {
     // A quota store outage must not take down live order tracking.
