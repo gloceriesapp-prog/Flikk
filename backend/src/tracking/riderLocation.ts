@@ -110,13 +110,16 @@ function send(res: import('express').Response, body: RiderLocationResponse) {
 // Route geometry is opt-in so the ten-second GPS poll stays lightweight.
 // It runs from the rider's fresh position to the customer, so the line
 // always starts where the rider is; the store is only the fallback origin.
-async function withRoute(requested: boolean, legId: string, body: RiderLocationResponse): Promise<RiderLocationResponse> {
+// ?route=1 returns the delivery's road route; ?route=1&reroute=1 asks for a
+// fresh one from the rider's position (bounded in deliveryRoute).
+async function withRoute(query: AuthedRequest['query'], legId: string, body: RiderLocationResponse): Promise<RiderLocationResponse> {
   const { pickup, destination, rider_location: rider } = body;
   const origin = rider && !rider.stale ? rider : pickup;
-  if (!requested || !origin || !destination) return body;
+  if (query.route !== '1' || !origin || !destination) return body;
   const route = await deliveryRoute(legId,
     { latitude: origin.lat, longitude: origin.lng },
     { latitude: destination.lat, longitude: destination.lng },
+    query.reroute === '1' && !!rider && !rider.stale,
   );
   return { ...body, route };
 }
@@ -136,7 +139,7 @@ riderLocationOrdersRouter.get('/:id/rider-location', requireAuth, requireRole('c
     if (isBeforePickup(order.status)) return send(res, beforePickup(order, order.stores));
     if (order.status !== 'out_for_delivery') return send(res, inactive());
     const rider = order.rider_id ? await readRider(order.rider_id) : null;
-    send(res, await withRoute(req.query.route === '1', order.id, {
+    send(res, await withRoute(req.query, order.id, {
       active: true,
       rider_location: riderLocationView(rider, order.picked_up_at),
       destination: destinationOf(order),
@@ -173,7 +176,7 @@ riderLocationTripsRouter.get('/:id/rider-location', requireAuth, requireRole('cu
     const leg = activeLegs.find(l => l.rider_id) ?? activeLegs[0];
     if (!leg) return send(res, inactive());
     const rider = leg.rider_id ? await readRider(leg.rider_id) : null;
-    send(res, await withRoute(req.query.route === '1', leg.id, {
+    send(res, await withRoute(req.query, leg.id, {
       active: true,
       rider_location: riderLocationView(rider, leg.picked_up_at),
       destination: destinationOf(trip),
