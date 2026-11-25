@@ -54,19 +54,41 @@ export function preorderWindow(request: PreorderRequest, slot: PreorderSlot | nu
   };
 }
 
+// Morning slot (migration 20261125090000): a cart of only morning_slot
+// products (milk, bread, fish…) from one shop may be booked, with no notice,
+// into a slot that ends by 10:00 AM IST instead of quick delivery.
+export const MORNING_SLOT_ENDS_BY = 600;
+export const isMorningSlot = (slot: PreorderSlot) => slot.ends_minute <= MORNING_SLOT_ENDS_BY;
+export function isMorningCart(items: Pick<PricedCheckoutItem, 'preorder_lead_days' | 'morning_slot' | 'store_id'>[]): boolean {
+  return items.length > 0 && items.every((item) => item.preorder_lead_days == null && item.morning_slot)
+    && new Set(items.map((item) => item.store_id)).size === 1;
+}
+export async function activeMorningSlots(): Promise<PreorderSlot[]> {
+  const { data, error } = await supabase.from('preorder_slots').select(PREORDER_SLOT_SELECT).eq('is_active', true).order('sort_order');
+  if (error) throw error;
+  return ((data ?? []) as PreorderSlot[]).filter(isMorningSlot);
+}
+
+async function activeSlot(id: string): Promise<PreorderSlot | null> {
+  const { data, error } = await supabase.from('preorder_slots').select(PREORDER_SLOT_SELECT)
+    .eq('id', id).eq('is_active', true).maybeSingle();
+  if (error) throw error;
+  return data as PreorderSlot | null;
+}
+
 // The order's delivery window, or null for an ordinary (instant) cart.
 export async function resolvePreorder(input: unknown, items: PricedCheckoutItem[], now = new Date()) {
   const request = parsePreorder(input);
   const leads = items.map((item) => item.preorder_lead_days);
   if (leads.every((lead) => lead == null)) {
-    if (request) throw new AppError(400, 'PREORDER_NOT_ALLOWED', 'Only Pre-order section items can be scheduled. Refresh your cart.');
-    return null;
+    if (!request) return null;
+    if (!isMorningCart(items)) throw new AppError(400, 'PREORDER_NOT_ALLOWED', 'Only Pre-order and morning delivery items can be scheduled. Refresh your cart.');
+    const slot = await activeSlot(request.slot_id);
+    if (slot && !isMorningSlot(slot)) throw new AppError(409, 'MORNING_SLOT_ONLY', 'Choose a morning slot for these items.');
+    return preorderWindow(request, slot, 0, now);
   }
   if (!request) throw new AppError(400, 'PREORDER_SLOT_REQUIRED', 'Choose a delivery day and time slot for your pre-order. Update the app if you cannot see slots.');
-  const { data, error } = await supabase.from('preorder_slots').select(PREORDER_SLOT_SELECT)
-    .eq('id', request.slot_id).eq('is_active', true).maybeSingle();
-  if (error) throw error;
-  return preorderWindow(request, data as PreorderSlot | null, Math.max(...leads.map(Number)), now);
+  return preorderWindow(request, await activeSlot(request.slot_id), Math.max(...leads.map(Number)), now);
 }
 
 // "Fri 7 Nov, 7:00 – 9:00 am" in India time, for store alerts.

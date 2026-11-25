@@ -396,6 +396,9 @@ export interface Product {
   waiveCommission?: boolean;
   // Card shows the price per kg / L / piece (products.show_unit_price).
   showUnitPrice?: boolean;
+  // Can be booked into the early morning slot (products.morning_slot):
+  // milk, bread, fish. Not for pre-order-only products.
+  morningSlot?: boolean;
   // Drinks: sold chilled, at room temperature, or both (customer picks)
   // (products.serving_options). Empty = no choice shown.
   servingOptions?: Serving[];

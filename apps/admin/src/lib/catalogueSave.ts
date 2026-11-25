@@ -48,6 +48,7 @@ export interface ProductExtras {
   bulk_min_kg?: number | null;
   waive_commission?: boolean;
   show_unit_price?: boolean;
+  morning_slot?: boolean;
   serving_options?: string[];
   preorder_enabled?: boolean;
   preorder_min_qty?: number;

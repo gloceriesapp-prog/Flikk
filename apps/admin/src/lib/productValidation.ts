@@ -49,6 +49,7 @@ export interface ProductWriteInput {
   waiveCommission?: boolean | null;
   // Price per kg / L / piece on the card. Absent leaves it unchanged.
   showUnitPrice?: boolean | null;
+  morningSlot?: boolean | null;
   // Chilled / room temperature offered. Absent leaves it unchanged.
   servingOptions?: string[] | null;
   // Pre-order only + its bulk minimum and days of notice. Absent leaves them unchanged.
@@ -237,6 +238,14 @@ export function toUnitPriceFlag(input: Pick<ProductWriteInput, 'showUnitPrice'>)
   if (input.showUnitPrice == null) return undefined;
   if (typeof input.showUnitPrice !== 'boolean') throw new Error('showUnitPrice must be true or false.');
   return { show_unit_price: input.showUnitPrice };
+}
+
+// Morning slot (migration 20261125090000): a pre-order-only product already
+// has its own slots, so it is never also a morning item.
+export function toMorningSlot(input: Pick<ProductWriteInput, 'morningSlot' | 'preorderEnabled'>): { morning_slot: boolean } | undefined {
+  if (input.morningSlot == null) return undefined;
+  if (typeof input.morningSlot !== 'boolean') throw new Error('morningSlot must be true or false.');
+  return { morning_slot: input.morningSlot && input.preorderEnabled !== true };
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -816,6 +816,10 @@
     {
       "file": "20261123120000_checkout_fee_display.sql",
       "sha256": "0bdf0b9fed0a040c2f40312d1935d41a1c78ba599915f28d6080e53c0c215702"
+    },
+    {
+      "file": "20261125090000_morning_slot.sql",
+      "sha256": "07288b523a05081e40ac7c84e5e77ed38abfbcc5a88310be46960170764843aa"
     }
   ]
 }

@@ -28,6 +28,8 @@ export interface CheckoutProduct extends CartProduct {
   preorder_enabled?: boolean | null;
   preorder_min_qty?: number | null;
   preorder_lead_days?: number | null;
+  // Milk, bread, fish…: may be booked into a morning slot (lib/preorders.ts).
+  morning_slot?: boolean | null;
 }
 export interface PricedCheckoutItem extends CartItem {
   store_id: string;
@@ -45,6 +47,7 @@ export interface PricedCheckoutItem extends CartItem {
   bulk: boolean;
   // Days of notice for a pre-order product; null = instant delivery.
   preorder_lead_days: number | null;
+  morning_slot: boolean;
 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -130,7 +133,8 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
       unit_at_order: variant ? `${Number(variant.quantity)} ${variant.unit_type === 'l' ? 'L' : variant.unit_type}` : product.unit ?? '',
       variant_mrp_at_order: Math.max(price, Number(mrp ?? price)),
       cut_size: cutSize, option_id: optionId, serving, bulk: false,
-      preorder_lead_days: product.preorder_enabled ? Number(product.preorder_lead_days ?? 1) : null });
+      preorder_lead_days: product.preorder_enabled ? Number(product.preorder_lead_days ?? 1) : null,
+      morning_slot: product.morning_slot === true });
   }
   const priced = [...lines.values()];
   const flavourTotals = new Map<string, number>();

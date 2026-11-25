@@ -36,6 +36,7 @@ export interface ProductRow {
   cut_options_enabled: boolean | null;
   waive_commission: boolean | null;
   show_unit_price: boolean | null;
+  morning_slot?: boolean | null;
   serving_options?: Serving[] | null;
   preorder_enabled?: boolean | null;
   preorder_min_qty?: number | null;
@@ -66,7 +67,7 @@ export interface ProductRow {
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, serving_options, preorder_enabled, preorder_min_qty, preorder_lead_days, brand_id, brands(name), bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, quick_tab_key, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(stock_quantity, id, name, image_url, extra_image_urls, price_overrides, sort_order, is_available)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, morning_slot, serving_options, preorder_enabled, preorder_min_qty, preorder_lead_days, brand_id, brands(name), bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, quick_tab_key, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(stock_quantity, id, name, image_url, extra_image_urls, price_overrides, sort_order, is_available)';
 
 export function productColumns(scoped: boolean) {
   return scoped ? PRODUCT_SELECT : PRODUCT_SELECT.replace(', quick_tab_key', '');
@@ -156,6 +157,7 @@ export function mapRowToProduct(row: ProductRow): Product {
     cutOptionsEnabled: row.cut_options_enabled === true,
     waiveCommission: row.waive_commission === true,
     showUnitPrice: row.show_unit_price === true,
+    morningSlot: row.morning_slot === true,
     servingOptions: row.serving_options ?? [],
     preorderEnabled: row.preorder_enabled === true,
     preorderMinQty: row.preorder_min_qty ?? 1,

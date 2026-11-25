@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_EXTRA_IMAGES, toProductOptions, toBrand, toCatalogueItemLink, toPreorder, toExtraImageUrls, validateProductInput } from './productValidation';
+import { MAX_EXTRA_IMAGES, toProductOptions, toBrand, toCatalogueItemLink, toPreorder, toMorningSlot, toExtraImageUrls, validateProductInput } from './productValidation';
 
 const cover = 'https://cdn.example/a.webp';
 
@@ -136,4 +136,12 @@ test('flavour galleries retain order, normalize duplicates and support explicit 
   assert.throws(() => toProductOptions({ options: [{ name: 'Mango', extraImageUrls: ['https://cdn.example/b.webp'] }] }));
   assert.throws(() => toProductOptions({ options: [{ ...base, extraImageUrls: ['javascript:alert(1)'] }] }));
   assert.throws(() => toProductOptions({ options: [{ ...base, extraImageUrls: Array.from({ length: 8 }, (_, i) => `https://cdn.example/${i}.webp`) }] }));
+});
+
+test('morning slot: optional flag, never on a pre-order-only product', () => {
+  assert.equal(toMorningSlot({}), undefined);
+  assert.deepEqual(toMorningSlot({ morningSlot: true }), { morning_slot: true });
+  assert.deepEqual(toMorningSlot({ morningSlot: true, preorderEnabled: true }), { morning_slot: false });
+  assert.deepEqual(toMorningSlot({ morningSlot: false }), { morning_slot: false });
+  assert.throws(() => toMorningSlot({ morningSlot: 'yes' as unknown as boolean }), /true or false/);
 });
