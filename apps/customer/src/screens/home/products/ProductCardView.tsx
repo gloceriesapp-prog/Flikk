@@ -102,7 +102,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
     <Pressable onPress={onPress} className={`${widthClassName} gap-0`}>
 
       {showImage && (
-        <View className="relative mb-2">
+        <View className="relative mb-1">
           <View testID={`product-image-${id}`} className="relative w-full" style={{ aspectRatio: 4 / 4.5 }}
             onLayout={event => setImageWidth(previous => Math.abs(previous - event.nativeEvent.layout.width) < 0.5 ? previous : event.nativeEvent.layout.width)}>
             {imageWidth > 0 && <NotchedProductGallery key={`${id}:${photos.join('|')}:${imageWidth}`}
@@ -122,8 +122,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
       <View className="gap-1 px-0.5 pt-0">
         <View className={showImage ? 'pr-12' : undefined} style={{ minHeight: 18, marginBottom: -4 }}>
           {weight.trim() ? <Text numberOfLines={1} className={`text-[12px] font-semibold ${onDark ? 'text-white/80' : ''}`}
-            style={{ alignSelf: 'flex-start', maxWidth: '100%', borderWidth: 1, borderColor: '#155DFC', borderRadius: 5,
-              paddingHorizontal: 5, paddingVertical: 1, lineHeight: 14, color: onDark ? '#FFFFFFCC' : actionColors.fill }}>{weight}</Text> : null}
+            style={{ alignSelf: 'flex-start', maxWidth: '100%', lineHeight: 14, color: onDark ? '#FFFFFFCC' : actionColors.fill }}>{weight}</Text> : null}
           {sizeOptionLabel && <Text className={`text-[9px] font-medium leading-[12px] ${onDark ? 'text-white/60' : 'text-[#73809B]'}`}>{sizeOptionLabel}</Text>}
         </View>
 
