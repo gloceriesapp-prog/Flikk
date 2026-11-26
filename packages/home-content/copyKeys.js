@@ -6,6 +6,10 @@
 // blank keeps the app's built-in artwork.
 export const COPY_KEYS = {
   'home.highDemand.enabled': { default: 'false', hint: 'High demand indicator beside delivery time. Does not change delivery estimates or fees.', kind: 'toggle' },
+  'home.rain.enabled': { default: 'false', hint: 'Show the rain delivery notice only when rain is affecting deliveries. Does not change estimates or fees.', kind: 'toggle' },
+  'home.deliveryNotice.highDemand': { default: 'High demand nearby. Delivery may take a little longer.', hint: 'Header notice while high demand is enabled. Hides after 4 seconds.' },
+  'home.deliveryNotice.rain': { default: 'Rain nearby. Deliveries may take a little longer.', hint: 'Header notice while rain is enabled. Hides after 4 seconds.' },
+  'home.deliveryNotice.rainAndDemand': { default: 'Rain and high demand nearby. Delivery may take longer.', hint: 'Single combined notice when both conditions are enabled.' },
   // Home artwork and tiles (blank = built-in artwork / behaviour).
   'home.welcome.imageUrl': { default: '', hint: 'Home welcome banner artwork (16:9, e.g. 1920x1080). Blank = built-in artwork', kind: 'image' },
   'home.welcome.label': { default: 'Welcome. Shop the stores you already love.', hint: 'Home welcome banner text read by screen readers' },

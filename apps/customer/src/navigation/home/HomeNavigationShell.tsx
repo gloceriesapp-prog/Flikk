@@ -16,7 +16,7 @@ import type { AppStackParamList } from '../types';
 import { HomeNavigationProgressContext } from './HomeNavigationProgressContext';
 import { AppTopHeader } from '../../screens/home/top-header/AppTopHeader';
 import { TopHeaderScrollContext } from '../../screens/home/top-header/topHeaderScroll';
-import { HomeCartNotice, HomeRevealSurface } from '../../screens/home/components/HomeReveal';
+import { HomeRevealSurface } from '../../screens/home/components/HomeReveal';
 
 interface Props {
   children: ReactNode;
@@ -54,7 +54,6 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
             </NavigationRouteContext.Provider>
           </NavigationContext.Provider>
         )}
-        {showTopHeader && <HomeCartNotice />}
         {/* The space reserved under the content for the floating cart must be
             painted: unpainted, the root window colour (the blue splash colour)
             showed as a full-width blue strip behind the Cart pill. */}
