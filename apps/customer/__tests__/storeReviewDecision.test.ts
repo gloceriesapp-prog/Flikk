@@ -2,10 +2,10 @@ import { reviewPromptDecision, type ReviewPromptInput } from '../src/features/st
 
 const now = Date.parse('2026-11-26T12:00:00Z');
 const DAY = 24 * 60 * 60 * 1000;
-const leg = { id: 'o2', status: 'delivered' as const, cancel_reason: null, refund_status: 'none' as const, payment_method: 'cod' as const,
+const leg = { id: 'o2', trip_id: null as string | null, status: 'delivered' as const, cancel_reason: null, refund_status: 'none' as const, payment_method: 'cod' as const,
   provider_payment_id: null, delivered_at: new Date(now - 5 * 60_000).toISOString() };
 const input = (over: Partial<ReviewPromptInput> = {}): ReviewPromptInput => ({
-  legs: [leg], deliveredOrderCount: 2, lastPromptAt: null, lastPromptOrderId: null, storeReviewAvailable: true, now, ...over,
+  legs: [leg], deliveredOrderCount: 2, lastPromptAt: null, lastPromptOrderId: null, reportedOrderIds: [], lastIssueAt: null, storeReviewAvailable: true, now, ...over,
 });
 
 it('never prompts on the first delivered order', () => {
@@ -39,4 +39,15 @@ it('only right after delivery, and once per order', () => {
   expect(reviewPromptDecision(input({ legs: [{ ...leg, delivered_at: new Date(now - 2 * 60 * 60_000).toISOString() }] }))).toEqual({ show: false, reason: 'not_recent' });
   expect(reviewPromptDecision(input({ legs: [{ ...leg, status: 'out_for_delivery' }] }))).toEqual({ show: false, reason: 'not_delivered' });
   expect(reviewPromptDecision(input({ lastPromptAt: now - 61 * DAY, lastPromptOrderId: 'o2' }))).toEqual({ show: false, reason: 'already_prompted_for_order' });
+});
+
+it('skips an order the customer reported an issue about, also by its trip', () => {
+  expect(reviewPromptDecision(input({ reportedOrderIds: ['o2'], lastIssueAt: now - 40 * DAY }))).toEqual({ show: false, reason: 'issue_reported' });
+  expect(reviewPromptDecision(input({ legs: [{ ...leg, trip_id: 't1' }], reportedOrderIds: ['t1'], lastIssueAt: now - 40 * DAY })))
+    .toEqual({ show: false, reason: 'issue_reported' });
+});
+
+it('pauses 30 days after any reported issue', () => {
+  expect(reviewPromptDecision(input({ reportedOrderIds: ['o1'], lastIssueAt: now - 10 * DAY }))).toEqual({ show: false, reason: 'recent_issue' });
+  expect(reviewPromptDecision(input({ reportedOrderIds: ['o1'], lastIssueAt: now - 31 * DAY }))).toEqual({ show: true });
 });

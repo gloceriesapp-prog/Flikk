@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStoreReviewPrompt } from '../src/features/store-review/useStoreReviewPrompt';
+import { recordIssueReport } from '../src/features/store-review/storage';
 import type { ApiOrder } from '../src/api/orders';
 
 jest.mock('expo-store-review', () => ({ isAvailableAsync: jest.fn(async () => true), requestReview: jest.fn(async () => undefined) }));
@@ -44,4 +45,13 @@ it('skips quietly when the history request fails', async () => {
   renderHook(() => useStoreReviewPrompt([delivered('o2')], true));
   await settle();
   expect(StoreReview.requestReview).not.toHaveBeenCalled();
+});
+
+it('skips an order the customer reported from Help', async () => {
+  mockHistory.mockResolvedValue({ items: [delivered('o2'), delivered('o1')], nextCursor: null });
+  await recordIssueReport('c1', 'o2');
+  renderHook(() => useStoreReviewPrompt([delivered('o2')], true));
+  await settle();
+  expect(StoreReview.requestReview).not.toHaveBeenCalled();
+  expect(require('@sentry/react-native').addBreadcrumb).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ reason: 'issue_reported' }) }));
 });

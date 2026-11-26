@@ -11,7 +11,7 @@ import { fetchOrderHistory, type ApiOrder } from '../../api/orders';
 import { useAuthStore } from '../../store/useAuthStore';
 import { groupOrdersByTrip } from '../../utils/tripLegs';
 import { PROMPT_DELAY_MS, reviewPromptDecision, type ReviewSkipReason } from './decision';
-import { readLastReviewPrompt, writeLastReviewPrompt } from './storage';
+import { readIssueReports, readLastReviewPrompt, writeLastReviewPrompt } from './storage';
 
 function log(event: 'review_prompt_shown' | 'review_prompt_skipped', data: { reason?: ReviewSkipReason | 'error'; orderId: string }) {
   Sentry.addBreadcrumb({ category: 'store_review', message: event, level: 'info', data });
@@ -41,13 +41,14 @@ export function useStoreReviewPrompt(legs: ApiOrder[] | undefined, enabled: bool
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const [count, last, available] = await Promise.all([
-            deliveredOrderCount(), readLastReviewPrompt(customerId), StoreReview.isAvailableAsync(),
+          const [count, last, issues, available] = await Promise.all([
+            deliveredOrderCount(), readLastReviewPrompt(customerId), readIssueReports(customerId), StoreReview.isAvailableAsync(),
           ]);
           const legs = legsRef.current;
           if (cancelled || !legs) return;
           const decision = reviewPromptDecision({
             legs, deliveredOrderCount: count, lastPromptAt: last?.at ?? null, lastPromptOrderId: last?.orderId ?? null,
+            reportedOrderIds: issues.orderIds, lastIssueAt: issues.lastAt,
             storeReviewAvailable: available, now: Date.now(),
           });
           if (!decision.show) { log('review_prompt_skipped', { reason: decision.reason, orderId }); return; }
