@@ -173,33 +173,3 @@ export function PaymentProcessingView({ secondsLeft, launchError, amount, appNam
     </View>
   );
 }
-
-const BLUE = '#2457F5';
-const SPINNER = 132;
-const STROKE = 14;
-
-// Thick blue arc on a pale ring, turning steadily; the time left to confirm
-// the payment sits in the middle.
-function PaymentSpinner({ label }: { label: string }) {
-  const [spin] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 1100, easing: Easing.linear, useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [spin]);
-  const radius = (SPINNER - STROKE) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  return (
-    <View style={{ width: SPINNER, height: SPINNER }} className="items-center justify-center">
-      <Animated.View style={{ position: 'absolute', transform: [{ rotate }] }}>
-        <Svg width={SPINNER} height={SPINNER}>
-          <Circle cx={SPINNER / 2} cy={SPINNER / 2} r={radius} stroke="#EAF0FF" strokeWidth={STROKE} fill="none" />
-          <Circle cx={SPINNER / 2} cy={SPINNER / 2} r={radius} stroke={BLUE} strokeWidth={STROKE} fill="none" strokeLinecap="round"
-            strokeDasharray={`${circumference * 0.72} ${circumference}`} />
-        </Svg>
-      </Animated.View>
-      <Text accessibilityLiveRegion="polite" accessibilityLabel={`Checking for ${label}`} className="text-[20px] font-bold text-ink">{label}</Text>
-    </View>
-  );
-}
