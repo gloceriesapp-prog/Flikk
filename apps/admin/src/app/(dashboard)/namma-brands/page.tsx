@@ -12,7 +12,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from '@/components/icons';
 import { toast } from '@/components/ui/Toast';
-import { MAX_NAMMA_CARDS, previewPill, type NammaCard, type NammaProduct } from '@/lib/home/nammaBrands';
+import { MAX_NAMMA_CARDS, previewPill, twoLineTitle, type NammaCard, type NammaProduct } from '@/lib/home/nammaBrands';
 import { DEFAULT_NAMMA_HEADER } from '../../../../../../packages/home-content/sectionLayout.js';
 
 type Brand = { id: string; name: string; isActive: boolean };
@@ -180,7 +180,7 @@ export default function NammaBrandsPage() {
                   const photos = (card.productIds.length ? card.productIds.map((id) => list.find((p) => p.id === id)).filter(Boolean) as NammaProduct[] : list).filter((p) => p.imageUrl).slice(0, card.productIds.length || 2);
                   return (
                     <div key={card.brandId} className={clsx('flex flex-col overflow-hidden rounded-2xl bg-white', !pill && 'opacity-40')}>
-                      <p className="line-clamp-2 h-[50px] px-2 pt-2.5 text-center text-[15px] font-semibold leading-5 text-ink">{card.title.trim() || card.brandName}</p>
+                      <p className="line-clamp-2 h-[46px] whitespace-pre-line px-2 pt-2 text-center text-[14px] font-semibold leading-[18px] text-ink">{twoLineTitle(card.title.trim() || card.brandName)}</p>
                       <div className="flex h-[70px] items-end justify-center pb-2">
                         {photos.map((p, i) => (
                           // eslint-disable-next-line @next/next/no-img-element -- product photo preview

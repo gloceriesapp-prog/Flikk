@@ -17,3 +17,12 @@ export function previewPill(mode: PillMode, products: NammaProduct[]): string | 
   const lowest = Math.min(...live.map((p) => p.price));
   return `Starting from ₹${Number.isInteger(lowest) ? lowest : lowest.toFixed(2)}`;
 }
+
+// Same two-line title split as the customer app (NammaBrandsSection.tsx).
+export function twoLineTitle(title: string): string {
+  const text = title.trim().replace(/\s+/g, ' ');
+  const spaces = [...text.matchAll(/ /g)].map((match) => match.index!);
+  if (!spaces.length) return text;
+  const split = spaces.reduce((best, at) => (Math.abs(text.length - 2 * at) < Math.abs(text.length - 2 * best) ? at : best));
+  return `${text.slice(0, split)}\n${text.slice(split + 1)}`;
+}

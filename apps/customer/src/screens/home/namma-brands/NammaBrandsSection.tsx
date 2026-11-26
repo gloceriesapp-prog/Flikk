@@ -30,6 +30,18 @@ const TITLE_HEIGHT = 36;
 // Photo area height as a share of the card width.
 const PHOTO_AREA = 0.62;
 
+// Every title on two lines, like the reference: split at the space that
+// leaves the two lines closest in length ("Shetty Masala" -> "Shetty" /
+// "Masala"). One-word names, and titles with their own line break, stay as is.
+export function twoLineTitle(title: string): string {
+  const text = title.trim().replace(/\s+/g, ' ');
+  if (text.includes('\n')) return text;
+  const spaces = [...text.matchAll(/ /g)].map((match) => match.index!);
+  if (!spaces.length) return text;
+  const split = spaces.reduce((best, at) => (Math.abs(text.length - 2 * at) < Math.abs(text.length - 2 * best) ? at : best));
+  return `${text.slice(0, split)}\n${text.slice(split + 1)}`;
+}
+
 export function useNammaBrands(enabled: boolean) {
   const location = useLocationStore((s) => s.location);
   return useQuery({
@@ -73,7 +85,7 @@ export function NammaBrandsBlock({ headerImageUrl, cards, onOpen }: { headerImag
             accessibilityLabel={card.title} testID={`namma-card-${card.brand.id}`}
             className="overflow-hidden rounded-2xl bg-white active:opacity-90" style={{ width: cardWidth }}>
             <Text numberOfLines={2} className="px-2 pt-2 text-center text-[14px] font-semibold leading-[18px] text-ink"
-              style={{ height: TITLE_HEIGHT + 8 }}>{card.title}</Text>
+              style={{ height: TITLE_HEIGHT + 8 }}>{twoLineTitle(card.title)}</Text>
             <CardPhotos urls={card.imageUrls} width={cardWidth} />
           </Pressable>
         ))}
