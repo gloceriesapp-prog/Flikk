@@ -11,7 +11,7 @@ export function notchedCardMetrics(width: number) {
   const dy = radius - 4 - NOTCH_FILLET;
   // Preserve the bottom-left corner and space for the gallery dots on narrow cards.
   const maxExtension = Math.max(0, centerX - Math.sqrt((notch + NOTCH_FILLET) ** 2 - dy ** 2) - IMAGE_CORNER_RADIUS);
-  return { diameter, height: width * 4.5 / 4, pillWidth: diameter + Math.min(diameter, maxExtension, Math.max(0, width - 39 - diameter)) };
+  return { diameter, height: width * 4.5 / 4, pillWidth: diameter + Math.min(diameter * 1.25, maxExtension, Math.max(0, width - 31 - diameter)) };
 }
 
 /** Clockwise tile outline, with tangent 8px fillets into a concave stadium. */

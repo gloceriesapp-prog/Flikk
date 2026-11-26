@@ -22,7 +22,7 @@ interface Props {
 export const ProductCardCartControl = memo(function ProductCardCartControl({ name, quantity, chooseOptions, compact, diameter: suppliedDiameter, pillWidth: suppliedPillWidth, animatedWidth: sharedWidth, onAdd, onIncrement, onDecrement }: Props) {
   const expanded = quantity > 0 && !chooseOptions;
   const diameter = suppliedDiameter ?? (compact ? 40 : 44);
-  const pillWidth = suppliedPillWidth ?? (compact ? 80 : 88);
+  const pillWidth = suppliedPillWidth ?? (compact ? 88 : 96);
   const localWidth = useSharedValue(expanded ? pillWidth : diameter);
   const animatedWidth = sharedWidth ?? localWidth;
   const padding = Math.max(0, 44 - diameter);
