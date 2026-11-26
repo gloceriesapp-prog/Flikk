@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rankRepeatPurchases, recentOrderProductIds, reorderByRank } from './buyItAgain.js';
+import { rankRepeatPurchases, recentOrderProductIds, reorderByRank, reorderWindowStart } from './buyItAgain.js';
 
 describe('rankRepeatPurchases', () => {
   it('ranks a product bought more times above one bought once, even if the single purchase is more recent', () => {
@@ -64,5 +64,15 @@ describe('recentOrderProductIds', () => {
     expect(recentOrderProductIds(orders, 10)).toEqual(['milk', 'bread', 'fish', 'eggs']);
     expect(recentOrderProductIds(orders, 2)).toEqual(['milk', 'bread']);
     expect(recentOrderProductIds([], 5)).toEqual([]);
+  });
+});
+
+describe('reorderWindowStart', () => {
+  const now = Date.parse('2026-11-26T12:00:00Z');
+  it('starts N whole days back', () => {
+    expect(reorderWindowStart('2', now)).toBe('2026-11-24T12:00:00.000Z');
+  });
+  it('means no limit when missing or out of range', () => {
+    for (const days of [undefined, '', '0', '91', '-1', '1.5', 'abc', ['2']]) expect(reorderWindowStart(days, now)).toBeNull();
   });
 });

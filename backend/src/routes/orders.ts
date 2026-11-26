@@ -28,7 +28,7 @@ import { notifyStoresOfDelivery } from '../orders/deliveredPush.js';
 import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
 import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
-import { recentOrderProductIds, reorderByRank } from '../lib/buyItAgain.js';
+import { recentOrderProductIds, reorderByRank, reorderWindowStart } from '../lib/buyItAgain.js';
 import { notifyRiderOrderPacked, triggerDispatch } from '../lib/riderDispatch.js';
 import { assertPaymentMethodAvailable } from '../payments/availability.js';
 import { applyCustomerPrices } from '../lib/customerPrice.js';
@@ -217,7 +217,8 @@ ordersRouter.get('/buy-it-again', requireAuth, requireRole('customer'), async (r
 // orders (delivered, on the way and scheduled; not cancelled or failed),
 // newest first, from shops that deliver to the pin. Pre-order products stay
 // in (the app books their slot as usual). Out-of-stock products stay too, so
-// the customer sees why they can't re-order. Before GET /:id, same reason as
+// the customer sees why they can't re-order. ?days=N keeps only orders placed
+// in the last N days (Buy again tab: 2). Before GET /:id, same reason as
 // buy-it-again.
 const REORDER_ORDER_LIMIT = 40;
 const REORDER_ITEM_LIMIT = 40;
@@ -227,9 +228,11 @@ ordersRouter.get('/reorder-items', requireAuth, requireRole('customer'), async (
     res.set('Cache-Control', 'private, no-store');
     const storeIds = await deliveryStores(req.query);
     if (!storeIds.length) return res.json([]);
-    const { data: orders, error: ordersError } = await supabase.from('orders').select('placed_at, order_items(product_id)')
-      .eq('customer_id', req.user!.id).not('status', 'in', '(cancelled,failed)').or(PLACED_ORDER_FILTER)
-      .order('placed_at', { ascending: false }).limit(REORDER_ORDER_LIMIT);
+    const since = reorderWindowStart(req.query.days);
+    let ordersQuery = supabase.from('orders').select('placed_at, order_items(product_id)')
+      .eq('customer_id', req.user!.id).not('status', 'in', '(cancelled,failed)').or(PLACED_ORDER_FILTER);
+    if (since) ordersQuery = ordersQuery.gte('placed_at', since);
+    const { data: orders, error: ordersError } = await ordersQuery.order('placed_at', { ascending: false }).limit(REORDER_ORDER_LIMIT);
     if (ordersError) throw ordersError;
     const productIds = recentOrderProductIds(orders ?? [], REORDER_ITEM_LIMIT);
     if (productIds.length === 0) return res.json([]);
