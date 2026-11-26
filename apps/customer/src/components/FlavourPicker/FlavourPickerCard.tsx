@@ -33,29 +33,32 @@ export function FlavourPickerCard({ product, option, pack, isAvailable, availabi
       imageUrl: option.imageUrl ?? product.imageUrl, storeId: product.storeId ?? '', storeName: product.storeName,
       isAvailable: !unavailable, preorderMinQty: product.preorder?.minQty }, product.preorder ? preorder : undefined);
   }
+  const discount = originalPrice != null && originalPrice > price && originalPrice > 0
+    ? Math.round((1 - price / originalPrice) * 100) : 0;
   return <View style={styles.card}>
     <View style={styles.imageBox}>
       <AppImage source={{ uri: option.imageUrl ?? product.imageUrl }} style={styles.image} resizeMode="contain" />
-      <View style={styles.add}>
-        {quantity > 0 ? <View style={styles.stepper}>
-          <Pressable onPress={() => decrement(id)} accessibilityRole="button" accessibilityLabel={`Remove ${option.name}, ${pack.label}`} style={styles.step}><Text style={styles.actionText}>−</Text></Pressable>
-          <Text style={[styles.actionText, styles.quantity]}>{quantity}</Text>
-          <Pressable onPress={add} disabled={unavailable || needsSlot || atStockLimit} accessibilityRole="button" accessibilityLabel={`Add another ${option.name}, ${pack.label}`} style={styles.step}><Text style={styles.actionText}>+</Text></Pressable>
-        </View> : <Pressable onPress={add} disabled={unavailable || needsSlot || atStockLimit} accessibilityRole="button"
-          accessibilityLabel={`Add ${option.name}, ${pack.label} to cart`} style={[styles.addButton, (unavailable || needsSlot) && styles.disabled]}>
-          <Text style={styles.actionText}>{unavailable ? 'Unavailable' : needsSlot ? 'Pick a slot' : 'ADD'}</Text>
-        </Pressable>}
-      </View>
     </View>
     <View style={styles.details}>
-      <Text style={styles.name} numberOfLines={2}>{option.name}</Text>
-      {lowStock ? <Text style={[styles.hint, { color: '#D92D20' }]}>{lowStock}</Text> : null}
+      {chosen && option.name !== product.name ? <Text style={styles.name} numberOfLines={2}>{option.name}</Text> : null}
       <Text style={styles.pack}>{pack.label}</Text>
-      <View style={styles.priceRow}><RupeePrice amount={price} size={22} />
-        {originalPrice != null && originalPrice > price ? <RupeePrice amount={originalPrice} size={14} strike color="#868B95" /> : null}
-      </View>
       {unitPriceLabel ? <Text style={styles.hint}>{unitPriceLabel}</Text> : null}
-      {unavailable ? <Text style={styles.hint}>{!isAvailable ? availabilityLabel : 'Out of stock'}</Text> : null}
+      {lowStock ? <Text style={[styles.hint, { color: '#D92D20' }]}>{lowStock}</Text> : null}
+      <View style={styles.priceRow}><RupeePrice amount={price} size={17} />
+        {originalPrice != null && originalPrice > price ? <RupeePrice amount={originalPrice} size={13} strike color="#868B95" /> : null}
+        {discount > 0 ? <Text style={styles.discount}>{discount}% OFF</Text> : null}
+      </View>
+      {unavailable ? <Text style={styles.hint}>{!isAvailable ? availabilityLabel ?? 'Unavailable' : 'Out of stock'}</Text> : null}
+    </View>
+    <View style={styles.add}>
+      {quantity > 0 ? <View style={styles.stepper}>
+        <Pressable onPress={() => decrement(id)} accessibilityRole="button" accessibilityLabel={`Remove ${option.name}, ${pack.label}`} style={styles.step}><Text style={styles.actionText}>−</Text></Pressable>
+        <Text style={[styles.actionText, styles.quantity]}>{quantity}</Text>
+        <Pressable onPress={add} disabled={unavailable || needsSlot || atStockLimit} accessibilityRole="button" accessibilityLabel={`Add another ${option.name}, ${pack.label}`} style={[styles.step, (unavailable || needsSlot || atStockLimit) && styles.disabled]}><Text style={styles.actionText}>+</Text></Pressable>
+      </View> : !unavailable ? <Pressable onPress={add} disabled={needsSlot || atStockLimit} accessibilityRole="button"
+        accessibilityLabel={`Add ${option.name}, ${pack.label} to cart`} style={[styles.addButton, (needsSlot || atStockLimit) && styles.disabled]}>
+        <Text style={needsSlot ? styles.slotText : styles.actionText}>{needsSlot ? 'Pick a slot' : '+'}</Text>
+      </Pressable> : null}
     </View>
   </View>;
 }
