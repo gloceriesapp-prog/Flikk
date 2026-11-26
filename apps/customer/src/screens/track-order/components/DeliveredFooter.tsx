@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchReorderItems, type ApiOrderItem } from '../../../api/orders';
-import { fetchPublicCatalogue } from '../../../api/products';
+import { fetchPublicCatalogue } from '../../../api/catalogue';
 import { useTrackingPreview } from '../state/trackingPreview';
 import { cartConflict } from '../../../store/preorder';
 import { reorderLines } from '../../../store/reorderOrder';

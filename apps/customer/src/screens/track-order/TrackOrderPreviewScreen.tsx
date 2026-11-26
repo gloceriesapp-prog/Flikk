@@ -9,7 +9,7 @@
 // __DEV__ in AppNavigator.
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { fetchPublicCatalogue } from '../../api/products';
+import { fetchPublicCatalogue } from '../../api/catalogue';
 import type { Product } from '../home/products/types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../navigation/types';
