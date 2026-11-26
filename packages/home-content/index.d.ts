@@ -26,9 +26,13 @@ export interface HomeContentItem {
   origin: string;
   selection: ContentSelection;
 }
-export type FreshPlacement = 'intro' | 'everyday' | 'village' | 'both';
-export interface FreshTabs { everyday: string; village: string }
-export const DEFAULT_FRESH_TABS: FreshTabs;
+export type FreshPlacement = 'intro' | 'everyday' | 'fruits' | 'village' | 'both';
+export type FreshChoice = 'everyday' | 'fruits' | 'village';
+// fruits is optional: titles saved before the third choice existed lack it.
+export interface FreshTabs { everyday: string; fruits?: string; village: string }
+export const FRESH_CHOICES: readonly FreshChoice[];
+export const DEFAULT_FRESH_TABS: Required<FreshTabs>;
+export function freshTabTitle(tabs: FreshTabs | undefined, choice: FreshChoice): string;
 export function freshSectionPlacement(section: HomeContentSection, sections: HomeContentSection[]): FreshPlacement;
 export interface HomeContentSection {
   freshPlacement?: FreshPlacement;

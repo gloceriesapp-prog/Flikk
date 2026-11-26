@@ -81,7 +81,7 @@ export function validateContent(raw) {
     list(doc.sections, 'sections', 40).map((rawSection, index) => {
       const path = `sections[${index}]`,
         s = object(rawSection, path, [...Object.keys(createSection('products', 'new')), 'categoryCardStyle', 'showProductImages', 'freshPlacement']);
-      if (s.freshPlacement !== undefined && (s.kind === 'footer' || !['intro', 'everyday', 'village', 'both'].includes(s.freshPlacement)))
+      if (s.freshPlacement !== undefined && (s.kind === 'footer' || !['intro', 'everyday', 'fruits', 'village', 'both'].includes(s.freshPlacement)))
         fail(path + '.freshPlacement', 'choose a valid Fresh section placement');
       if (!SECTION_KINDS.includes(s.kind)) fail(path + '.kind', 'invalid section type');
       if (s.categoryCardStyle !== undefined &&
@@ -150,9 +150,14 @@ export function validateContent(raw) {
   if (previewBudget > 600) fail('sections', 'combined preview budget must not exceed 600 products per shop');
   let freshTabs;
   if (doc.freshTabs !== undefined) {
-    const tabs = object(doc.freshTabs, 'freshTabs', ['everyday', 'village']);
-    freshTabs = { everyday: text(tabs.everyday, 'freshTabs.everyday', 24, true), village: text(tabs.village, 'freshTabs.village', 24, true) };
-    if (freshTabs.everyday.toLowerCase() === freshTabs.village.toLowerCase()) fail('freshTabs', 'use different titles for the two choices');
+    const tabs = object(doc.freshTabs, 'freshTabs', ['everyday', 'fruits', 'village']);
+    freshTabs = {
+      everyday: text(tabs.everyday, 'freshTabs.everyday', 24, true),
+      ...(tabs.fruits === undefined ? {} : { fruits: text(tabs.fruits, 'freshTabs.fruits', 24, true) }),
+      village: text(tabs.village, 'freshTabs.village', 24, true),
+    };
+    const titles = [freshTabs.everyday, freshTabs.fruits, freshTabs.village].filter(Boolean).map(title => title.toLowerCase());
+    if (new Set(titles).size !== titles.length) fail('freshTabs', 'use a different title for each choice');
   }
   return {
     ...(freshTabs ? { freshTabs } : {}),
