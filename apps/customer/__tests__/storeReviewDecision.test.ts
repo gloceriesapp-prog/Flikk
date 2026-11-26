@@ -51,3 +51,9 @@ it('pauses 30 days after any reported issue', () => {
   expect(reviewPromptDecision(input({ reportedOrderIds: ['o1'], lastIssueAt: now - 10 * DAY }))).toEqual({ show: false, reason: 'recent_issue' });
   expect(reviewPromptDecision(input({ reportedOrderIds: ['o1'], lastIssueAt: now - 31 * DAY }))).toEqual({ show: true });
 });
+
+it('skips an order an admin marked with a customer complaint', () => {
+  expect(reviewPromptDecision(input({ legs: [{ ...leg, complaint_reported_at: new Date(now - 60_000).toISOString() }] })))
+    .toEqual({ show: false, reason: 'complaint' });
+  expect(reviewPromptDecision(input({ legs: [{ ...leg, complaint_reported_at: null }] }))).toEqual({ show: true });
+});

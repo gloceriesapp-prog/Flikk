@@ -22,11 +22,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type ReviewSkipReason =
   | 'not_delivered' | 'not_recent' | 'cancelled' | 'refund' | 'payment_issue'
-  | 'issue_reported' | 'recent_issue' | 'first_order' | 'cooldown' | 'already_prompted_for_order' | 'unavailable';
+  | 'complaint' | 'issue_reported' | 'recent_issue' | 'first_order' | 'cooldown' | 'already_prompted_for_order' | 'unavailable';
 
 export interface ReviewPromptInput {
   // Every leg of the delivery (one order, or each shop's order of a trip).
-  legs: Pick<ApiOrder, 'id' | 'trip_id' | 'status' | 'cancel_reason' | 'refund_status' | 'payment_method' | 'provider_payment_id' | 'delivered_at'>[];
+  legs: Pick<ApiOrder, 'id' | 'trip_id' | 'status' | 'cancel_reason' | 'refund_status' | 'payment_method' | 'provider_payment_id' | 'delivered_at' | 'complaint_reported_at'>[];
   // The customer's delivered orders (a trip counts once), this one included.
   deliveredOrderCount: number;
   lastPromptAt: number | null;
@@ -47,11 +47,12 @@ export function reviewPromptDecision(input: ReviewPromptInput): { show: true } |
     return { show: false, reason: 'not_recent' };
   }
   // A good order: nothing cancelled, nothing refunded or being refunded, an
-  // online order actually paid, and no issue reported about it from the app.
-  // (Complaints emailed from outside the app aren't known here.)
+  // online order actually paid, no complaint marked by an admin (emailed
+  // complaints), and no issue reported about it from the app.
   if (legs.some(leg => leg.cancel_reason)) return { show: false, reason: 'cancelled' };
   if (legs.some(leg => leg.refund_status && leg.refund_status !== 'none')) return { show: false, reason: 'refund' };
   if (legs.some(leg => leg.payment_method === 'online' && !leg.provider_payment_id)) return { show: false, reason: 'payment_issue' };
+  if (legs.some(leg => leg.complaint_reported_at)) return { show: false, reason: 'complaint' };
   if (legs.some(leg => input.reportedOrderIds.includes(leg.id) || (!!leg.trip_id && input.reportedOrderIds.includes(leg.trip_id)))) {
     return { show: false, reason: 'issue_reported' };
   }
