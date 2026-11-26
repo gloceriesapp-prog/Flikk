@@ -1,7 +1,7 @@
 # Notched product image
 
 `notchedCardGeometry.ts` owns the 4:4.5 tile, 16px corners, button diameter
-(max of 40px and 28% of the measured card width), 5px transparent clearance,
+(max of 40px and 28% of the measured card width), 3px transparent clearance,
 and tangent 8px fillets. The quantity pill and SVG clip share one 180ms width
 animation. On narrow cards, the pill width is bounded to keep the wishlist
 control separate. Quantity changes do not change the image or footer height.

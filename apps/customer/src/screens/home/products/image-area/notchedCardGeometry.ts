@@ -1,5 +1,5 @@
 export const IMAGE_CORNER_RADIUS = 16;
-export const NOTCH_GAP = 5;
+export const NOTCH_GAP = 3;
 export const NOTCH_FILLET = 8;
 export const CART_CONTROL_DURATION = 180;
 
