@@ -18,7 +18,7 @@ import { confirmAction, toast } from '@/components/ui/Toast';
 import { acceptsPins, isoToScheduleInput, pinCapacity } from '@/lib/homeSectionPins';
 import { fetchCategories } from '@/lib/supabase/categories';
 import type { Category, Product } from '@/lib/types';
-import { DEFAULT_PREORDER_BANNER, supportsHomeBanner, homeProductLayout, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
+import { defaultHomeBanner, supportsHomeBanner, homeProductLayout, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 interface HomeSection {
   key: string;
@@ -47,6 +47,7 @@ const SECTION_META: Record<string, { label: string; defaultTitle: string }> = {
   'festival-picks': { label: 'Festival Section products', defaultTitle: '(the Festival Section title)' },
   seasonal: { label: 'Seasonal Section', defaultTitle: '(no heading)' },
   'nearby-stores': { label: 'Nearby Stores', defaultTitle: 'Nearby Stores' },
+  'namma-brands': { label: 'Namma Brands (always above the welcome card; cards in Namma Brands)', defaultTitle: '(header image)' },
   preorders: { label: 'Pre-orders (products marked Pre-order only)', defaultTitle: 'Pre-order now' },
   trending: { label: 'Trending', defaultTitle: 'Popular This Week' },
   'most-bought': { label: 'Most Bought', defaultTitle: 'Most Bought Near You' },
@@ -298,12 +299,12 @@ export default function HomeSectionsPage() {
               {supportsHomeBanner(s.key) && (
                 <div className="mt-4 border-t border-border pt-4">
                   <label htmlFor={`banner-${s.key}`} className="mb-1.5 block text-xs font-medium text-muted">
-                    Section banner image
+                    {s.key === 'namma-brands' ? 'Header image' : 'Section banner image'}
                   </label>
                   <div className="flex flex-wrap items-start gap-3">
                     <ProductImageUpload
-                      key={s.banner_image_url || (s.key === 'preorders' ? DEFAULT_PREORDER_BANNER : '')}
-                      imageUrl={s.banner_image_url || (s.key === 'preorders' ? DEFAULT_PREORDER_BANNER : '')}
+                      key={s.banner_image_url || defaultHomeBanner(s.key)}
+                      imageUrl={s.banner_image_url || defaultHomeBanner(s.key)}
                       onChange={(url) => patch(s.key, { banner_image_url: url })}
                       bucket="appsui"
                       small
@@ -311,11 +312,15 @@ export default function HomeSectionsPage() {
                     <div className="min-w-56 flex-1">
                       <input id={`banner-${s.key}`} value={s.banner_image_url ?? ''} maxLength={2048}
                         onChange={(e) => patch(s.key, { banner_image_url: e.target.value || null })}
-                        placeholder={s.key === 'preorders' ? DEFAULT_PREORDER_BANNER : 'https://images.gloceries.com/…'} className={inputClass} />
-                      <p className="mt-1 text-xs text-muted">Upload a wide image or paste an HTTPS URL. A 4:1 image fits the banner.</p>
+                        placeholder={defaultHomeBanner(s.key) || 'https://images.gloceries.com/…'} className={inputClass} />
+                      <p className="mt-1 text-xs text-muted">
+                        {s.key === 'namma-brands'
+                          ? 'Upload or paste an HTTPS URL. Shown full width at its own shape (the default is 3:1). Cards: Home → Namma Brands.'
+                          : 'Upload a wide image or paste an HTTPS URL. A 4:1 image fits the banner.'}
+                      </p>
                       {s.banner_image_url && (
                         <button type="button" className="btn btn-ghost mt-2"
-                          onClick={() => patch(s.key, { banner_image_url: null })}>{s.key === 'preorders' ? 'Use default image' : 'Remove banner'}</button>
+                          onClick={() => patch(s.key, { banner_image_url: null })}>{defaultHomeBanner(s.key) ? 'Use default image' : 'Remove banner'}</button>
                       )}
                     </div>
                   </div>

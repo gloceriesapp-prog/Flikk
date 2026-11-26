@@ -6,5 +6,7 @@ export function homeProductLayout(key: string, override?: unknown): HomeProductL
 export function homePreviewLimit(layout: HomeProductLayout): number;
 
 export const DEFAULT_PREORDER_BANNER: string;
+export const DEFAULT_NAMMA_HEADER: string;
+export function defaultHomeBanner(key: string): string;
 
 export function supportsHomeBanner(key: string): boolean;
