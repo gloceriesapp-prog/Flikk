@@ -12,11 +12,6 @@ import { ALL_TAB, buildHomeCategories } from '../data/categoryTabs';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { GROCERY_QUICK_CATEGORY_IMAGE, quickCategoryArtwork } from '../quick-categories/data';
 
-const UDUPI_TAB_IMAGES = {
-  inactive: 'https://images.gloceries.com/icons/village.png',
-  active: 'https://images.gloceries.com/icons/village%20(1).png',
-};
-
 export function HomeCategoryTabs({ activeId, onSelect }: { activeId: string; onSelect: (id: string) => void }) {
   const { data: tabs = [] } = useHomeTabs();
   const groceryImage = useCopyImage('home.quickCategories.groceryImageUrl', GROCERY_QUICK_CATEGORY_IMAGE);
@@ -41,14 +36,13 @@ export function HomeCategoryTabs({ activeId, onSelect }: { activeId: string; onS
         {categories.map((category) => {
           const tab = tabs.find((item) => item.id === category.id);
           const isGrocery = !!tab && (tab.contentKey === 'grocery' || ['grocery', 'groceries'].includes(tab.name.trim().toLowerCase()));
-          const selected = category.id === activeId;
-          const isUdupi = tab?.contentKey === 'regional' || tab?.name.trim().toLowerCase() === 'udupi';
-          const { imageUrl } = isUdupi ? { imageUrl: selected ? UDUPI_TAB_IMAGES.active : UDUPI_TAB_IMAGES.inactive } : category.id === ALL_TAB.id ? { imageUrl: allImage || undefined } : quickCategoryArtwork({
+          const { imageUrl } = category.id === ALL_TAB.id ? { imageUrl: allImage || undefined } : quickCategoryArtwork({
             tabImage: tab?.imageUrl,
             isGrocery,
             groceryImage,
             festivalImage: tab?.festival?.headerImageUri ?? undefined,
           });
+          const selected = category.id === activeId;
           return (
             <Pressable
               key={category.id}
