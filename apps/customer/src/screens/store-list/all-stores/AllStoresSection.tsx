@@ -43,13 +43,15 @@ interface Props {
   // Everything that scrolls above the store cards (promo + filter + Nearest +
   // Popular), rendered once as the list header rather than as list items.
   header: ReactElement;
+  // Shown after the store cards, above the brand footer.
+  footer?: ReactElement;
   onScroll: ScrollHandlerProcessed;
   isError: boolean;
   isRefetching: boolean;
   onRefresh: () => void;
 }
 
-export function AllStoresSection({ stores, header, onScroll, isError, isRefetching, onRefresh }: Props) {
+export function AllStoresSection({ stores, header, footer, onScroll, isError, isRefetching, onRefresh }: Props) {
   return (
     <AnimatedFlashList
       data={stores}
@@ -90,7 +92,7 @@ export function AllStoresSection({ stores, header, onScroll, isError, isRefetchi
           )}
         </View>
       }
-      ListFooterComponent={<BrandFooter />}
+      ListFooterComponent={<>{footer}<BrandFooter /></>}
       renderItem={({ item }) => (
         <View className="px-5 pb-4">
           <StoreCard store={item} />

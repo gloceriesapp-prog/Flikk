@@ -61,3 +61,10 @@ Seasonal Picks shows a six-product horizontal rail. Real picks require curated p
 Greens & Herbs shows up to six existing cards horizontally, matching the leafy-green and herb category rules. Actual available stock takes priority, with clearly labelled read-only samples only when no matching stock is found.
 
 The shared BrandFooter ends Fresh with the same brand sign-off as Home and Groceries. It owns bottom-navigation clearance, so FreshTab does not add extra bottom padding.
+
+Fresh now shows a two-choice produce switch directly after Everyday Fresh. Everyday Vegetables keeps the regular published Fresh sections. Village-Grown uses only the explicitly curated `home-grown-nearby` section; it never infers growing origin from product names or shop locations. Both choices use the same address-aware inventory and preserve Admin visibility, product selections and the shared footer. An empty/disabled village collection shows a clear empty state without inserting sample products.
+
+### Admin-managed Fresh choices
+In Category-tab content → Fruit & Veg, edit the two Fresh choice titles. Each non-footer section has a destination: above the choices, Market, Village, or both. Edit its Title and use Choose exact vegetables to select real catalogue products in order. New Village sections are explicit assignments, never inferred from names. Hidden sections stay hidden; footers remain shared. Existing documents retain their legacy placement until edited.
+
+Titles (`freshTabs`) and per-section destinations (`freshPlacement`) live inside the existing `home_content.content` JSONB document. Existing atomic revision updates, audit history, reference validation and realtime invalidation apply to the complete document; no schema migration is needed. Deploy the public backend serializer before publishing these new settings, then ship the customer update. The serializer extracts the metadata outside the version-1 wire content so older installed apps continue to load it.

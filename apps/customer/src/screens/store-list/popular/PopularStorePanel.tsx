@@ -49,6 +49,8 @@ export function PopularStorePanel({
         w-[308px]
         overflow-hidden
          rounded-[28px]
+      border
+      border-[#ECEEF1]
       bg-white
       shadow-sm
       shadow-black/[0.05]

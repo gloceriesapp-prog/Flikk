@@ -6,10 +6,11 @@ import { clearCommittedAttempt } from '../../features/checkout-recovery/attemptS
 // receipt display; restart recovery reads backend amounts and status.
 import { useEffect, useRef, useState } from 'react';
 import { launchUpiIntent } from '../../payments/upiIntent';
-import { ActivityIndicator, AppState, BackHandler, Pressable, Text, View } from 'react-native';
+import { Animated, AppState, BackHandler, Easing, Pressable, Text, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { pollOrderPaid, paymentCheckDeadline } from '../../payments/pollOrderPaid';
-import { colors, minTouchTarget } from '../../theme/tokens';
+import { minTouchTarget } from '../../theme/tokens';
 import { useCartStore } from '../../store/useCartStore';
 import { rememberPaymentMethod, verifyPayment } from '../../api/payments';
 import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
@@ -106,22 +107,69 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  return <PaymentProcessingView secondsLeft={secondsLeft} launchError={launchError} amount={amount} appName={route.params.appName}
+    onNotCompleted={() => navigation.replace('PaymentRecovery', { target })} />;
+}
+
+// The wait screen's look, shared by the real screen and the dev preview
+// (PaymentProcessingPreviewScreen), so UI work needs no live payment.
+export function PaymentProcessingView({ secondsLeft, launchError, amount, appName, onNotCompleted }: {
+  secondsLeft: number; launchError: string; amount: number; appName: string; onNotCompleted: () => void;
+}) {
+  const timeLeft = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
   return (
-    <View className="flex-1 items-center justify-center gap-4 bg-white px-10">
-      <Text className="text-lg font-semibold text-ink">Confirming your payment</Text>
-      {!!launchError && <Text accessibilityRole="alert" className="text-center text-red-600">{launchError}</Text>}
-      <Text className="text-center text-[13.5px] font-medium text-ink/55">
-        {`We’re checking the payment securely. Your order is saved.`}
-      </Text>
-      <ActivityIndicator size="large" color={colors.limeDeep} />
-      <Text accessibilityLiveRegion="polite" className="text-[13.5px] font-semibold text-ink/70">
-        Checking for {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
-      </Text>
-      {/* Backed out of the UPI app? Recovery offers cancel / cash on delivery. */}
-      <Pressable onPress={() => navigation.replace('PaymentRecovery', { target })} hitSlop={8} accessibilityRole="button"
-        accessibilityLabel="Didn’t complete the payment? See other options" className="mt-4 justify-center px-2" style={{ minHeight: minTouchTarget }}>
-        <Text className="text-[13.5px] font-semibold text-ink underline">Didn’t complete the payment?</Text>
-      </Pressable>
+    <View className="flex-1 bg-white px-8 pb-safe-offset-6 pt-safe">
+      <View className="flex-1 items-center justify-center">
+        <PaymentSpinner label={timeLeft} />
+        <Text className="mt-10 text-center text-[28px] font-bold text-ink">Hold on!</Text>
+        {launchError
+          ? <Text accessibilityRole="alert" className="mt-2 text-center text-[15px] font-medium text-[#B45309]">{launchError}</Text>
+          : <Text className="mt-2 text-center text-[15px] font-medium text-ink/50">We are verifying your payment status.</Text>}
+        <Text className="mt-1 text-center text-[13.5px] font-medium text-ink/40">
+          {`Paying ₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })} via ${appName}`}
+        </Text>
+      </View>
+      <View className="items-center gap-4">
+        {/* Backed out of the UPI app? Recovery offers cancel / cash on delivery. */}
+        <Pressable onPress={onNotCompleted} hitSlop={8} accessibilityRole="button"
+          accessibilityLabel="Didn’t complete the payment? See other options" className="justify-center px-2" style={{ minHeight: minTouchTarget }}>
+          <Text className="text-[14px] font-semibold" style={{ color: BLUE }}>Didn’t complete the payment?</Text>
+        </Pressable>
+        <Text className="text-center text-[13.5px] font-medium leading-5 text-ink/45">
+          <Text className="font-bold text-ink">Note: </Text>
+          Do not press back or close this screen until the payment is complete. Your order goes to the store only after it’s paid.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const BLUE = '#2457F5';
+const SPINNER = 132;
+const STROKE = 14;
+
+// Thick blue arc on a pale ring, turning steadily; the time left to confirm
+// the payment sits in the middle.
+function PaymentSpinner({ label }: { label: string }) {
+  const [spin] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 1100, easing: Easing.linear, useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [spin]);
+  const radius = (SPINNER - STROKE) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  return (
+    <View style={{ width: SPINNER, height: SPINNER }} className="items-center justify-center">
+      <Animated.View style={{ position: 'absolute', transform: [{ rotate }] }}>
+        <Svg width={SPINNER} height={SPINNER}>
+          <Circle cx={SPINNER / 2} cy={SPINNER / 2} r={radius} stroke="#EAF0FF" strokeWidth={STROKE} fill="none" />
+          <Circle cx={SPINNER / 2} cy={SPINNER / 2} r={radius} stroke={BLUE} strokeWidth={STROKE} fill="none" strokeLinecap="round"
+            strokeDasharray={`${circumference * 0.72} ${circumference}`} />
+        </Svg>
+      </Animated.View>
+      <Text accessibilityLiveRegion="polite" accessibilityLabel={`Checking for ${label}`} className="text-[20px] font-bold text-ink">{label}</Text>
     </View>
   );
 }

@@ -1,11 +1,13 @@
 import { ScreenSkeleton } from '../loading/ScreenSkeleton';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { IconlyArrowLeft } from '../icons/iconly';
 import { GILROY } from '../../theme/fonts';
 import { SelfServiceProductCardView } from '../../screens/home/products/ProductCardView';
+import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from '../../screens/home/products/horizontalProductLayout';
 import type { Product } from '../../screens/home/products/types';
 import { useSimilarProducts } from './useSimilarProducts';
 
@@ -16,6 +18,8 @@ interface Props {
 
 // One recommendation source for the six-card preview and the full paged list.
 export function SimilarProductsRow({ product, onSelect }: Props) {
+  const { width } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(width);
   const query = useSimilarProducts(product.categoryLabel, product.id, product.storeId, !product.relatedProducts, product.browseStoreId);
   const candidates = product.relatedProducts ?? query.data?.pages.flatMap((page) => page.products) ?? [];
   const products = [...new Map(candidates.filter((item) => item.id !== product.id && (!product.browseStoreId || item.storeId === product.browseStoreId)).map((item) => [item.id, item])).values()];
@@ -24,15 +28,23 @@ export function SimilarProductsRow({ product, onSelect }: Props) {
   const open = (item: Product) => { setShowAll(false); onSelect?.(item); };
   if (!products.length && !query.isFetching && !query.isError) return null;
   return (
-    <View className="bg-white px-4 pb-5 pt-6">
+    <View className="relative bg-white px-4 pb-5 pt-6" style={{ marginTop: 16 }}>
+      {/* Native vector edge blends the white section into the grey sheet. */}
+      <Svg pointerEvents="none" accessible={false} width="100%" height={18} viewBox="0 0 400 18" preserveAspectRatio="none"
+        style={{ position: 'absolute', top: -16, left: 0, right: 0 }}>
+        <Path d="M0 10 C55 0 100 0 150 7 C215 17 270 1 325 4 C360 6 380 11 400 6 L400 18 L0 18 Z" fill="#FFFFFF" />
+      </Svg>
       <Text accessibilityRole="header" className="mb-4 text-[18px] leading-[25px] text-ink" style={{ fontFamily: GILROY.bold }}>You may also like</Text>
-      <View className="-mx-1 flex-row flex-wrap">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1"
+        contentContainerClassName="items-start pb-4"
+        contentContainerStyle={{ gap: HORIZONTAL_PRODUCT_CARD_GAP, paddingLeft: 4, paddingRight: 10 }}
+        snapToInterval={cardWidth + HORIZONTAL_PRODUCT_CARD_GAP} snapToAlignment="start" decelerationRate="fast">
         {products.slice(0, 6).map((item) => (
-          <View key={item.id} style={{ width: '33.333333%', paddingHorizontal: 4, marginBottom: 16 }}>
+          <View key={item.id} style={{ width: cardWidth }}>
             <SelfServiceProductCardView product={item} widthClassName="w-full" onPress={() => open(item)} />
           </View>
         ))}
-      </View>
+      </ScrollView>
       {query.isFetching && !products.length ? <ScreenSkeleton rows={1} label="Loading similar products" /> : null}
       {query.isError && !products.length ? (
         <Pressable accessibilityRole="button" onPress={() => { void query.refetch(); }} className="py-3">

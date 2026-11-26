@@ -7,6 +7,7 @@ import { fetchOrder } from '../../../api/orders';
 import { fetchTrip } from '../../../api/trips';
 import { fetchOrderLive, fetchTripLive } from '../../../api/tracking';
 import { trackingState } from './trackingState';
+import { useTrackingPreview } from './trackingPreview';
 import { liveFinished, mergeOrder, mergeTrip, needsOrderDetails, needsTripDetails, trackingInterval, detailRefreshKey, DetailRefreshGate, orderCanAdvance, tripCanAdvance } from './liveTracking';
 const retry = (count: number, error: unknown) => count < 1 && ![401, 403, 404, 410].includes((error as { status?: number }).status ?? 0);
 export function useTracking(id: string, isTrip: boolean) {
@@ -17,7 +18,8 @@ export function useTracking(id: string, isTrip: boolean) {
   const [pollInterval] = useState(trackingInterval);
   const client = useQueryClient();
   const foreground = useAppForeground();
-  const enabled = focused && foreground && !!customerId;
+  const previewing = useTrackingPreview();
+  const enabled = focused && foreground && (!!customerId || previewing);
   // Shared full details remain compatible with order summary/cancellation.
   // They are not polled; remounts reuse them within the freshness window.
   const orderQuery = useQuery({ queryKey: ['order', id, customerId], queryFn: () => fetchOrder(id),

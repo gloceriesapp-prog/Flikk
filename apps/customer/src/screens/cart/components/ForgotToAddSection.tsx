@@ -1,43 +1,15 @@
-// "Did you forget to add?" — Cart's own last-minute-add nudge, per an
-// explicit ask. Real catalog products (useEverydayEssentials, same
-// cross-store feed Home's own rows already trust), never ones already
-// sitting in the cart (cartItemIds) — a customer being shown something
-// they already added would read as a bug, not a nudge. 3-per-row grid
-// (same w-[31%] pattern EverydayEssentialsSection.tsx already uses for a
-// 3-column layout), capped at 6 (2 rows).
-//
-// CTA bar at the bottom — inset with its own left/right margin and
-// rounded corners (not edge-to-edge like MostShoppedCard.tsx's own CTA
-// bar), per an explicit ask. Leads with a stack of 3 small overlapping
-// real product-photo avatars (not a fabricated icon) before the label,
-// per an explicit ask ("add 3 total card avatar and then the text") —
-// same "social proof preview" pattern used elsewhere (a stack of faces/
-// thumbnails hinting at more content before naming the action). Avatars
-// are drawn from whatever's LEFT in the filtered candidate list after the
-// 6-card grid above (real products the grid doesn't already show), falling
-// back to the grid's own first 3 if the candidate pool is too short to
-// have distinct ones — never fabricated placeholders. Label is "Explore
-// more picks", not "See all" — per an explicit ask for wording distinct
-// from every other card's own "See all"/"Grab deals"/etc labels in this
-// app. Opens ForgotToAddModal.tsx's own full 15-card grid (that file's own
-// note on why it's a separate component rather than inlined here).
-//
-// Renders nothing once there are fewer than 6 real candidates left (a
-// near-empty catalog, or a cart that already contains most of it) — same
-// "real data only, no half-empty placeholder grid" rule every other Home/
-// Cart row already follows.
-
+// Cart recommendations keep their existing cards and Explore more picks
+// action, with a fixed three-product preview.
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { ProductCard } from '../../home/products/ProductCard';
 import { useEverydayEssentials } from '../../home/everyday-essentials/useEverydayEssentials';
 import { ForgotToAddModal } from './ForgotToAddModal';
 
-const GRID_SIZE = 6;
+const GRID_SIZE = 3;
 const AVATAR_COUNT = 3;
-const CARD_WIDTH = 'w-[31%]';
 
 interface Props {
   cartItemIds: string[];
@@ -60,17 +32,17 @@ export function ForgotToAddSection({ cartItemIds }: Props) {
 
   return (
     <View className="overflow-hidden rounded-3xl bg-white shadow-sm shadow-black/5">
-      <Text className="px-5 pt-6 pb-3 text-[17px] font-semibold text-ink">You might also need</Text>
+      <Text className="px-5 pt-6 pb-3 font-bold tracking-tight text-ink/90" accessibilityRole="header" style={{ fontSize: Platform.OS === 'ios' ? 18 : 17 }}>You might also need</Text>
 
-      <View className="flex-row flex-wrap gap-x-2.5 gap-y-4 px-5 pb-5 pt-3">
+      <View className="flex-row items-start justify-between px-5 pb-5 pt-3">
         {gridCandidates.map((product) => (
-          <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} showDiscountBadge />
+          <ProductCard key={product.id} product={product} widthClassName="w-[31%]" showDiscountBadge />
         ))}
       </View>
 
       <Pressable
         onPress={() => setIsModalOpen(true)}
-        className="mx-5 mb-5 flex-row items-center justify-center gap-2.5 rounded-2xl border border-gray-100 bg-gray-50 py-2 active:bg-gray-100"
+        className="mx-5 mb-5 flex-row items-center justify-center gap-2.5 rounded-2xl border border-[#C9DAFE] bg-[#EAF1FF] py-2.5 active:bg-[#D9E6FF]"
       >
         <View className="flex-row">
           {avatarCandidates.map((product, index) => (
@@ -83,7 +55,7 @@ export function ForgotToAddSection({ cartItemIds }: Props) {
             />
           ))}
         </View>
-        <Text className="text-[14.5px] font-semibold text-ink">Explore more picks</Text>
+        <Text className="text-[14.5px] font-semibold text-[#155DFC]">Explore more picks</Text>
       </Pressable>
 
       <ForgotToAddModal visible={isModalOpen} cartItemIds={cartItemIds} onClose={() => setIsModalOpen(false)} />

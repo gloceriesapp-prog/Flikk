@@ -16,10 +16,10 @@ interface Props {
 // Same image for every assigned rider; the real identity is the name below.
 // The rider's number is never shown: Call hands it straight to the dialer.
 // No rider rating source exists either, so the card shows no rating.
-const RIDER_AVATAR =
+export const RIDER_AVATAR =
   'https://images.gloceries.com/appsui/rider-profile.png';
 
-function riderDialNumber(phone: string | undefined): string | null {
+export function riderDialNumber(phone: string | undefined): string | null {
   const compact = phone?.replace(/[\s()-]/g, '') ?? '';
   // Rider records can contain the older local or country-prefixed formats.
   if (/^\d{10}$/.test(compact)) return `+91${compact}`;
@@ -33,7 +33,6 @@ export function DeliveryRiderCard({ order }: Props) {
   if (!delivered && !['placed', 'packed', 'out_for_delivery'].includes(order.status)) return null;
 
   const hasArrived = order.status === 'out_for_delivery' && !!order.rider_arrived_at;
-  const storeName = order.stores?.name ?? 'The store';
   const dialNumber = riderDialNumber(rider?.phone);
 
   function callRider() {
@@ -50,13 +49,13 @@ export function DeliveryRiderCard({ order }: Props) {
           ? (rider ? 'Delivered by' : 'Delivery partner')
           : rider
             ? hasArrived
-              ? `${rider.name} picked up your order from ${storeName}.`
+              ? `${rider.name} has reached your location.`
               : order.status === 'out_for_delivery'
-                ? `${rider.name} picked up your order from ${storeName} and is headed your way.`
+                ? `${rider.name} is on the way with your order.`
                 : order.status === 'packed'
-                  ? `${rider.name} will pick up your order from ${storeName}.`
-                  : `${rider.name} will pick up your order from ${storeName} once it’s ready.`
-            : 'We’ll show your delivery partner here once a rider is assigned.'}
+                  ? `${rider.name} will pick up your order shortly.`
+                  : `${rider.name} will pick up your order once it’s packed.`
+            : 'Your delivery partner will show here once assigned.'}
       </Text>
 
       <View className="mt-4 flex-row items-center gap-3">

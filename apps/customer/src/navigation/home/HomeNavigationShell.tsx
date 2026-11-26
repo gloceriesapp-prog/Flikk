@@ -14,6 +14,9 @@ import { useHomeLocationRefresh } from '../../location/useHomeLocationRefresh';
 import type { AppStackParamList } from '../types';
 
 import { HomeNavigationProgressContext } from './HomeNavigationProgressContext';
+import { AppTopHeader } from '../../screens/home/top-header/AppTopHeader';
+import { TopHeaderScrollContext } from '../../screens/home/top-header/topHeaderScroll';
+import { HomeCartNotice, HomeRevealSurface } from '../../screens/home/components/HomeReveal';
 
 interface Props {
   children: ReactNode;
@@ -32,17 +35,31 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
   const [navigationBarHeight, setNavigationBarHeight] = useState(Platform.OS === 'android' ? 74 : 66);
   const { isServiceable } = useNearestStore();
   const showBar = isServiceable && (route.name === 'Home' || route.name === 'HomeCategory');
+  // Home and Store share one header instance, so a tab switch keeps it.
+  const showTopHeader = isServiceable && (route.name === 'Home' || route.name === 'Store');
+  const headerScroll = useSharedValue(0);
   const showCart = showStandaloneCart(route.name, showBar, cartQuantity);
   const reserveCartSpace = showCart && !usesFloatingCollectionCart(route.name);
   const canPromptForRating = route.name === 'Home' || route.name === 'HomeCategory' ||
-    route.name === 'Purchase' || route.name === 'Categories' || route.name === 'Store';
+    route.name === 'Purchase' || route.name === 'Reorder' || route.name === 'Categories' || route.name === 'Store';
   return (
     <HomeNavigationProgressContext.Provider value={hidden}>
+    <TopHeaderScrollContext.Provider value={headerScroll}>
       <View className="flex-1">
+        <HomeRevealSurface>
+        {showTopHeader && (
+          <NavigationContext.Provider value={navigation}>
+            <NavigationRouteContext.Provider value={route}>
+              <AppTopHeader />
+            </NavigationRouteContext.Provider>
+          </NavigationContext.Provider>
+        )}
+        {showTopHeader && <HomeCartNotice />}
         {/* The space reserved under the content for the floating cart must be
             painted: unpainted, the root window colour (the blue splash colour)
             showed as a full-width blue strip behind the Cart pill. */}
         <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingBottom: reserveCartSpace ? insets.bottom + STANDALONE_CART_CLEARANCE : 0 }}>{children}</View>
+        </HomeRevealSurface>
         {showCart && (
           <NavigationContext.Provider value={navigation}>
             <NavigationRouteContext.Provider value={route}>
@@ -65,6 +82,7 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
           </NavigationContext.Provider>
         </View>
       </View>
+    </TopHeaderScrollContext.Provider>
     </HomeNavigationProgressContext.Provider>
   );
 }

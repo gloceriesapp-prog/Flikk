@@ -22,6 +22,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AddressFormScreen } from '../screens/address/AddressFormScreen';
 import { AddressListScreen } from '../screens/address/AddressListScreen';
 import { CartScreen } from '../screens/cart/CartScreen';
+import { ApplyCouponScreen } from '../screens/coupons/ApplyCouponScreen';
 import { AllBrandsScreen } from '../screens/categories/AllBrandsScreen';
 import { BrandProductsScreen } from '../screens/categories/BrandProductsScreen';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
@@ -49,6 +50,7 @@ import { PaymentProcessingScreen } from '../screens/payment-processing/PaymentPr
 import { PaymentStatusScreen } from '../screens/payment-status/PaymentStatusScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { PurchaseScreen } from '../screens/purchase/PurchaseScreen';
+import { ReorderScreen } from '../screens/reorder/ReorderScreen';
 import { OrderPlacedScreen } from '../screens/order-placed/OrderPlacedScreen';
 import { ReferralScreen } from '../screens/referral/ReferralScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
@@ -61,7 +63,13 @@ import { useLocationStore } from '../store/useLocationStore';
 import type { AppStackParamList } from './types';
 import { HomeNavigationShell } from './home/HomeNavigationShell';
 import { OrderRatingScreen } from '../features/order-rating/screens/OrderRatingScreen';
+import { PaymentProcessingPreviewScreen } from '../screens/payment-processing/PaymentProcessingPreviewScreen';
+import { TrackOrderPreviewScreen } from '../screens/track-order/TrackOrderPreviewScreen';
 import { screenBoundary } from '../components/ErrorBoundary';
+
+// Dev only, while Track Order is being redesigned: open the app on its
+// preview. Set back to false (or delete) when the UI work is done.
+const DEV_START_ON_TRACK_PREVIEW = __DEV__ && false;
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -85,7 +93,7 @@ export function AppNavigator() {
       // first; location already set -> straight to Home. Home.tsx's own
       // isServiceable check branches to UnavailableZoneScreen inline from
       // there (not a separate route to land on).
-      initialRouteName={hasLocation ? 'Home' : 'LocationPermission'}
+      initialRouteName={DEV_START_ON_TRACK_PREVIEW ? 'TrackOrderPreview' : hasLocation ? 'Home' : 'LocationPermission'}
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="HomeContentCollection" component={HomeContentCollectionScreen} />
@@ -109,9 +117,12 @@ export function AppNavigator() {
       <Stack.Screen name="AllBrands" component={AllBrandsScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Store" component={StoreListScreen} options={{ animation: 'none' }} />
-      <Stack.Screen name="Purchase" component={PurchaseScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="Purchase" component={PurchaseScreen} />
+      <Stack.Screen name="Reorder" component={ReorderScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       {__DEV__ && <Stack.Screen name="OrderRating" component={OrderRatingScreen} />}
+      {__DEV__ && <Stack.Screen name="PaymentProcessingPreview" component={PaymentProcessingPreviewScreen} options={{ gestureEnabled: false }} />}
+      {__DEV__ && <Stack.Screen name="TrackOrderPreview" component={TrackOrderPreviewScreen} />}
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       <Stack.Screen name="BreakfastEssentials" component={BreakfastEssentialsScreen} />
       <Stack.Screen name="KitchenEssentials" component={KitchenEssentialsScreen} />
@@ -126,6 +137,7 @@ export function AppNavigator() {
       <Stack.Screen name="CoconutOilCollection" component={CoconutOilScreen} />
       <Stack.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
+      <Stack.Screen name="ApplyCoupon" component={ApplyCouponScreen} />
       <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
       <Stack.Screen name="AddressList" component={AddressListScreen} />
       <Stack.Screen name="AddressForm" component={AddressFormScreen} />

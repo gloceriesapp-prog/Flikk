@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../../theme/typography';
 // Dedicated header for StoreDetailScreen — NOT the shared
 // category-detail/components/CategoryDetailHeader.tsx. That header is also
 // used by CategoryDetailScreen (Home's own category tabs), so redesigning
@@ -19,6 +20,7 @@ import { colors } from '../../../theme/tokens';
 import { useLocationStore } from '../../../store/useLocationStore';
 import type { AppStackParamList } from '../../../navigation/types';
 import { IconlyArrowLeft } from '../../../components/icons/iconly';
+import { HeaderEtaPill } from '../../../components/EtaPill';
 
 interface Props {
   title: string;
@@ -41,9 +43,12 @@ export function StoreDetailHeader({ title, onBack, onSearch }: Props) {
         </Pressable>
 
         <View className="flex-1">
-          <Text className="text-xl font-semibold text-ink" numberOfLines={1}>
-            {title}
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <Text className={`${PAGE_TITLE_CLASS_NAME} shrink text-ink`} numberOfLines={1}>
+              {title}
+            </Text>
+            <HeaderEtaPill />
+          </View>
           <Pressable
             onPress={() => navigation.navigate('LocationSearch')}
             hitSlop={6}

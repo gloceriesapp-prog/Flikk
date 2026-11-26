@@ -44,8 +44,9 @@ import type { CartPreorder } from '../../store/preorder';
 import type { CutSize, Serving } from '../../store/cartIdentity';
 import { SellerDetailsCard } from './SellerDetailsCard';
 import { SimilarProductsRow } from './SimilarProductsRow';
-import { ReplacementCard } from './ReplacementCard';
+import { ProductServiceHighlights } from './ProductServiceHighlights';
 import type { Product } from '../../screens/home/products/types';
+import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
 
 interface Props {
   product: Product;
@@ -77,14 +78,15 @@ interface Props {
 
 export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder, onSelectProduct, onOpenStore }: Props) {
   const { name, localName, weight, storeName, sellerDetails } = product;
+  const estimatedMinutes = useDeliveryEstimateMinutes();
   const option = product.options?.find(o => o.id === selectedOptionId);
   const { price, originalPrice, unitPriceLabel } = flavourPrice(product, option);
   const variants = product.variants?.map(v => ({ ...v, ...flavourPrice(product, option, v) }));
   const hasRealVariants = variants && variants.length > 1;
-  const selectedVariant = hasRealVariants ? variants!.find((v) => v.id === selectedVariantId) : undefined;
+  const selectedVariant = hasRealVariants ? variants!.find((v) => v.id === selectedVariantId) ?? variants![0] : undefined;
   const lowStock = stockLabel(flavourAvailableQuantity(product, option, selectedVariant), product.isAvailable !== false && option?.isAvailable !== false);
   const displayPrice = selectedVariant?.price ?? price;
-  const displayOriginalPrice = selectedVariant?.originalPrice ?? originalPrice;
+  const displayOriginalPrice = selectedVariant ? selectedVariant.originalPrice : originalPrice;
 
   // With no option pickers between them, the size line hugs the title with
   // the same 4px gap it has above the price (card gap-3 minus -mt-2).
@@ -102,10 +104,19 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
           </Text>
         </View>
 
-        {/* "Select Unit" cards only when there is more than one size. */}
+        {/* The selected pack's live price sits directly below the title. */}
+        <View className="-mt-1 gap-1">
+          <ProductPriceRow price={displayPrice} originalPrice={displayOriginalPrice} size={18} showMrpLabel />
+          {(selectedVariant?.unitPriceLabel ?? unitPriceLabel) ? (
+            <Text className="text-[13px] text-ink/70">{selectedVariant?.unitPriceLabel ?? unitPriceLabel}</Text>
+          ) : null}
+        </View>
+
+        {/* Pack cards only when there is more than one size. */}
         {hasRealVariants ? (
           <ProductVariantOptions
             variants={variants!}
+            deliveryLabel={product.preorder ? 'Pre-order' : `${estimatedMinutes} mins`}
             selectedId={selectedVariantId ?? variants![0]!.id}
             onSelect={(id) => onSelectVariant?.(id)}
           />
@@ -127,16 +138,8 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
           <ProductServingOptions options={product.servingOptions} selected={selectedServing} onSelect={onSelectServing} />
         ) : null}
 
-        {/* Single-price product: size, price + MRP, "% OFF on MRP", unit price.
-            With several sizes the Select Unit cards above already show all of it. */}
-        {hasRealVariants ? null : <View className={hasOptions ? '' : '-mt-2'}>
-          <Text className="text-[14px] font-bold text-ink">{selectedVariant?.label ?? weight}</Text>
-          <View className="mt-2">
-            <ProductPriceRow price={displayPrice} originalPrice={displayOriginalPrice} size={18} showMrpLabel />
-          </View>
-          {(selectedVariant?.unitPriceLabel ?? unitPriceLabel) ? (
-            <Text className="mt-1 text-[13px] text-ink/70">{selectedVariant?.unitPriceLabel ?? unitPriceLabel}</Text>
-          ) : null}
+        {!hasRealVariants && <View className={hasOptions ? '' : '-mt-2'}>
+          <Text className="text-[14px] font-bold text-ink">{weight}</Text>
           {lowStock ? <Text className="mt-1 text-[11px] font-semibold leading-[16px] text-[#8A8F98]">{lowStock}</Text> : null}
         </View>}
 
@@ -161,7 +164,7 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
         )}
       </View>
 
-      <ReplacementCard />
+      <ProductServiceHighlights />
 
       {sellerDetails && (
         <View className="overflow-hidden rounded-2xl bg-white">
@@ -169,7 +172,7 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
         </View>
       )}
 
-      <View className="overflow-hidden rounded-2xl bg-white">
+      <View className="-mx-3">
         <SimilarProductsRow product={product} onSelect={onSelectProduct} />
       </View>
     </View>

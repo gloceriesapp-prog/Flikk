@@ -20,7 +20,10 @@ export function useCheckoutQuote(addressId?: string) {
     enabled, retry: false,
     // Show the last result while a changed cart is re-checked (no blank
     // bill); callers treat isFetching as not ready to pay.
-    placeholderData: keepPreviousData, staleTime: 0, gcTime: 0,
+    placeholderData: keepPreviousData, staleTime: 0,
+    // Kept a few minutes so reopening an unchanged cart shows its bill at
+    // once; it still refetches on open and Pay waits for the fresh quote.
+    gcTime: 5 * 60_000,
     refetchInterval: enabled ? 60_000 : false,
     refetchIntervalInBackground: false,
   });

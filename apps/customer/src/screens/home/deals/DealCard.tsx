@@ -1,28 +1,28 @@
+import { horizontalProductCardWidth } from '../products/horizontalProductLayout';
 // One "Biggest Price Drops" card. The saving leads (a green "% OFF" band on top),
 // then price against MRP, name and pack size.
 // The add control sits on the image corner like the other Home product cards.
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage as Image } from '../../../components/AppImage';
+import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { discountPercentLabel, priceComparison } from '../../../components/priceComparison';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { addToCart } from '../../../store/addToCart';
 import { useCartStore } from '../../../store/useCartStore';
-import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut, requiresProductSelection } from '../../../store/cartIdentity';
 import { useProductAvailability } from '../products/useProductAvailability';
 import type { Product } from '../products/types';
 
-const CARD_WIDTH = 156;
 const BLUE = '#155DFC';
 const SAVING_GREEN = '#00A650';
 const NON_VEG_RED = '#E23744';
-const PANEL_HEIGHT = 158;
-const CARD_RADIUS = 20;
-const PANEL_TOP_RADIUS = 17;
+const CARD_RADIUS = 16;
+const PANEL_TOP_RADIUS = 16;
 // Add control: evenly rounded on every corner.
 const CORNER = { borderRadius: 12 };
 
@@ -57,8 +57,11 @@ function PriceTicket({ price }: { price: number }) {
 }
 
 export function DealCard({ product }: { product: Product }) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(viewportWidth);
   const { id, name, weight, price, originalPrice, imageUrl, storeId, storeName, isVeg } = product;
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const { mrp } = priceComparison(price, originalPrice);
   const percentOff = discountPercentLabel(price, originalPrice);
@@ -71,8 +74,8 @@ export function DealCard({ product }: { product: Product }) {
   const decrementItem = useCartStore((state) => state.decrementItem);
 
   function handleAdd() {
-    // Flavours / chilled-or-not: open the detail view to pick.
-    if (mustPickInDetail(product)) { setIsDetailOpen(true); return; }
+    // Keep Add choices separate from product-body navigation.
+    if (requiresProductSelection(product)) { setIsPickerOpen(true); return; }
     addToCart({
       isAvailable: availability.isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize,
       name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl,
@@ -82,23 +85,23 @@ export function DealCard({ product }: { product: Product }) {
   return (
     <>
       <Pressable accessibilityRole="button" accessibilityLabel={name} onPress={() => setIsDetailOpen(true)}
-        style={{ width: CARD_WIDTH }} className="active:opacity-90">
+        style={{ width: cardWidth }} className="active:opacity-90">
         {/* Green card: the saving in its top band, then the product on a grey,
             bordered image panel (like the other product cards) that spans the
             full width with rounded top corners. */}
         <View>
-          <View className="overflow-hidden" style={{ borderRadius: CARD_RADIUS, backgroundColor: SAVING_GREEN }}>
+          <View className="overflow-hidden" style={{ borderRadius: CARD_RADIUS, borderCurve: 'continuous', backgroundColor: SAVING_GREEN }}>
             <View className="h-[32px] items-center justify-center" style={{ backgroundColor: SAVING_GREEN }}>
               <Text className="text-[14px] font-extrabold text-white" style={{ letterSpacing: 0.3 }}>
                 {percentOff ? `${percentOff}% OFF` : 'PRICE DROP'}
               </Text>
             </View>
             <View className="overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB]"
-              style={{ height: PANEL_HEIGHT, borderTopLeftRadius: PANEL_TOP_RADIUS, borderTopRightRadius: PANEL_TOP_RADIUS, borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS }}>
+              style={{ height: Math.round(cardWidth * 4.5 / 4), borderCurve: 'continuous', borderTopLeftRadius: PANEL_TOP_RADIUS, borderTopRightRadius: PANEL_TOP_RADIUS, borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS }}>
               <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} style={{ position: 'absolute', top: 10, right: 10, bottom: 10, left: 10 }} contentFit="contain" />
               {/* Veg / non-veg mark, standard Indian food-label convention.
                   Only when set in Admin. */}
-              {isVeg !== undefined && (
+              {typeof isVeg === 'boolean' && (
                 <View className="absolute bottom-2.5 left-2.5 h-[16px] w-[16px] items-center justify-center rounded-[3px] border-[1.5px] bg-white"
                   style={{ borderColor: isVeg ? SAVING_GREEN : NON_VEG_RED }}>
                   <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? SAVING_GREEN : NON_VEG_RED }} />
@@ -113,7 +116,7 @@ export function DealCard({ product }: { product: Product }) {
               <View className="bg-white px-3 py-2.5" style={CORNER}>
                 <Text className="text-[12px] font-bold text-[#B42318]">{availability.label}</Text>
               </View>
-            ) : quantity === 0 ? (
+            ) : quantity === 0 || requiresProductSelection(product) ? (
               <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`} hitSlop={6}
                 onPress={(event) => { event.stopPropagation(); handleAdd(); }}
                 className="h-10 min-w-[76px] items-center justify-center border bg-white px-4 active:opacity-80" style={[CORNER, { borderColor: BLUE }]}>
@@ -150,6 +153,7 @@ export function DealCard({ product }: { product: Product }) {
         </View>
       </Pressable>
 
+      <FlavourPickerSheet product={product} visible={isPickerOpen} onClose={() => setIsPickerOpen(false)} isAvailable={availability.isAvailable} availabilityLabel={availability.label} />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>
   );

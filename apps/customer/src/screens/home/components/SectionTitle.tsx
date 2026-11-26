@@ -1,26 +1,27 @@
 // One title style for every Home "All" section heading — so titles don't
 // drift (they had ranged 17px–20px, semibold/bold, text-ink vs text-black/80,
 // mb-3 vs mb-4). Bumped to text-xl (20px) for mobile readability per an
-// explicit ask. Carries its own px-5 gutter + mb-4 gap, so a section wrapper
-// should NOT also add px-5 (double-pads) — only ProductSection/DealsSection/
-// CategorySectionGroup keep a wrapper px-5 for their grid math and pass their
+// explicit ask. Carries its own px-4 gutter + mb-4 gap, so a section wrapper
+// should NOT also add px-4 (double-pads) — only ProductSection/DealsSection/
+// CategorySectionGroup keep a wrapper px-4 for their grid math and pass their
 // title's inset differently (see those files).
 
 import { Platform, Text, View } from 'react-native';
 
 // iOS renders the same point size visibly smaller than Android, so iOS gets +2px.
 const TITLE_SIZE = Platform.OS === 'ios' ? 'text-[20px]' : 'text-[18px]';
+export const SECTION_TITLE_TEXT_CLASS = `${TITLE_SIZE} font-bold tracking-tight text-ink/90`;
 
 // Optional `subtitle` — admin-driven per-section sub-copy (useHomeSections).
 // When set, the title gets a muted line under it and the group keeps the same
 // mb-4 gap; when unset it renders exactly as before (single title line).
 export function SectionTitle({ children, subtitle }: { children: React.ReactNode; subtitle?: string | null }) {
   if (!subtitle) {
-    return <Text accessibilityRole="header" className={`mb-4 px-5 ${TITLE_SIZE} font-bold tracking-tight text-ink/90`}>{children}</Text>;
+    return <Text accessibilityRole="header" className={`mb-4 px-4 ${SECTION_TITLE_TEXT_CLASS}`}>{children}</Text>;
   }
   return (
-    <View className="mb-4 px-5">
-      <Text accessibilityRole="header" className={`${TITLE_SIZE} font-bold tracking-tight text-ink/90`}>{children}</Text>
+    <View className="mb-4 px-4">
+      <Text accessibilityRole="header" className={SECTION_TITLE_TEXT_CLASS}>{children}</Text>
       <Text className="mt-0.5 text-[13px] font-medium text-ink/50">{subtitle}</Text>
     </View>
   );

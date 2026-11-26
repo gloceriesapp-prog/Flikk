@@ -7,7 +7,7 @@ import { invalidatePurchaseHistory } from '../features/purchases/invalidateHisto
 // select (order_items joined with products for name/image, stores for
 // name) — no field here is invented.
 
-import { apiRequest } from './client';
+import { ApiError, apiRequest } from './client';
 import { mapApiProduct, type ApiProduct } from './products';
 import type { Product } from '../screens/home/products/types';
 import type { OrderStatus } from '../screens/track-order/data';
@@ -197,6 +197,20 @@ export function cancelOrder(orderId: string, reason: string): Promise<ApiOrder> 
 export async function fetchBuyItAgain(): Promise<Product[]> {
   const rows = await apiRequest<ApiProduct[]>('/orders/buy-it-again');
   return rows.map(mapApiProduct);
+}
+
+// GET /orders/reorder-items — the Re-order tab: live products from recent
+// placed orders (delivered, on the way and scheduled), newest first. Until
+// the backend ships, fall back to Buy It Again (delivered orders only).
+// An older server routes the path to GET /orders/:id, which answers
+// TRACKING_UNAVAILABLE (not a uuid) or 404.
+export async function fetchReorderItems(): Promise<Product[]> {
+  try {
+    return (await apiRequest<ApiProduct[]>('/orders/reorder-items')).map(mapApiProduct);
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.code === 'TRACKING_UNAVAILABLE')) return fetchBuyItAgain();
+    throw error;
+  }
 }
 
 export interface OrderHistoryPage { items: ApiOrder[]; nextCursor: string | null }

@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useEffect, useState } from 'react';
 import { Cancel01Icon, CustomerService01Icon, EllipsisVerticalIcon } from '@hugeicons/core-free-icons';
@@ -17,6 +18,7 @@ import { TripCancellationResult } from './components/TripCancellationResult';
 import { representativeLeg } from '../../utils/tripLegs';
 import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
+import { OnTheWayCard } from './components/OnTheWayCard';
 import { RiderLiveMap } from './components/RiderLiveMap';
 import { useRiderLocation } from './state/useRiderLocation';
 import { OrderInfoCard } from './components/OrderInfoCard';
@@ -110,7 +112,7 @@ function TrackingDetails({ navigation, route }: Props) {
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Track Order</Text>
+        <Text className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-center text-ink`}>Track Order</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Order options" onPress={() => setMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={EllipsisVerticalIcon} size={22} color={colors.ink} />
         </Pressable>
@@ -148,10 +150,17 @@ function TrackingDetails({ navigation, route }: Props) {
         })()
       ) : (
         <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
-          <OrderInfoCard order={order!} />
-
-          {liveMap}
-          <DeliveryRiderCard order={order!} />
+          {/* On the way with a rider: the map, then the rider card (minutes,
+              call, delivery code), which replaces the status card. Every other
+              state keeps the status card above the map and the plain rider card. */}
+          {order!.status === 'out_for_delivery' && order!.riders ? <>
+            {liveMap}
+            <OnTheWayCard order={order!} />
+          </> : <>
+            <OrderInfoCard order={order!} />
+            {liveMap}
+            <DeliveryRiderCard order={order!} />
+          </>}
 
           <DeliveryDetailsSection address={order!.addresses} />
           <OrderSummarySection key={order!.id} items={order!.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId })} />

@@ -17,6 +17,7 @@ import { useWishlistStore } from '../../../store/useWishlistStore';
 import type { CartAvailability } from '../../../api/checkout';
 import { CUT_SIZE_LABEL, cartIdentity, SERVING_LABEL } from '../../../store/cartIdentity';
 import type { Product } from '../../home/products/types';
+import { actionColors } from '../../../theme/tokens';
 
 const STEPPER_TINT = '#155DFC';
 
@@ -191,88 +192,25 @@ export function CartItemRow({ item, availability }: Props) {
       <View className="items-end gap-2">
 
         {/* QUANTITY STEPPER */}
-        <View
-          className="
-    flex-row
-    items-center
-    rounded-xl
-    border
-    border-gray-200
-    bg-white
-    px-1
-    py-0.5
-    shadow-sm
-  "
-          style={{
-            shadowColor: '#000',
-            shadowOffset: {
-              width: 0,
-              height: 2,
-            },
-            shadowOpacity: 0.06,
-            shadowRadius: 3,
-            elevation: 2,
-          }}
-        >
-          {/* MINUS */}
-          <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${item.name}`}
-            onPress={() => decrementItem(item.id)}
-            hitSlop={12}
-            className="
-      h-7
-      w-7
-      items-center
-      justify-center
-      rounded-lg
-      active:bg-gray-100
-    "
-          >
-            <AppIcon
-              icon={MinusSignIcon}
-              size={14}
-              color="#155DFC"
-            />
-          </Pressable>
-
-          {/* QUANTITY */}
-          <Text
-            className="
-      min-w-[26px]
-      text-center
-      text-[13px]
-      font-bold
-      text-[#155DFC]
-    "
-          >
-            {item.quantity}
-          </Text>
-
-          {/* PLUS */}
-          <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${item.name}`}
-            disabled={cannotIncrease}
-            accessibilityState={{
-              disabled: cannotIncrease,
-            }}
-            onPress={() => incrementItem(item.id)}
-            hitSlop={12}
-            className="
-      h-7
-      w-7
-      items-center
-      justify-center
-      rounded-lg
-      active:bg-gray-100
-    "
-            style={{
-              opacity: cannotIncrease ? 0.35 : 1,
-            }}
-          >
-            <AppIcon
-              icon={Add01Icon}
-              size={14}
-              color="#155DFC"
-            />
-          </Pressable>
+        <View style={{ width: 80, height: 32, borderRadius: 10, backgroundColor: actionColors.deep, paddingRight: 2, paddingBottom: 2 }}>
+          <View className="flex-1 flex-row items-center overflow-hidden"
+            style={{ borderRadius: 9, borderWidth: 1.5, borderColor: actionColors.fill, backgroundColor: actionColors.soft }}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${item.name}`}
+              onPress={() => decrementItem(item.id)} hitSlop={{ top: 8, bottom: 8 }}
+              className="h-full flex-1 items-center justify-center active:bg-[#D9E6FF]">
+              <AppIcon icon={MinusSignIcon} size={15} color={actionColors.fill} />
+            </Pressable>
+            <Text className="min-w-[22px] text-center text-[12px] font-semibold text-[#155DFC]">
+              {item.quantity}
+            </Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${item.name}`}
+              disabled={cannotIncrease} accessibilityState={{ disabled: cannotIncrease }}
+              onPress={() => incrementItem(item.id)} hitSlop={{ top: 8, bottom: 8 }}
+              className="h-full flex-1 items-center justify-center active:bg-[#D9E6FF]"
+              style={{ opacity: cannotIncrease ? 0.35 : 1 }}>
+              <AppIcon icon={Add01Icon} size={16} color={actionColors.fill} />
+            </Pressable>
+          </View>
         </View>
 
 

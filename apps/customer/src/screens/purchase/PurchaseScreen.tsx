@@ -7,20 +7,17 @@ import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
 import { ActivityIndicator, AppState, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { FlashList, type FlashListProps } from '@shopify/flash-list';
 import { AppImage as Image } from '../../components/AppImage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { fetchAccountInfo } from '../../api/auth';
 import { fetchOrderHistoryStatuses, type OrderHistoryPage } from '../../api/orders';
 import { groupOrdersByTrip } from '../../utils/tripLegs';
 import { mapOrderGroup, type PurchaseOrder } from './data';
 import { OrderRow } from './components/OrderRow';
 import { OrderFilterSheet, type OrderStatusFilter, type OrderTimeFilter } from './components/OrderFilterSheet';
-import { PurchaseRecommendations } from './components/PurchaseRecommendations';
 import { PurchaseHistoryHeader } from './components/PurchaseHistoryHeader';
-import { HomeSectionButton } from '../home/components/HomeSectionButton';
 import { usePurchaseClock } from './usePurchaseClock';
 import { getPurchaseArrivalDeadline } from './orderArrival';
 import type { AppStackParamList } from '../../navigation/types';
@@ -31,7 +28,6 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
 
 const FEATURE_IMAGE_URI = 'https://images.gloceries.com/appsui/no-order.webp';
 const ORDER_STATUS_REFRESH_MS = 8_000;
-const ORDER_PREVIEW_LIMIT = 4;
 
 const styles = StyleSheet.create({
   orderDivider: { height: 1, marginHorizontal: 16, backgroundColor: colors.divider },
@@ -124,8 +120,6 @@ export function PurchaseScreen({ navigation }: Props) {
   });
   const accountCreatedYear = accountInfo ? new Date(accountInfo.created_at).getFullYear() : new Date().getFullYear();
 
-  const [showAll, setShowAll] = useState(false);
-
   // Refresh on entry; active orders also refresh while this screen is
   // visible so packing changes to arriving after the rider marks pickup.
   useEffect(() => {
@@ -151,67 +145,42 @@ export function PurchaseScreen({ navigation }: Props) {
       .filter(order => status === 'all' || order.status === status)
       .sort((a, b) => Number(isLive(b.status)) - Number(isLive(a.status)) || Date.parse(b.placedAtIso) - Date.parse(a.placedAtIso));
   }, [fetchedOrders, statusFilter]);
-  const visibleOrders = showAll ? sortedOrders : sortedOrders.slice(0, ORDER_PREVIEW_LIMIT);
   const canLoadMore = !history.isPlaceholderData && history.hasNextPage;
-  const hasMoreOrders = sortedOrders.length > ORDER_PREVIEW_LIMIT || canLoadMore;
   const waitingForOrders = !!customerId && !history.isError &&
-    (!history.data || (history.isPlaceholderData && visibleOrders.length === 0));
+    (!history.data || (history.isPlaceholderData && sortedOrders.length === 0));
 
   function loadMoreOrders() {
     if (canLoadMore && !history.isFetching) void history.fetchNextPage({ cancelRefetch: false });
   }
 
-  // Same direction-based hide/show BottomNavBar logic as StoreListScreen.tsx
-  // (itself copied from HomeScreen.tsx) — direction-based, not a plain
-  // "scrolled past N px", so it reads as intentional here too.
-  const prevScrollY = useSharedValue(0);
-  const navHidden = useSharedValue(0);
-  const SCROLL_HIDE_THRESHOLD = 6;
-
-  const scrollHandler = useAnimatedScrollHandler((event) => {
-    const y = event.contentOffset.y;
-
-    const delta = y - prevScrollY.value;
-    if (y < 40) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta > SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta < -SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    }
-    prevScrollY.value = y;
-  });
-
   return (
     <View className="flex-1 bg-white pt-safe">
       <StatusBar style="dark" />
 
+      <PurchaseHistoryHeader
+        onBack={() => navigation.goBack()}
+        status={statusFilter}
+        onSelectStatus={setStatusFilter}
+        search={customerId ? {
+          value: query,
+          onChangeText: setQuery,
+          onOpenFilter: () => {
+            Keyboard.dismiss();
+            setIsFilterSheetOpen(true);
+          },
+          isFilterActive,
+        } : null}
+      />
+
       <AnimatedOrderList
-        data={visibleOrders}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
+        style={{ flex: 1 }}
+        data={sortedOrders}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 112 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
         keyExtractor={(order) => order.orderId}
-        onEndReached={showAll && !history.isFetchNextPageError ? loadMoreOrders : undefined}
+        onEndReached={!history.isFetchNextPageError ? loadMoreOrders : undefined}
         onEndReachedThreshold={0.4}
-        ListHeaderComponent={
-          <PurchaseHistoryHeader
-            status={statusFilter}
-            onSelectStatus={setStatusFilter}
-            onHelp={() => navigation.navigate('Support')}
-            search={customerId ? {
-              value: query,
-              onChangeText: setQuery,
-              onOpenFilter: () => {
-                Keyboard.dismiss();
-                setIsFilterSheetOpen(true);
-              },
-              isFilterActive,
-            } : null}
-          />
-        }
         ListEmptyComponent={
           waitingForOrders ? (
             <PurchaseLoadingMessage />
@@ -238,30 +207,12 @@ export function PurchaseScreen({ navigation }: Props) {
           )
         }
         ListFooterComponent={
-          <View className="bg-white">
-            {!showAll && hasMoreOrders && (
-              <HomeSectionButton label="See all orders" plain onPress={() => {
-                setShowAll(true);
-                if (sortedOrders.length <= ORDER_PREVIEW_LIMIT) loadMoreOrders();
-              }} />
-            )}
-            {showAll && history.isFetchingNextPage && <ActivityIndicator className="py-4" color="#155DFC" />}
-            {showAll && canLoadMore && !history.isFetchingNextPage && (
-              <HomeSectionButton label={history.isFetchNextPageError ? 'Retry loading orders' : 'Load more orders'} plain onPress={loadMoreOrders} />
-            )}
-            <View className="mt-4"><PurchaseRecommendations /></View>
-            {!waitingForOrders && !history.isError && !isSearching && visibleOrders.length === 0 && (
-              <Text className="mt-8 px-6 pb-8 text-left text-[25px] font-semibold leading-8 text-gray-500">
-                You&apos;re not just ordering. You&apos;re keeping local shops open. 🌾
-              </Text>
-            )}
-            {(visibleOrders.length > 0 || isSearching) && (
-              <View className="mt-8 gap-2 px-6 pb-44 pt-10">
-                <Text className="text-5xl font-bold tracking-tight text-ink/10">Every order, a small win.</Text>
-                <Text className="text-sm font-medium text-ink/50">#GloceriesApp</Text>
-              </View>
-            )}
-          </View>
+          history.isFetchingNextPage ? <ActivityIndicator className="py-4" color="#155DFC" /> :
+          history.isFetchNextPageError ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Retry loading orders" className="items-center py-4" onPress={loadMoreOrders}>
+              <Text className="font-semibold text-[#155DFC]">Retry loading orders</Text>
+            </Pressable>
+          ) : null
         }
         renderItem={({ item: order }) => (
           <View>
@@ -277,7 +228,6 @@ export function PurchaseScreen({ navigation }: Props) {
         )}
       />
 
-      <BottomNavBar hidden={navHidden} />
 
       <OrderFilterSheet
         visible={isFilterSheetOpen}

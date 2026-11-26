@@ -1,10 +1,11 @@
+import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from '../../home/products/horizontalProductLayout';
 // Search screen "Available near you": one outlined box, as wide as the search
 // bar (16px gutter, SearchHeader px-4), with a banner on top
 // and the products as a rail inside it (the Instamart collection layout).
 // The banner is the coastal Udupi sunrise artwork unless admin App content
 // sets another (search.nearYou.imageUrl). The title sits bottom-left on a
 // soft white backing so the title stays readable over the darker foreground.
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View , useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCopy, useCopyImage } from '../../../api/appConfig';
 import { AppImage as Image } from '../../../components/AppImage';
@@ -12,11 +13,11 @@ import { ProductCard } from '../../home/products/ProductCard';
 import type { Product } from '../../home/products/types';
 
 const BANNER_HEIGHT = 150;
-const CARD_WIDTH = 'w-32';
-const CARD_SNAP_INTERVAL = 128 + 10;
 export const NEAR_YOU_BANNER = 'https://images.gloceries.com/appsui/Coastal%20Udupi%20Grocery%20Sunrise.png';
 
 export function NearYouBox({ products }: { products: Product[] }) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const cardWidth = horizontalProductCardWidth(viewportWidth);
   const title = useCopy('search.nearYou.title');
   const banner = useCopyImage('search.nearYou.imageUrl', NEAR_YOU_BANNER);
   return (
@@ -45,13 +46,16 @@ export function NearYouBox({ products }: { products: Product[] }) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="items-start gap-2.5 px-4 pb-4 pt-4"
-        snapToInterval={CARD_SNAP_INTERVAL}
+        contentContainerClassName="items-start px-4 pb-4 pt-4"
+        contentContainerStyle={{ gap: HORIZONTAL_PRODUCT_CARD_GAP }}
+        snapToInterval={cardWidth + HORIZONTAL_PRODUCT_CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
       >
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} showDiscountBadge />
+          <View key={product.id} style={{ width: cardWidth }}>
+            <ProductCard product={product} widthClassName="w-full" showDiscountBadge />
+          </View>
         ))}
       </ScrollView>
     </View>

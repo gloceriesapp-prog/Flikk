@@ -13,15 +13,16 @@ jest.mock('react-native-reanimated', () => ({
   useAnimatedScrollHandler: jest.fn(),
 }));
 jest.mock('@shopify/flash-list', () => ({
-  FlashList: ({ data, renderItem, ListHeaderComponent, ListEmptyComponent, ListFooterComponent }: {
+  FlashList: ({ data, renderItem, ListHeaderComponent, ListEmptyComponent, ListFooterComponent, onEndReached }: {
     data: { orderId: string }[];
     renderItem: (args: { item: { orderId: string } }) => React.ReactNode;
     ListHeaderComponent: React.ReactNode;
     ListEmptyComponent: React.ReactNode;
     ListFooterComponent: React.ReactNode;
+    onEndReached?: () => void;
   }) => {
     const { View } = jest.requireActual('react-native');
-    return <View>{ListHeaderComponent}{!data.length && ListEmptyComponent}{data.map(item => <View key={item.orderId}>{renderItem({ item })}</View>)}{ListFooterComponent}</View>;
+    return <View testID="purchase-orders" {...{ onEndReached }}>{ListHeaderComponent}{!data.length && ListEmptyComponent}{data.map(item => <View key={item.orderId}>{renderItem({ item })}</View>)}{ListFooterComponent}</View>;
   },
 }));
 jest.mock('../src/store/useAuthStore', () => ({
@@ -58,7 +59,7 @@ function order(number: number): ApiOrder {
   };
 }
 
-it('previews four real orders and exposes the remaining history only after See all', async () => {
+it('fills Purchase with orders and paginates on scroll without recommendations or view-more buttons', async () => {
   let finishDelivered!: (page: OrderHistoryPage) => void;
   const deliveredResponse = new Promise<OrderHistoryPage>(resolve => { finishDelivered = resolve; });
   jest.mocked(fetchOrderHistory).mockImplementation(async (params, cursor) => {
@@ -73,16 +74,14 @@ it('previews four real orders and exposes the remaining history only after See a
   const view = await render(<QueryClientProvider client={client}><PurchaseScreen {...props} /></QueryClientProvider>);
   try {
     await view.findByText(arrived(4));
-    expect(view.getByText('Picked Just For You')).toBeTruthy();
-    expect(view.queryByText(arrived(5))).toBeNull();
+    expect(view.queryByText('Picked Just For You')).toBeNull();
+    expect(view.getByText(arrived(5))).toBeTruthy();
     expect(view.queryByText('Sample order')).toBeNull();
     expect(fetchOrderHistory).toHaveBeenCalledTimes(1);
 
-    await fireEvent.press(view.getByRole('button', { name: 'See all orders' }));
-    expect(view.getByText(arrived(5))).toBeTruthy();
     expect(view.queryByRole('button', { name: 'See all orders' })).toBeNull();
-
-    await fireEvent.press(view.getByRole('button', { name: 'Load more orders' }));
+    expect(view.queryByRole('button', { name: 'Load more orders' })).toBeNull();
+    await fireEvent(view.getByTestId('purchase-orders'), 'endReached');
     await view.findByText(arrived(6));
     await waitFor(() => expect(view.queryByRole('button', { name: 'Load more orders' })).toBeNull());
 
@@ -94,7 +93,7 @@ it('previews four real orders and exposes the remaining history only after See a
 
     await fireEvent.press(view.getByRole('tab', { name: 'Cancelled' }));
     await view.findByText(/No orders in this view yet/);
-    expect(view.getByText('Picked Just For You')).toBeTruthy();
+    expect(view.queryByText('Picked Just For You')).toBeNull();
     expect(view.getByRole('tab', { name: 'Cancelled', selected: true })).toBeTruthy();
     expect(jest.mocked(fetchOrderHistory).mock.lastCall?.[0].get('status')).toBe('cancelled');
 

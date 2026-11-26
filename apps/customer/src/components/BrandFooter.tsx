@@ -21,6 +21,7 @@ import { Alert, Linking, Pressable, Text, View } from 'react-native';
 import { AppIcon } from './AppIcon';
 import { colors } from '../theme/tokens';
 import { SocialIcon } from './social/SocialIcon';
+import { FssaiFooter } from './brand/FssaiFooter';
 import packageJson from '../../package.json';
 
 const APP_VERSION = packageJson.version;
@@ -61,6 +62,7 @@ export function BrandFooter({ variant = 'large', showSocialLinks = false }: Prop
           <AppIcon icon={HeartIcon} size={11} color={colors.danger} fill={colors.danger} />
           <Text className="text-xs font-medium text-ink/40">in Udupi, KA</Text>
         </View>
+        <FssaiFooter />
       </View>
     );
   }
@@ -84,6 +86,7 @@ export function BrandFooter({ variant = 'large', showSocialLinks = false }: Prop
         <Text className="text-sm font-medium text-ink/50">in Udupi (Tulunadu), India</Text>
       </View>
       {showSocialLinks && <SocialLinksRow />}
+      <FssaiFooter />
     </View>
   );
 }

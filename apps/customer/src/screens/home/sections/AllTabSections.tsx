@@ -18,6 +18,7 @@ import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { QuickCategoriesSection } from '../quick-categories/QuickCategoriesSection';
 import { HomeWelcomeBanner } from '../welcome-banner/HomeWelcomeBanner';
+import { WelcomeCardStrip } from '../welcome-banner/WelcomeCardStrip';
 import { EverydayDairySection } from '../everyday-dairy/EverydayDairySection';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
 import { NewOnGloceriesSection } from '../new-on-gloceries/NewOnGloceriesSection';
@@ -33,6 +34,7 @@ import { SeasonalSection } from '../seasonal/SeasonalSection';
 import { HomeCategoryButton, HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { HomeSectionBanner } from '../components/HomeSectionBanner';
 import { PreorderSection } from '../preorders/PreorderSection';
+import { BuyAgainSection } from '../buy-again/BuyAgainSection';
 import { homePreviewLimit, homeProductLayout, supportsHomeBanner, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 export interface HomeSectionItem {
@@ -202,7 +204,8 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   const picks = picksQuery.data ?? EMPTY_PICKS;
   const t = useCopyText();
 
-  const sections = useMemo(() => resolveAllTabSections(sectionConfig), [sectionConfig]);
+  // The header's category row replaces the Quick categories grid on Home.
+  const sections = useMemo(() => resolveAllTabSections(sectionConfig).filter((section) => section.key !== 'quick-categories'), [sectionConfig]);
 
   // Only visible sections can claim products from a shared feed.
   const { rows, collections } = useMemo(() => {
@@ -270,14 +273,18 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   return useMemo(() => {
     const items: HomeSectionItem[] = [{
       key: 'welcome-banner',
-      // marginBottom pulls the next section up to trim the empty space under
-      // the welcome banner image (same bg, so it just tightens the gap).
       node: (
-        <View style={{ backgroundColor: shortcutsBackground, marginBottom: -8 }}>
-          <HomeWelcomeBanner backgroundColor={shortcutsBackground} />
+        // Inset to the content width under the header's white sheet.
+        <View className="bg-white pt-3">
+          <View className="px-4">
+            <View className="overflow-hidden rounded-[20px]">
+              <HomeWelcomeBanner />
+            </View>
+          </View>
+          <WelcomeCardStrip />
         </View>
       ),
-    }];
+    }, { key: 'buy-again', node: <BuyAgainSection /> }];
     for (const cfg of sections) {
       const usesPicks = cfg.custom || !!cfg.sourceCategoryId;
       const render = usesPicks ? renderPickedSection : SECTION_REGISTRY[cfg.key];

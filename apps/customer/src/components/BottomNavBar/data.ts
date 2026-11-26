@@ -12,7 +12,7 @@ export interface NavTab {
 
 export const BOTTOM_NAV_TABS: NavTab[] = [
   { id: 'home', label: 'Home', icon: Home01Icon },
-  { id: 'order-again', label: 'Purchase', icon: ShoppingBasket01Icon },
   { id: 'categories', label: 'Categories', icon: GridViewIcon },
+  { id: 'order-again', label: 'Buy again', icon: ShoppingBasket01Icon },
   { id: 'store', label: 'Store', icon: Store01Icon },
 ];

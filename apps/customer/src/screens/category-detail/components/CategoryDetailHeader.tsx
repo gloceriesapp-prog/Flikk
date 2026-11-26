@@ -1,6 +1,8 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../../theme/typography';
 import { Pressable, Text, View } from 'react-native';
 import { colors } from '../../../theme/tokens';
 import { IconlyArrowLeft, IconlySearch } from '../../../components/icons/iconly';
+import { HeaderEtaPill } from '../../../components/EtaPill';
 
 interface Props {
   title: string;
@@ -17,10 +19,11 @@ export function CategoryDetailHeader({ title, onBack, onSearch }: Props) {
         <IconlyArrowLeft size={24} color={colors.ink} />
       </Pressable>
 
-      <View className="min-w-0 flex-1">
-        <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
+      <View className="min-w-0 flex-1 flex-row items-center gap-2">
+        <Text className={`${PAGE_TITLE_CLASS_NAME} shrink text-ink`} numberOfLines={1}>
           {title}
         </Text>
+        <HeaderEtaPill />
       </View>
 
       <Pressable accessibilityRole="button" accessibilityLabel="Search products" onPress={onSearch} className={buttonClass}>

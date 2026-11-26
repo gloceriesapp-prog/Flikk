@@ -40,6 +40,9 @@ cssInterop(ExpoImage, { className: 'style' });
 // memory is low, drop the decoded copies (they reload from disk instantly)
 // instead of letting iOS kill the app (Sentry CUSTOMER-APP-4/-5).
 AppState.addEventListener('memoryWarning', () => { void ExpoImage.clearMemoryCache(); });
+// iOS also ends apps that sit in the background with a large footprint (one
+// was ended at 1.3 GB). Going to the background drops the decoded copies too.
+AppState.addEventListener('change', (state) => { if (state === 'background') void ExpoImage.clearMemoryCache(); });
 
 const RESIZE_MODE_TO_CONTENT_FIT = {
   cover: 'cover',

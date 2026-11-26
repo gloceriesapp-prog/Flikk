@@ -1,3 +1,4 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { ScreenSkeleton } from '../../components/loading/ScreenSkeleton';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -10,11 +11,14 @@ import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import type { AppStackParamList } from '../../navigation/types';
 import { useLocationStore } from '../../store/useLocationStore';
 import { colors } from '../../theme/tokens';
+import { HeaderEtaPill } from '../../components/EtaPill';
 import { GroceryProductTile } from '../home/groceries/components/GroceryProductTile';
+import { useCollectionBottomPadding } from '../../navigation/home/useCollectionBottomPadding';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'BrandProducts'>;
 
 export function BrandProductsScreen({ navigation, route }: Props) {
+  const listBottomPadding = useCollectionBottomPadding(40);
   const { brand } = route.params;
   const location = useLocationStore(state => state.location);
   const query = useInfiniteQuery({
@@ -39,7 +43,8 @@ export function BrandProductsScreen({ navigation, route }: Props) {
           className="h-11 w-11 items-center justify-center">
           <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text accessibilityRole="header" numberOfLines={1} className="flex-1 text-xl font-bold text-ink">{currentBrand.name}</Text>
+        <Text accessibilityRole="header" numberOfLines={1} className={`${PAGE_TITLE_CLASS_NAME} shrink text-ink`}>{currentBrand.name}</Text>
+        <HeaderEtaPill />
       </View>
 
       <FlashList
@@ -50,7 +55,7 @@ export function BrandProductsScreen({ navigation, route }: Props) {
         onEndReachedThreshold={0.4}
         onRefresh={location ? () => void query.refetch() : undefined}
         refreshing={query.isRefetching}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: listBottomPadding }}
         ListHeaderComponent={<BrandHeader brand={currentBrand} />}
         ListEmptyComponent={
           <View className="items-center gap-3 px-5 py-10">

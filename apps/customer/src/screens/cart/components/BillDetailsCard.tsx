@@ -4,12 +4,14 @@ import { RupeePrice } from '../../../components/RupeePrice';
 import { IconlyClose } from '../../../components/icons/IconlyClose';
 import { IconlyReceipt } from '../../../components/icons/IconlyReceipt';
 import type { CheckoutQuote } from '../../../api/checkout';
+import { originalBillTotal } from '../quote/billComparison';
 import { GILROY } from '../../../theme/fonts';
 
 interface Props { quote: CheckoutQuote; itemCount: number }
 
-const PRICE_STYLE = { fontFamily: GILROY.bold };
-const formatAmount = (amount: number) => amount.toFixed(2).replace(/\.00$/, '');
+const PRICE_STYLE = { fontFamily: GILROY.semibold };
+const ORIGINAL_PRICE_STYLE = { fontFamily: GILROY.medium };
+const formatAmount = (amount: number) => amount.toFixed(2);
 
 // Why each fee exists, shown when its dotted label is tapped.
 const FEE_INFO = {
@@ -35,10 +37,10 @@ function DottedUnderline() {
   );
 }
 
-function BillRow({ label, amount, discount = false, showFree = false, onInfo }: {
-  label: string; amount: number; discount?: boolean; showFree?: boolean; onInfo?: () => void;
+function BillRow({ label, amount, originalAmount, discount = false, showFree = false, onInfo }: {
+  label: string; amount: number; originalAmount?: number; discount?: boolean; showFree?: boolean; onInfo?: () => void;
 }) {
-  const labelText = <Text className="text-[13.5px] font-medium text-ink/65">{label}</Text>;
+  const labelText = <Text className="text-[15px] font-medium text-[#737579]">{label}</Text>;
   return (
     <View className="flex-row items-center justify-between gap-3">
       <View className="flex-1 items-start">
@@ -49,12 +51,18 @@ function BillRow({ label, amount, discount = false, showFree = false, onInfo }: 
           </Pressable>
         ) : labelText}
       </View>
-      {showFree && amount === 0 ? (
-        <Text className="text-[13.5px] text-success" style={PRICE_STYLE}>FREE</Text>
-      ) : (
-        <RupeePrice amount={formatAmount(amount)} size={13.5} prefix={discount ? '-' : undefined}
-          style={PRICE_STYLE} color={discount ? '#2E9E77' : '#101C10'} />
-      )}
+      <View className="flex-row items-center gap-1.5">
+        {originalAmount !== undefined && originalAmount > amount && (
+          <RupeePrice amount={formatAmount(originalAmount)} size={14} strike
+            style={ORIGINAL_PRICE_STYLE} color="#85878B" />
+        )}
+        {showFree && amount === 0 ? (
+          <Text className="text-[14px] text-success" style={PRICE_STYLE}>FREE</Text>
+        ) : (
+          <RupeePrice amount={formatAmount(amount)} size={14} prefix={discount ? '-' : undefined}
+            style={PRICE_STYLE} color={discount ? '#2E9E77' : '#505257'} />
+        )}
+      </View>
     </View>
   );
 }
@@ -78,10 +86,11 @@ function FeeInfoDialog({ fee, onClose }: { fee: FeeKey | null; onClose: () => vo
   );
 }
 
-// No local fee or tip calculation: this is the exact bill the server accepts.
-export function BillDetailsCard({ quote, itemCount }: Props) {
+// The payable amount always comes from the server. The comparison total
+// only summarizes the original prices already shown in the bill rows.
+export function BillDetailsCard({ quote }: Props) {
   const bill = quote.bill;
-  const productSavings = Math.max(0, bill.originalItemTotal - bill.itemTotal);
+  const originalTotal = originalBillTotal(bill);
   const [openFee, setOpenFee] = useState<FeeKey | null>(null);
   return (
     <View className="gap-4 rounded-3xl bg-white px-5 py-5">
@@ -90,18 +99,20 @@ export function BillDetailsCard({ quote, itemCount }: Props) {
         <Text className="text-[16px] font-semibold text-ink">Bill details</Text>
       </View>
       <View className="gap-3">
-        <BillRow label={`Total MRP (${itemCount} ${itemCount === 1 ? 'item' : 'items'})`} amount={bill.originalItemTotal} />
-        {productSavings > 0 && <BillRow label="Product discount" amount={productSavings} discount />}
-        <BillRow label="Items total" amount={bill.itemTotal} />
-        <BillRow label="Delivery fee" amount={bill.baseDeliveryFee} showFree onInfo={() => setOpenFee('delivery')} />
+        <BillRow label="Item Total" amount={bill.itemTotal} originalAmount={bill.originalItemTotal} />
+        <BillRow label="Delivery fee" amount={bill.baseDeliveryFee} originalAmount={bill.originalBaseDeliveryFee} showFree={bill.deliveryFeeShowFree ?? true} onInfo={() => setOpenFee('delivery')} />
         {bill.additionalShopFee > 0 && <BillRow label={`Extra shop pickup (${bill.storeCount - 1} ${bill.storeCount === 2 ? 'shop' : 'shops'})`} amount={bill.additionalShopFee} />}
-        <BillRow label="Handling fee" amount={bill.handlingFee} onInfo={() => setOpenFee('handling')} />
+        <BillRow label="Handling fee" amount={bill.handlingFee} originalAmount={bill.originalHandlingFee} showFree={bill.handlingFeeShowFree ?? true} onInfo={() => setOpenFee('handling')} />
         {bill.discountAmount > 0 && <BillRow label="Coupon discount" amount={bill.discountAmount} discount />}
         {(bill.tipAmount ?? 0) > 0 && <BillRow label="Tip for your rider" amount={bill.tipAmount!} />}
       </View>
       <View className="flex-row items-center justify-between border-t border-gray-100 pt-4">
-        <Text className="text-[16px] font-semibold text-ink">Amount to pay</Text>
-        <RupeePrice amount={formatAmount(bill.total)} size={17} style={PRICE_STYLE} />
+        <Text className="text-[16px] font-semibold text-black">To Pay</Text>
+        <View className="flex-row items-center gap-2">
+          {originalTotal !== undefined && <RupeePrice amount={formatAmount(originalTotal)} size={15} strike
+            style={ORIGINAL_PRICE_STYLE} color="#85878B" />}
+          <RupeePrice amount={formatAmount(bill.total)} size={18} style={PRICE_STYLE} color="#000000" />
+        </View>
       </View>
       <FeeInfoDialog fee={openFee} onClose={() => setOpenFee(null)} />
     </View>

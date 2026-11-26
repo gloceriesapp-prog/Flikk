@@ -79,7 +79,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   useLayoutEffect(() => {
     latestSelection.current = { addressId: selectedAddress?.id, paymentMethod, bankCode: selectedNetbankingBank?.code, walletContact: selectedWallet?.contact };
   }, [selectedAddress?.id, paymentMethod, selectedNetbankingBank?.code, selectedWallet?.contact]);
-  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod, selectedNetbankingBank: paymentMethod === 'netbanking' ? selectedNetbankingBank : undefined, selectedAddressId: selectedAddress?.id });
+  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod, selectedNetbankingBank: paymentMethod === 'netbanking' ? selectedNetbankingBank : undefined, selectedAddressId: selectedAddress?.id, amount: grandTotal ?? undefined });
 
   async function goToOrderPlaced(order: { orderId: string; orderNumber: string; placedAt: string; avgPrepMinutes: number | null; estimatedDeliveryMinutes?: number | null; estimatedDeliveryAt?: string | null; amount: number; items: CartItem[] }, methodLabel: string, successfulMethod: PaymentMethod) {
     if (!stillOwner()) return;
@@ -193,7 +193,8 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
           [{ text: 'Review cart', style: 'cancel', onPress: () => resolve(false) },
             { text: 'Confirm and order', onPress: () => resolve(true) }],
           { cancelable: true, onDismiss: () => resolve(false) }));
-        if (!confirmed) return;
+        // Pay can start from Choose how to pay: show the cart to review.
+        if (!confirmed) { navigation.popTo('Cart'); return; }
       }
       // Cart/address changes while a request or confirmation is pending
       // invalidate this attempt rather than ordering an earlier selection.

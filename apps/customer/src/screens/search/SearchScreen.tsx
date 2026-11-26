@@ -17,6 +17,7 @@ import { SearchSuggestions } from './components/SearchSuggestions';
 import { SearchTypeahead } from './components/SearchTypeahead';
 import { buildSuggestions, type TypeaheadSuggestion } from './searchTypeahead';
 import type { AppStackParamList } from '../../navigation/types';
+import { useCollectionBottomPadding } from '../../navigation/home/useCollectionBottomPadding';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Search'>;
 
@@ -25,6 +26,7 @@ const MIN_QUERY_LENGTH = 2;
 const TYPEAHEAD_MAX_HEIGHT = 280;
 
 export function SearchScreen({ navigation, route }: Props) {
+  const listBottomPadding = useCollectionBottomPadding(40);
   const storeId = route.params?.storeId;
   const [query, setQueryValue] = useState('');
   // Typing shows text suggestions (SearchTypeahead); the keyboard search key
@@ -86,7 +88,7 @@ export function SearchScreen({ navigation, route }: Props) {
           showsVerticalScrollIndicator={false}
           // 15 (container) + 5 (cell/header) = 20px outer gutter (px-5), and a
           // 10px inter-column gap, matching the old flex-wrap grid's spacing.
-          contentContainerStyle={{ paddingHorizontal: 15, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: 15, paddingBottom: listBottomPadding }}
           ListHeaderComponent={
             showResults ? (
               <View style={{ paddingHorizontal: 5 }}>

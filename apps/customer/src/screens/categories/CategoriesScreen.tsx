@@ -1,3 +1,5 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
+import { HeaderEtaPill } from '../../components/EtaPill';
 // Full category grid, grouped by section. Reached from BottomNavBar's own
 // "Categories" tab (src/components/BottomNavBar/BottomNavBar.tsx) — it's a
 // bottom-nav destination, not a pushed detail screen, so no back arrow.
@@ -13,12 +15,14 @@
 import { Search01Icon } from '@hugeicons/core-free-icons';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { Pressable, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { moveNavBar } from '../home/category-page/useHomeBrowseScroll';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { CategorySections } from '../../components/CategorySections/CategorySections';
 import { BrandFooter } from '../../components/BrandFooter';
+import { RequestProductFooter } from '../store-list/components/RequestProductFooter';
 import { PopularBrands } from './components/PopularBrands';
 import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
@@ -27,19 +31,15 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Categories'>;
 
 export function CategoriesScreen({ navigation }: Props) {
   const prevScrollY = useSharedValue(0);
+  const navTarget = useSharedValue(0);
   const navHidden = useSharedValue(0);
   const SCROLL_HIDE_THRESHOLD = 6;
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     const y = event.contentOffset.y;
     const delta = y - prevScrollY.value;
-    if (y < 40) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta > SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta < -SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    }
+    if (y < 40 || delta < -SCROLL_HIDE_THRESHOLD) moveNavBar(navHidden, navTarget, 0);
+    else if (delta > SCROLL_HIDE_THRESHOLD) moveNavBar(navHidden, navTarget, 1);
     prevScrollY.value = y;
   });
 
@@ -51,7 +51,10 @@ export function CategoriesScreen({ navigation }: Props) {
       <StatusBar style="dark" />
 
       <View className="flex-row items-center justify-between px-5 pb-2 pt-2">
-        <Text accessibilityRole="header" className="text-[22px] font-bold tracking-tight text-ink">Categories</Text>
+        <View className="flex-row items-center gap-2">
+          <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} text-ink/90`}>Categories</Text>
+          <HeaderEtaPill />
+        </View>
         <Pressable accessibilityRole="button" accessibilityLabel="Search" onPress={() => navigation.navigate('Search')} hitSlop={10} className="h-9 w-9 items-center justify-center">
           <AppIcon icon={Search01Icon} size={22} color={colors.ink} />
         </Pressable>
@@ -60,6 +63,7 @@ export function CategoriesScreen({ navigation }: Props) {
       <Animated.ScrollView className="flex-1" contentContainerClassName="pb-28" onScroll={scrollHandler} scrollEventThrottle={16}>
         <PopularBrands previewLimit={5} titleSpacing={20} onSelect={brand => navigation.navigate('BrandProducts', { brand })} onSeeAll={() => navigation.navigate('AllBrands')} />
         <CategorySections />
+        <RequestProductFooter withStore={false} />
         <BrandFooter />
       </Animated.ScrollView>
 

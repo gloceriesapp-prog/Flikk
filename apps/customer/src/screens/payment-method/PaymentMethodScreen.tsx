@@ -1,8 +1,11 @@
+import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { NetbankingBankPicker } from './components/NetbankingBankPicker';
 import type { NetbankingBank } from '../../api/payments';
 import { RecoveredPaymentMethods } from './RecoveredPaymentMethods';
 import { fetchPaymentPreference, selectPaymentPreference } from '../../api/payments';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { CommonActions } from '@react-navigation/native';
+import { useCheckoutFlowActive } from '../../features/checkout-recovery/checkoutActivity';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -12,7 +15,8 @@ import { useInstalledUpiApps } from '../../payments/useInstalledUpiApps';
 import { UpiDiscoveryStatus } from '../../payments/UpiDiscoveryStatus';
 import type { AppStackParamList } from '../../navigation/types';
 import { PaymentMethodList } from './components/PaymentMethodList';
-import type { PaymentMethod } from '../../payments/paymentMethod';
+import { PaymentConfirmContext } from './components/paymentChoice';
+import type { PaymentMethod, WalletSelection } from '../../payments/paymentMethod';
 import { usePaymentAvailability } from '../../payments/usePaymentAvailability';
 import { useAuthStore } from '../../store/useAuthStore';
 import { AccountPageHeader } from '../../components/AccountPageHeader';
@@ -26,6 +30,11 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
   const [saving, setSaving] = useState(false);
   const [bankPickerVisible, setBankPickerVisible] = useState(false);
   const [error, setError] = useState('');
+  // Checkout: the tapped method is only selected; Pay now / Place order confirms it.
+  const [choice, setChoice] = useState<{ method: PaymentMethod; bank?: NetbankingBank; wallet?: WalletSelection } | null>(
+    !fromProfile && route.params.selectedMethod
+      ? { method: route.params.selectedMethod, bank: route.params.selectedMethod === 'netbanking' ? route.params.selectedNetbankingBank : undefined }
+      : null);
   const customerId = useAuthStore(state => state.customerId);
   const { allowed, directUpiAvailable, loaded: paymentAvailabilityLoaded } = usePaymentAvailability();
   const { apps, loading, error: discoveryError, retry: retryDiscovery } = useInstalledUpiApps();
@@ -48,7 +57,31 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
       setError('UPI app payments are unavailable in this test environment. Choose another payment method.');
       return;
     }
-    navigation.popTo('Cart', { selectedPaymentMethod: method, selectedNetbankingBank: bank, selectedWallet: (method === 'wallet:mobikwik' || method === 'wallet:olamoney') && contact ? { method, contact } : undefined });
+    setError('');
+    setChoice({ method, bank, wallet: (method === 'wallet:mobikwik' || method === 'wallet:olamoney') && contact ? { method, contact } : undefined });
+  }
+  // Confirm: the cart (still mounted under this screen) places the order
+  // through its guarded flow (single-tap lock, fresh quote, hours, address)
+  // and opens the payment from here, without going back to the cart first.
+  // "Pay ₹638" for every method; "Pay now" if the cart total is unknown.
+  const amount = route.params.amount;
+  const checkoutActive = useCheckoutFlowActive();
+  const [requested, setRequested] = useState(false);
+  // The cart picks the request up within moments; its flow then owns the busy state.
+  useEffect(() => {
+    if (!requested) return;
+    const timer = setTimeout(() => setRequested(false), checkoutActive ? 0 : 15_000);
+    return () => clearTimeout(timer);
+  }, [requested, checkoutActive]);
+  const busy = requested || checkoutActive;
+  const payLabel = busy ? 'Opening payment…' : amount != null ? `Pay ₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : 'Pay now';
+  function payNow() {
+    if (!choice || busy) return;
+    const params = { selectedPaymentMethod: choice.method, selectedNetbankingBank: choice.bank, selectedWallet: choice.wallet, placeOrderRequest: Date.now() };
+    const cart = navigation.getState().routes.find(r => r.name === 'Cart');
+    if (!cart) { navigation.popTo('Cart', params); return; }
+    setRequested(true);
+    navigation.dispatch({ ...CommonActions.setParams(params), source: cart.key });
   }
   return (
     <View className="flex-1 bg-[#F2F2F7]">
@@ -65,7 +98,7 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
             </Pressable>
             <View className="h-11 w-11" />
             <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-              <Text className="text-[18px] font-semibold text-ink">Choose how to pay</Text>
+              <Text className={`${PAGE_TITLE_CLASS_NAME} text-ink`}>Choose how to pay</Text>
             </View>
           </View>
         </View>
@@ -74,9 +107,11 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
         {!fromProfile && Platform.OS === 'android' && paymentAvailabilityLoaded && !directUpiAvailable && allowed.online && <Text className="text-sm text-ink/60">UPI app payments are unavailable in this test environment. Choose another payment method.</Text>}
         {!!error && <Text className="text-red-600">{error}</Text>}
         {saving && <Text className="text-ink/60">Saving your preference…</Text>}
-        <View pointerEvents={saving ? "none" : "auto"}>
+        <View pointerEvents={saving || busy ? "none" : "auto"}>
         {allowed.online && <UpiDiscoveryStatus loading={loading} error={discoveryError} count={apps.length} onRetry={() => void retryDiscovery()} />}
-          <PaymentMethodList method={fromProfile ? preference.data?.method ?? null : route.params.selectedMethod} upiApps={apps} onSelect={select} onWalletSelect={(method, contact) => void select(method, undefined, contact)} allowed={allowed} />
+          <PaymentConfirmContext.Provider value={fromProfile ? null : { label: payLabel, onConfirm: payNow }}>
+            <PaymentMethodList method={fromProfile ? preference.data?.method ?? null : choice?.method ?? null} upiApps={apps} onSelect={select} onWalletSelect={(method, contact) => void select(method, undefined, contact)} allowed={allowed} />
+          </PaymentConfirmContext.Provider>
         </View>
       </KeyboardAwareScrollView>
       <NetbankingBankPicker visible={bankPickerVisible} selectedCode={route.params.selectedNetbankingBank?.code}
@@ -97,7 +132,7 @@ export function PaymentMethodScreen(props: Props) {
         className="h-11 w-11 items-center justify-center rounded-full bg-white">
         <IconlyArrowLeft size={22} color="#111111" />
       </Pressable>
-      <Text className="text-[18px] font-semibold text-ink">Choose how to pay</Text>
+      <Text className={`${PAGE_TITLE_CLASS_NAME} text-ink`}>Choose how to pay</Text>
     </View>
     <RecoveredPaymentMethods target={target} navigation={props.navigation} />
   </View>;

@@ -15,6 +15,8 @@ export type AuthStackParamList = {
 export type AppStackParamList = {
   // Explicit local design route: structured rider/item feedback has no API yet.
   OrderRating: { previewOnly: true };
+  PaymentProcessingPreview: undefined;
+  TrackOrderPreview: undefined;
   // One-time (per session, until a saved location exists) flow between login
   // and Home — see src/screens/location/README.md for the full sequence.
   LocationPermission: undefined;
@@ -61,6 +63,7 @@ export type AppStackParamList = {
   Search: { storeId: string; storeName?: string } | undefined;
   Store: undefined;
   Purchase: undefined;
+  Reorder: undefined;
   Profile: undefined;
   AllBrands: undefined;
   BrandProducts: { brand: import('../api/brands').PopularBrand };
@@ -77,8 +80,13 @@ export type AppStackParamList = {
   RegionalCategory: { categoryId: string };
   CoconutOilCollection: undefined;
   StoreDetail: { storeId: string; storeName: string };
-  Cart: { selectedWallet?: import('../payments/paymentMethod').WalletSelection; selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedPaymentMethod?: PaymentMethod } | undefined;
-  PaymentMethod: { selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedMethod: PaymentMethod | null; selectedAddressId?: string; source?: 'profile'; recoveryTarget?: import('../api/payments').PaymentTarget };
+  Cart: { selectedWallet?: import('../payments/paymentMethod').WalletSelection; selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedPaymentMethod?: PaymentMethod;
+    // Set by Choose how to pay (Date.now()): place the order with the chosen method.
+    placeOrderRequest?: number } | undefined;
+  ApplyCoupon: { itemTotal: number };
+  PaymentMethod: { selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedMethod: PaymentMethod | null; selectedAddressId?: string;
+    // Cart total, for the "Pay ₹…" button (checkout only).
+    amount?: number; source?: 'profile'; recoveryTarget?: import('../api/payments').PaymentTarget };
   CheckoutAttemptRecovery: undefined;
   PaymentRecovery: { target: import('../api/payments').PaymentTarget };
   PaymentStatus: { amount: number };
