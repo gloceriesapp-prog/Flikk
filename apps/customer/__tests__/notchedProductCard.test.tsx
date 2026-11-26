@@ -70,3 +70,19 @@ it('keeps horizontal photo paging while leaving vertical browsing gestures alone
     expect(view.getByLabelText('Photo 2 of 2')).toBeTruthy();
   } finally { spy.mockRestore(); }
 });
+
+// React Native releases synthetic events before queued state updaters may run.
+it('captures layout width before the native event is released', async () => {
+  const view = await render(<ProductCardView product={product} isAvailable />);
+  const onLayout = view.getByTestId('product-image-onion').props.onLayout;
+  await act(() => {
+    for (const width of [100, 130]) {
+      const event: { nativeEvent: { layout: { width: number } } | null } = { nativeEvent: { layout: { width } } };
+      onLayout(event);
+      event.nativeEvent = null;
+    }
+  });
+  expect(view.getByTestId('product-photo-pager').props.style.width).toBe(130);
+  await act(() => { onLayout({ nativeEvent: null }); onLayout({ nativeEvent: { layout: { width: 0 } } }); });
+  expect(view.getByTestId('product-photo-pager').props.style.width).toBe(130);
+});

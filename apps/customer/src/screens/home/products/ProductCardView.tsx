@@ -104,7 +104,11 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
       {showImage && (
         <View className="relative mb-1">
           <View testID={`product-image-${id}`} className="relative w-full" style={{ aspectRatio: 4 / 4.5 }}
-            onLayout={event => setImageWidth(previous => Math.abs(previous - event.nativeEvent.layout.width) < 0.5 ? previous : event.nativeEvent.layout.width)}>
+            onLayout={event => {
+              const width = event.nativeEvent?.layout?.width;
+              if (width == null || !Number.isFinite(width) || width <= 0) return;
+              setImageWidth(previous => Math.abs(previous - width) < 0.5 ? previous : width);
+            }}>
             {imageWidth > 0 && <NotchedProductGallery key={`${id}:${photos.join('|')}:${imageWidth}`}
               images={photos} width={imageWidth} height={metrics.height}
               diameter={metrics.diameter} buttonWidth={buttonWidth} available={isAvailable} />}
