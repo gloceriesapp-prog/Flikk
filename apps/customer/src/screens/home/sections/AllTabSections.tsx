@@ -18,7 +18,6 @@ import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { QuickCategoriesSection } from '../quick-categories/QuickCategoriesSection';
 import { HomeWelcomeBanner } from '../welcome-banner/HomeWelcomeBanner';
-import { WelcomeCardStrip } from '../welcome-banner/WelcomeCardStrip';
 import { EverydayDairySection } from '../everyday-dairy/EverydayDairySection';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
 import { NewOnGloceriesSection } from '../new-on-gloceries/NewOnGloceriesSection';
@@ -207,6 +206,8 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
 
   // The header's category row replaces the Quick categories grid on Home.
   // Namma Brands always sits above the welcome card; its row only says on/off.
+  // The welcome banner shows unless its Home Sections row is switched off.
+  const welcomeOn = !sectionConfig?.some((section) => section.key === 'welcome-banner' && !section.enabled);
   const nammaBrandsOn = !!sectionConfig?.some((section) => section.key === 'namma-brands' && section.enabled);
   const sections = useMemo(() => resolveAllTabSections(sectionConfig).filter((section) => section.key !== 'quick-categories'), [sectionConfig]);
 
@@ -274,7 +275,8 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   // doesn't change a given section's inputs reuses its element (React skips the
   // subtree and never re-runs that section's registry renderer).
   return useMemo(() => {
-    const items: HomeSectionItem[] = [{ key: 'namma-brands', node: <NammaBrandsSection enabled={nammaBrandsOn} /> }, {
+    const items: HomeSectionItem[] = [{ key: 'namma-brands', node: <NammaBrandsSection enabled={nammaBrandsOn} /> }];
+    if (welcomeOn) items.push({
       key: 'welcome-banner',
       node: (
         // Inset to the content width under the header's white sheet.
@@ -284,10 +286,10 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
               <HomeWelcomeBanner />
             </View>
           </View>
-          <WelcomeCardStrip />
         </View>
       ),
-    }, { key: 'buy-again', node: <BuyAgainSection /> }];
+    });
+    items.push({ key: 'buy-again', node: <BuyAgainSection /> });
     for (const cfg of sections) {
       const usesPicks = cfg.custom || !!cfg.sourceCategoryId;
       const render = usesPicks ? renderPickedSection : SECTION_REGISTRY[cfg.key];
@@ -309,5 +311,5 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
       });
     }
     return items;
-  }, [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground, nammaBrandsOn]);
+  }, [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground, nammaBrandsOn, welcomeOn]);
 }
