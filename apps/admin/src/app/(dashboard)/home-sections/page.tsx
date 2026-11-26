@@ -47,6 +47,7 @@ const SECTION_META: Record<string, { label: string; defaultTitle: string }> = {
   'festival-picks': { label: 'Festival Section products', defaultTitle: '(the Festival Section title)' },
   seasonal: { label: 'Seasonal Section', defaultTitle: '(no heading)' },
   'nearby-stores': { label: 'Nearby Stores', defaultTitle: 'Nearby Stores' },
+  'welcome-banner': { label: 'Welcome banner (always below Namma Brands; image in App content)', defaultTitle: '(the welcome image)' },
   'namma-brands': { label: 'Namma Brands (always above the welcome card; cards in Namma Brands)', defaultTitle: '(header image)' },
   preorders: { label: 'Pre-orders (products marked Pre-order only)', defaultTitle: 'Pre-order now' },
   trending: { label: 'Trending', defaultTitle: 'Popular This Week' },
