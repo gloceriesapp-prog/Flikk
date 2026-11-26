@@ -1,5 +1,5 @@
 export const IMAGE_CORNER_RADIUS = 16;
-export const NOTCH_GAP = 3;
+export const NOTCH_GAP = 1.5;
 export const NOTCH_FILLET = 8;
 export const CART_CONTROL_DURATION = 180;
 
@@ -9,7 +9,7 @@ export function notchedCardMetrics(width: number) {
   const centerX = width - radius + 4;
   const notch = radius + NOTCH_GAP;
   const dy = radius - 4 - NOTCH_FILLET;
-  // Preserve the bottom-left corner and a separate wishlist target on narrow cards.
+  // Preserve the bottom-left corner and space for the gallery dots on narrow cards.
   const maxExtension = Math.max(0, centerX - Math.sqrt((notch + NOTCH_FILLET) ** 2 - dy ** 2) - IMAGE_CORNER_RADIUS);
   return { diameter, height: width * 4.5 / 4, pillWidth: diameter + Math.min(diameter, maxExtension, Math.max(0, width - 39 - diameter)) };
 }

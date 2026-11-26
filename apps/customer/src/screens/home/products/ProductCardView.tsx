@@ -3,7 +3,6 @@ import { Platform, Pressable, Text, View } from 'react-native';
 import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { useSharedValue, withTiming, ReduceMotion } from 'react-native-reanimated';
 import { NotchedProductGallery } from './image-area/NotchedProductGallery';
-import { ProductWishlistButton } from './image-area/ProductWishlistButton';
 import { CART_CONTROL_DURATION, notchedCardMetrics } from './image-area/notchedCardGeometry';
 import { stockLabel } from '../../../components/stockLabel';
 import { ProductPriceRow } from '../../../components/ProductPriceRow';
@@ -112,7 +111,6 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
             {typeof isVeg === 'boolean' && <View pointerEvents="none" accessible accessibilityLabel={isVeg ? 'Vegetarian' : 'Non-vegetarian'} className="absolute right-2 top-2 rounded-[3px] border bg-white p-0.5" style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}>
               <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
             </View>}
-            <ProductWishlistButton product={product} />
             {cartControl && <View style={{ position: 'absolute', right: -4 - Math.max(0, 44 - metrics.diameter) / 2,
               bottom: -4 - Math.max(0, 44 - metrics.diameter) / 2 }}>{cartControl}</View>}
           </View>

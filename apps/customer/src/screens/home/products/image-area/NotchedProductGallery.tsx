@@ -51,7 +51,7 @@ export function NotchedProductGallery({ images, width, height, diameter, buttonW
       <AnimatedPath animatedProps={pathProps} fill="none" stroke="#E3E6EE" strokeWidth={1} />
     </Svg>
     {photos.length > 1 && <View pointerEvents="none" accessibilityLabel={`Photo ${index + 1} of ${photos.length}`}
-      style={{ position: 'absolute', left: 8, bottom: 58, flexDirection: 'row', gap: 2 }}>
+      style={{ position: 'absolute', left: 8, bottom: 8, flexDirection: 'row', gap: 2 }}>
       {cardDotWindow(photos.length, index).map(i => <View key={i} style={{ width: 6, height: 6, borderRadius: 3,
         borderWidth: 1, borderColor: '#738078', backgroundColor: i === index ? '#738078' : '#FFFFFF' }} />)}
     </View>}

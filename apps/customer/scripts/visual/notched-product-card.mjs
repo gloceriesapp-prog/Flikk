@@ -13,10 +13,9 @@ new Function('exports', 'module', compiled)(module.exports, module);
 const { notchedCardMetrics, notchedCardPath } = module.exports;
 const out = path.join(root, 'output/playwright');
 fs.mkdirSync(out, { recursive: true });
-const heart = 'M20.8 4.6c-2.1-2.1-5.4-2.1-7.5 0L12 5.9l-1.3-1.3a5.3 5.3 0 0 0-7.5 7.5L12 21l8.8-8.9a5.3 5.3 0 0 0 0-7.5Z';
 const cases = [{ label: 'Default · veg', quantity: 0, veg: true }, { label: 'Added · 1', quantity: 1, veg: true },
-  { label: 'Added · 5', quantity: 5, saved: true }, { label: 'Out of stock', out: true },
-  { label: 'Non-veg · saved', quantity: 0, veg: false, saved: true }, { label: 'No veg mark', quantity: 0 }];
+  { label: 'Added · 5', quantity: 5 }, { label: 'Out of stock', out: true },
+  { label: 'Non-veg', quantity: 0, veg: false }, { label: 'No veg mark', quantity: 0 }];
 function card(width, state, id) {
   const m = notchedCardMetrics(width), d = m.diameter, b = d / 2, cx = width - b + 4, cy = m.height - b + 4;
   const extension = state.quantity ? m.pillWidth - d : 0;
@@ -28,7 +27,7 @@ function card(width, state, id) {
   const cell = (rootWidth - 2 * contentPadding - 16) / 2;
   const minusX = rootLeft + contentPadding + cell / 2, plusX = state.quantity ? rootLeft + rootWidth - contentPadding - cell / 2 : cx;
   const button = state.out ? '' : `<rect x="${cx - b - extension}" y="${cy - b}" width="${d + extension}" height="${d}" rx="${b}" fill="#155DFC"/>${state.quantity ? `<text x="${cx - extension / 2}" y="${cy + 5}" text-anchor="middle" fill="white" font-size="13">${state.quantity}</text><path d="M${minusX - 5} ${cy}h10" stroke="white" stroke-width="2"/>` : ''}<path d="M${plusX - 7} ${cy}h14m-7-7v14" stroke="white" stroke-width="2"/>`;
-  return `<article style="width:${width}px"><svg width="${width + 8}" height="${m.height + 8}" viewBox="0 0 ${width + 8} ${m.height + 8}"><defs><clipPath id="${id}"><path d="${shape}"/></clipPath></defs><g clip-path="url(#${id})">${veggies}</g><path d="${shape}" fill="none" stroke="#E3E6EE"/>${mark}<g transform="translate(5 ${m.height - 29})"><path d="${heart}" fill="${state.saved ? '#737B84' : 'none'}" stroke="#737B84" stroke-width="1.7"/></g>${button}</svg><div class="pack">1 kg</div><b>₹30</b><div>Onion</div>${state.out ? '<small class="stock">Out of stock</small>' : ''}<small>${state.label}</small></article>`;
+  return `<article style="width:${width}px"><svg width="${width + 8}" height="${m.height + 8}" viewBox="0 0 ${width + 8} ${m.height + 8}"><defs><clipPath id="${id}"><path d="${shape}"/></clipPath></defs><g clip-path="url(#${id})">${veggies}</g><path d="${shape}" fill="none" stroke="#E3E6EE"/>${mark}${[0,1,2].map(i => `<circle cx="${11 + i * 8}" cy="${m.height - 11}" r="3" fill="${i ? '#FFFFFF' : '#738078'}" stroke="#738078"/>`).join('')}${button}</svg><div class="pack">1 kg</div><b>₹30</b><div>Onion</div>${state.out ? '<small class="stock">Out of stock</small>' : ''}<small>${state.label}</small></article>`;
 }
 for (const viewport of [360, 430]) {
   const width = (viewport - 64) / 3;

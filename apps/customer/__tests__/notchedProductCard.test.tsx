@@ -5,14 +5,12 @@ import { PanResponder, type PanResponderCallbacks, type PanResponderGestureState
 import type { Product } from '../src/screens/home/products/types';
 
 const mockCart = { items: [] as { id: string; quantity: number }[], incrementItem: jest.fn(), decrementItem: jest.fn() };
-const mockWishlist = { isWishlisted: jest.fn(() => false), toggle: jest.fn() };
 jest.mock('../src/store/useCartStore', () => ({ useCartStore: (selector: (state: typeof mockCart) => unknown) => selector(mockCart) }));
-jest.mock('../src/store/useWishlistStore', () => ({ useWishlistStore: (selector: (state: typeof mockWishlist) => unknown) => selector(mockWishlist) }));
 jest.mock('../src/store/addToCart', () => ({ addToCart: jest.fn() }));
 jest.mock('../src/components/AppImage', () => ({ AppImage: jest.requireActual('react-native').Image }));
 jest.mock('../src/components/AppIcon', () => ({ AppIcon: () => null }));
 const product = { id: 'onion', name: 'Onion', price: 30, originalPrice: 40, weight: '1 kg', storeId: 'store', isVeg: true, availableQuantity: 3 } as Product;
-beforeEach(() => { jest.clearAllMocks(); mockWishlist.isWishlisted.mockReturnValue(false); mockCart.items = []; });
+beforeEach(() => { jest.clearAllMocks(); mockCart.items = []; });
 
 it.each([360, 430])('keeps a finite rounded notch at %ipx through the complete quantity animation', viewport => {
   for (const width of [(viewport - 64) / 3, (viewport - 52) / 2, (viewport - 48) / 3.2]) {
@@ -27,16 +25,13 @@ it.each([360, 430])('keeps a finite rounded notch at %ipx through the complete q
     }
   }
 });
-it('keeps wishlist and cart controls independent from opening the product', async () => {
+it('keeps cart controls independent from opening the product', async () => {
   const open = jest.fn(), choose = jest.fn(), stopPropagation = jest.fn();
   const view = await render(<ProductCardView product={product} isAvailable onPress={open} onAdd={choose} />);
-  await fireEvent.press(view.getByRole('button', { name: 'Save Onion to wishlist' }), { stopPropagation });
-  expect(mockWishlist.toggle).toHaveBeenCalledWith(product);
+  expect(view.queryByRole('button', { name: /wishlist/ })).toBeNull();
   expect(open).not.toHaveBeenCalled();
-  mockWishlist.isWishlisted.mockReturnValue(true);
   mockCart.items = [{ id: 'onion', quantity: 5 }];
   await view.rerender(<ProductCardView product={{ ...product }} isAvailable onPress={open} onAdd={choose} />);
-  expect(view.getByRole('button', { name: 'Remove Onion from wishlist', selected: true })).toBeTruthy();
   await fireEvent.press(view.getByRole('button', { name: 'Increase quantity of Onion' }), { stopPropagation });
   await fireEvent.press(view.getByRole('button', { name: 'Decrease quantity of Onion' }), { stopPropagation });
   expect(mockCart.incrementItem).toHaveBeenCalledWith('onion');
