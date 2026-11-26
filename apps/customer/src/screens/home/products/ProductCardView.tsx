@@ -1,11 +1,15 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
-import { ProductImageGallery } from '../../../components/ProductImageGallery';
+import { useSharedValue, withTiming, ReduceMotion } from 'react-native-reanimated';
+import { NotchedProductGallery } from './image-area/NotchedProductGallery';
+import { CART_CONTROL_DURATION, notchedCardMetrics } from './image-area/notchedCardGeometry';
 import { stockLabel } from '../../../components/stockLabel';
 import { ProductPriceRow } from '../../../components/ProductPriceRow';
 import { PriceHighlight } from './PriceHighlight';
 import { ProductCardCartControl } from './ProductCardCartControl';
+import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
+import { AppIcon } from '../../../components/AppIcon';
 import { discountPercentLabel } from '../../../components/priceComparison';
 import { cartLineId, quickAddCut, requiresProductSelection } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
@@ -51,22 +55,18 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
     originalPrice,
     imageUrl,
     freshnessTag,
-    sizeOptions,
     storeId,
     storeName,
     isVeg,
   } = product;
 
 
-  // Count real, distinct pack sizes, not photos or added flavours.
-  const packs = product.variants?.length ? product.variants.map(variant => variant.label) : sizeOptions ?? [weight];
-  const optionCount = Math.max(1, new Set(packs.map(label => label.trim().toLowerCase()).filter(Boolean)).size);
-  const packCount = optionCount;
-  const additionalSizeCount = packCount - 1;
-  const sizeOptionLabel = weight.trim() && additionalSizeCount > 0
-    ? `(${additionalSizeCount} ${additionalSizeCount === 1 ? 'option' : 'options'})` : null;
   const chooseOptions = requiresProductSelection(product);
+  // Distinct pack sizes beyond the shown one (for the size pill's arrow).
+  const packs: string[] = product.variants?.length ? product.variants.map(variant => variant.label) : product.sizeOptions ?? [weight];
+  const additionalSizeCount = new Set(packs.map(label => label.trim().toLowerCase()).filter(Boolean)).size - 1;
 
+  const photos = product.imageUrls?.length ? product.imageUrls : imageUrl ? [imageUrl] : [];
   const discount = discountPercentLabel(price, originalPrice);
   const stockStatus = isAvailable
     ? stockLabel(product.availableQuantity, (product.availableQuantity ?? 0) < 5)
@@ -77,8 +77,16 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
+  const [imageWidth, setImageWidth] = useState(0);
+  const metrics = notchedCardMetrics(imageWidth || 120);
+  const expanded = quantity > 0 && !chooseOptions;
+  const buttonWidth = useSharedValue(expanded ? metrics.pillWidth : metrics.diameter);
+  useEffect(() => {
+    buttonWidth.value = withTiming(expanded ? metrics.pillWidth : metrics.diameter, { duration: CART_CONTROL_DURATION, reduceMotion: ReduceMotion.System });
+  }, [expanded, metrics.pillWidth, metrics.diameter, buttonWidth]);
+
   const cartControl = !isAvailable ? null : (
-    <ProductCardCartControl name={name} quantity={quantity} chooseOptions={chooseOptions} compact={compact}
+    <ProductCardCartControl name={name} quantity={quantity} chooseOptions={chooseOptions} compact={compact} diameter={metrics.diameter} pillWidth={metrics.pillWidth} animatedWidth={buttonWidth}
       onAdd={() => {
         if (chooseOptions) { onAdd?.(); return; }
         addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
@@ -89,44 +97,49 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
   return (
     <Pressable onPress={onPress} className={`${widthClassName} gap-0`}>
 
-      {/* Let the control overlap the outside corner; reserve space below it. */}
       {showImage && (
-        <View className="relative mb-2">
-          <View className="w-full overflow-hidden border border-[#E3E6EE] bg-[#F8F9FC]" style={{ borderRadius: 16, borderCurve: 'continuous' }}>
-            <View className="aspect-[4/4.5] w-full">
-              <ProductImageGallery images={product.imageUrls ?? (imageUrl ? [imageUrl] : [])} />
-              {typeof isVeg === 'boolean' && <View pointerEvents="none" className="absolute right-2 top-2 rounded-[3px] border bg-white p-0.5" style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}>
-                <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
-              </View>}
-            </View>
-            <View className="h-10 flex-row items-center justify-between gap-1 border-t border-[#E3E6EE] px-2">
-              <View className="min-w-0 flex-1">
-                <Text numberOfLines={2} className="text-[11px] font-bold leading-[14px] text-[#333840]">{weight}</Text>
-                {sizeOptionLabel && <Text className="text-[9px] font-medium leading-[12px] text-[#73809B]">{sizeOptionLabel}</Text>}
-              </View>
-            </View>
+        <View className="relative mb-1">
+          <View testID={`product-image-${id}`} className="relative w-full" style={{ aspectRatio: 4 / 4.5 }}
+            onLayout={event => {
+              const width = event.nativeEvent?.layout?.width;
+              if (width == null || !Number.isFinite(width) || width <= 0) return;
+              setImageWidth(previous => Math.abs(previous - width) < 0.5 ? previous : width);
+            }}>
+            {imageWidth > 0 && <NotchedProductGallery key={`${id}:${photos.join('|')}:${imageWidth}`}
+              images={photos} width={imageWidth} height={metrics.height}
+              diameter={metrics.diameter} buttonWidth={buttonWidth} available={isAvailable} />}
+            {typeof isVeg === 'boolean' && <View pointerEvents="none" accessible accessibilityLabel={isVeg ? 'Vegetarian' : 'Non-vegetarian'} className="absolute right-2 top-2 rounded-[3px] border bg-white p-0.5" style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}>
+              <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+            </View>}
+            {cartControl && <View style={{ position: 'absolute', right: -4 - Math.max(0, 44 - metrics.diameter) / 2,
+              bottom: -4 - Math.max(0, 44 - metrics.diameter) / 2 }}>{cartControl}</View>}
           </View>
-          {cartControl && <View className="absolute z-10" style={{ right: -6, bottom: -2, paddingTop: 1, paddingHorizontal: 1, borderRadius: 26, backgroundColor: '#FFFFFF' }}>{cartControl}</View>}
+
         </View>
       )}
 
       {/* Pricing, name and stock keep their existing hierarchy. */}
       <View className="gap-1 px-0.5 pt-0">
-        {!showImage && <View>
-          <Text className={`text-[11px] font-semibold ${onDark ? 'text-white/70' : 'text-black/65'}`}>{weight}</Text>
-          {sizeOptionLabel && <Text className={`text-[9px] font-medium leading-[12px] ${onDark ? 'text-white/60' : 'text-[#73809B]'}`}>{sizeOptionLabel}</Text>}
-        </View>}
+        {/* Pack size in a grey pill as wide as the photo; a down arrow when the
+            product has more sizes (tapping it opens the size picker). */}
+        {weight.trim() ? (
+          <Pressable disabled={!(additionalSizeCount > 0 && chooseOptions && onAdd)} accessibilityRole={additionalSizeCount > 0 ? 'button' : 'text'}
+            accessibilityLabel={additionalSizeCount > 0 ? `${weight}, ${additionalSizeCount} more ${additionalSizeCount === 1 ? 'size' : 'sizes'}` : weight}
+            onPress={event => { event.stopPropagation(); onAdd?.(); }}
+            className={`mt-1.5 h-[24px] w-full flex-row items-center justify-center gap-1 rounded-full px-2 ${onDark ? 'bg-white/15' : 'bg-[#F1F2F4]'}`}>
+            <Text numberOfLines={1} className={`shrink text-[12.5px] font-semibold ${onDark ? 'text-white' : 'text-[#1F2937]'}`}>{weight}</Text>
+            {additionalSizeCount > 0 && <AppIcon icon={ArrowDown01Icon} size={14} color={onDark ? '#FFFFFF' : '#1F2937'} strokeWidth={2.4} />}
+          </Pressable>
+        ) : null}
 
-        {/* Price, discount and per-kg/litre price read as one block: no gap
-            between them, and only a small gap before the product name. */}
+        {/* Price and discount read as one block: no gap between them, and only
+            a small gap before the product name. The per-kg/litre price is not
+            shown on cards (it stays on the product page). */}
         <View>
           <ProductPriceRow price={price} originalPrice={originalPrice} size={17} onDark={onDark} showDiscount={false} />
           {/* Discount and freshness tag share one line under the price (so the
               price row never shrinks); with both, they take turns. */}
           <PriceHighlight discount={discount} freshnessTag={freshnessTag} onDark={onDark} />
-          {product.unitPriceLabel && (
-            <Text className={`text-[11px] font-medium leading-[14px] ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`}>{product.unitPriceLabel}</Text>
-          )}
         </View>
 
         <Text className={`${Platform.OS === 'ios' ? 'text-[14px] leading-[18px]' : 'text-[13px] leading-[17px]'} font-semibold ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>

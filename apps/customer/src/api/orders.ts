@@ -58,6 +58,7 @@ export interface ApiOrderItem {
   unit_at_order?: string | null;
   cut_size?: CutSize | null;
   option_name_at_order?: string | null;
+  option_id?: string | null;
   serving?: Serving | null;
   variant_mrp_at_order?: number | null;
   // Checkout snapshot; absent/null for orders created before migration 060.
@@ -207,11 +208,15 @@ export async function fetchBuyItAgain(): Promise<Product[]> {
 // the backend ships, fall back to Buy It Again (delivered orders only).
 // An older server routes the path to GET /orders/:id, which answers
 // TRACKING_UNAVAILABLE (not a uuid) or 404.
-export async function fetchReorderItems(): Promise<Product[]> {
+// days: only orders placed in the last N days (Buy again tab); omitted, all
+// recent orders (Reorder items on a delivered order).
+export async function fetchReorderItems(days?: number): Promise<Product[]> {
   try {
-    return (await apiRequest<ApiProduct[]>('/orders/reorder-items')).map(mapApiProduct);
+    return (await apiRequest<ApiProduct[]>(`/orders/reorder-items${days ? `?days=${days}` : ''}`)).map(mapApiProduct);
   } catch (error) {
-    if (error instanceof ApiError && (error.status === 404 || error.code === 'TRACKING_UNAVAILABLE')) return fetchBuyItAgain();
+    // Older servers without this endpoint: repeat buys, which carry no dates,
+    // so a time-limited list stays empty rather than showing old items.
+    if (error instanceof ApiError && (error.status === 404 || error.code === 'TRACKING_UNAVAILABLE')) return days ? [] : fetchBuyItAgain();
     throw error;
   }
 }

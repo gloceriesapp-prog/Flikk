@@ -1,8 +1,8 @@
-import { Platform } from 'react-native';
+import { CART_BAR_CLEARANCE } from '../../components/CartBar/layout';
 import type { AppStackParamList } from '../types';
 
-// Cart bar height (iOS 52, Android 62) + 8 above the safe area + 8 room.
-export const STANDALONE_CART_CLEARANCE = Platform.OS === 'android' ? 78 : 68;
+// Match the shared cart card, plus room above the safe area.
+export const STANDALONE_CART_CLEARANCE = CART_BAR_CLEARANCE;
 
 // Opt in shopping routes. New utility/address/checkout screens stay clear by default.
 const BROWSE_SCREENS = new Set<keyof AppStackParamList>([

@@ -45,6 +45,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CartBar } from '../CartBar/CartBar';
+import { BOTTOM_NAV_HORIZONTAL_INSET } from './layout';
 import { BottomNavBarItem } from './BottomNavBarItem';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
@@ -55,7 +56,7 @@ import type { AppStackParamList } from '../../navigation/types';
 // same total evenly across both sides keeps the pill exactly as wide as it
 // already was, just centered on screen instead of shifted left to leave
 // room for the removed side circle button.
-const PILL_INSET = 32;
+const PILL_INSET = BOTTOM_NAV_HORIZONTAL_INSET;
 // The pill's own real height (icon + label + vertical padding) — used to
 // vertically CENTER the circle button against it, not bottom-align the
 // two (see that Pressable's own comment). Same 73 the CartBar row's own
@@ -288,7 +289,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
           self-nulls when the cart's empty. */}
       {canShowShoppingCart(route.name) && <Animated.View
         pointerEvents="box-none"
-        style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + NAV_BOTTOM_OFFSET + PILL_HEIGHT + 4 + cartBottomOffset }, cartBarAnimatedStyle]}
+        style={[{ position: 'absolute', left: BOTTOM_NAV_HORIZONTAL_INSET, right: BOTTOM_NAV_HORIZONTAL_INSET, bottom: insets.bottom + NAV_BOTTOM_OFFSET + PILL_HEIGHT + 4 + cartBottomOffset }, cartBarAnimatedStyle]}
         className="flex-row items-center justify-center"
       >
         <CartBar />
