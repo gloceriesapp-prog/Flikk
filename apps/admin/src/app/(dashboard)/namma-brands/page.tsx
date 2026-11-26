@@ -2,8 +2,8 @@
 
 // Namma Brands cards (customer Home, above the welcome card). Up to 6 brand
 // cards: brand, title (defaults to the brand name), 1–2 product photos
-// (default: the brand's top sellers near each customer), and the pill:
-// best discount or lowest price, always computed from live prices. Turn the
+// (default: the brand's top sellers near each customer). A card whose brand
+// has nothing in stock near a customer is hidden for them. Turn the
 // block on, schedule it and change its header image in Home Sections.
 // Saves through PUT /api/namma-brands (all cards in one transaction).
 
@@ -12,12 +12,11 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from '@/components/icons';
 import { toast } from '@/components/ui/Toast';
-import { MAX_NAMMA_CARDS, previewPill, type NammaCard, type NammaProduct, type PillMode } from '@/lib/home/nammaBrands';
+import { MAX_NAMMA_CARDS, previewPill, type NammaCard, type NammaProduct } from '@/lib/home/nammaBrands';
 import { DEFAULT_NAMMA_HEADER } from '../../../../../../packages/home-content/sectionLayout.js';
 
 type Brand = { id: string; name: string; isActive: boolean };
 const inputClass = 'w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-ink';
-const BLUE = '#155DFC';
 
 export default function NammaBrandsPage() {
   const [cards, setCards] = useState<NammaCard[]>([]);
@@ -53,7 +52,7 @@ export default function NammaBrandsPage() {
     })();
   }, []);
 
-  // A card's brand products (in stock, all shops), for photos and the pill.
+  // A card's brand products (in stock, all shops), for photos and the preview.
   function loadProducts(brandId: string) {
     fetch(`/api/namma-brands/products?brandId=${brandId}`)
       .then((res) => (res.ok ? res.json() : { products: [] }))
@@ -123,16 +122,10 @@ export default function NammaBrandsPage() {
                     <button type="button" aria-label="Remove card" onClick={() => setCards((l) => l.filter((_, i) => i !== index))} className="btn btn-ghost text-danger"><Trash2 size={14} /></button>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3">
                   <label className="text-xs font-medium text-muted">Card title
                     <input className={clsx(inputClass, 'mt-1.5')} value={card.title} maxLength={60} placeholder={card.brandName}
                       onChange={(e) => patch(index, { title: e.target.value })} />
-                  </label>
-                  <label className="text-xs font-medium text-muted">Pill
-                    <select className={clsx(inputClass, 'mt-1.5')} value={card.pillMode} onChange={(e) => patch(index, { pillMode: e.target.value as PillMode })}>
-                      <option value="discount">Best discount (Upto X% Off)</option>
-                      <option value="lowest_price">Lowest price (Starting from ₹Y)</option>
-                    </select>
                   </label>
                 </div>
                 <p className="mt-3 text-xs font-medium text-muted">
@@ -177,10 +170,10 @@ export default function NammaBrandsPage() {
         <div>
           <p className="mb-2 text-xs font-medium text-muted">Live preview (shop prices across all shops; the app uses each customer’s nearby shops)</p>
           <div className="mx-auto max-w-[390px] overflow-hidden rounded-3xl border border-border">
-            <div className="px-4 py-4" style={{ backgroundColor: '#DCE8FF' }}>
+            <div className="pb-3" style={{ backgroundColor: '#D0E0FD' }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- preview of an external CDN image at its own shape */}
               <img src={header} alt="Namma Brands" className="w-full" />
-              <div className="mt-3 grid grid-cols-3 gap-[10px]">
+              <div className="mt-2 grid grid-cols-3 gap-[10px] px-3">
                 {cards.map((card) => {
                   const list = products[card.brandId] ?? [];
                   const pill = previewPill(card.pillMode, list);
@@ -188,13 +181,12 @@ export default function NammaBrandsPage() {
                   return (
                     <div key={card.brandId} className={clsx('flex flex-col overflow-hidden rounded-2xl bg-white', !pill && 'opacity-40')}>
                       <p className="line-clamp-2 h-[50px] px-2 pt-2.5 text-center text-[15px] font-semibold leading-5 text-ink">{card.title.trim() || card.brandName}</p>
-                      <div className="flex h-[78px] items-end justify-center">
+                      <div className="flex h-[70px] items-end justify-center pb-2">
                         {photos.map((p, i) => (
                           // eslint-disable-next-line @next/next/no-img-element -- product photo preview
                           <img key={p.id} src={p.imageUrl!} alt="" className="h-[70px] w-[56%] object-contain" style={{ marginLeft: i ? '-10%' : 0 }} />
                         ))}
                       </div>
-                      <p className="truncate px-1.5 py-1.5 text-center text-[13px] font-semibold text-white" style={{ backgroundColor: BLUE }}>{pill ?? 'No stock'}</p>
                     </div>
                   );
                 })}

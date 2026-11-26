@@ -1,8 +1,8 @@
 // Namma Brands (Home, All tab, above the welcome card): a light-blue rounded
 // card, inset 16 pt from the screen edges, with the admin's header image and up to six local-brand cards
-// (3 per row). Each card shows the brand, 1-2 product photos and a pill whose
-// text the server computes from live prices near the customer. Tapping a card
-// opens that brand's page. Hidden when switched off or under MIN_CARDS cards.
+// (3 per row). Each card shows the brand name and 1-2 product photos.
+// Tapping a card opens that brand's page. Hidden when switched off or under MIN_CARDS cards.
+// (The API still returns each card's price pill; the card doesn't show it.)
 import { useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -11,11 +11,12 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fetchNammaBrands, type NammaBrandCard } from '../../../api/brands';
 import { AppImage } from '../../../components/AppImage';
 import { useLocationStore } from '../../../store/useLocationStore';
-import { actionColors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
 import { welcomeBannerRatio } from '../welcome-banner/HomeWelcomeBanner';
 
-export const NAMMA_BG = '#DCE8FF';
+// Same light blue as the default header image's own background, so the
+// header blends into the card.
+export const NAMMA_BG = '#D0E0FD';
 export const MIN_CARDS = 3;
 // Inset from the screen edges, and the block's own inner padding.
 const MARGIN = 16;
@@ -69,14 +70,11 @@ export function NammaBrandsBlock({ headerImageUrl, cards, onOpen }: { headerImag
       <View className="mt-2 flex-row flex-wrap" style={{ gap: GAP, paddingHorizontal: SIDE }}>
         {cards.slice(0, 6).map((card) => (
           <Pressable key={card.brand.id} onPress={() => onOpen(card)} accessibilityRole="button"
-            accessibilityLabel={`${card.title}, ${card.pill}`} testID={`namma-card-${card.brand.id}`}
+            accessibilityLabel={card.title} testID={`namma-card-${card.brand.id}`}
             className="overflow-hidden rounded-2xl bg-white active:opacity-90" style={{ width: cardWidth }}>
             <Text numberOfLines={2} className="px-2 pt-2 text-center text-[14px] font-semibold leading-[18px] text-ink"
               style={{ height: TITLE_HEIGHT + 8 }}>{card.title}</Text>
             <CardPhotos urls={card.imageUrls} width={cardWidth} />
-            <View className="items-center px-1.5 py-[5px]" style={{ backgroundColor: actionColors.fill }}>
-              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} className="text-[13px] font-semibold text-white">{card.pill}</Text>
-            </View>
           </Pressable>
         ))}
       </View>
@@ -91,7 +89,7 @@ function CardPhotos({ urls, width }: { urls: string[]; width: number }) {
   const photoWidth = urls.length > 1 ? Math.round(width * 0.5) : Math.round(width * 0.62);
   const photoHeight = Math.round(photoWidth * 810 / 720);
   return (
-    <View className="flex-row items-end justify-center overflow-hidden" style={{ height }}>
+    <View className="flex-row items-end justify-center overflow-hidden pb-2" style={{ height: height + 8 }}>
       {urls.slice(0, 2).map((uri, index) => (
         <AppImage key={uri} source={{ uri }} resizeMode="contain" accessible={false}
           style={{ width: photoWidth, height: Math.min(photoHeight, height), marginLeft: index ? -photoWidth * 0.18 : 0 }} />
@@ -126,7 +124,6 @@ export function NammaBrandsSkeleton() {
             <View className="mx-3 mt-3 h-3.5 rounded bg-[#E6EAF0]" />
             <View className="mx-5 mt-1.5 h-3.5 rounded bg-[#E6EAF0]" />
             <View className="mx-4 mb-2 mt-3 rounded-xl bg-[#EEF1F5]" style={{ height: Math.round(cardWidth * PHOTO_AREA) - 16 }} />
-            <View className="h-7 bg-[#D7E2F7]" />
           </View>
         ))}
       </View>
