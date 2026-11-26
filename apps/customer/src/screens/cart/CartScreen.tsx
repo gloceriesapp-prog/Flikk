@@ -42,6 +42,8 @@ import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { CartDeliveryAddressCard } from './components/CartDeliveryAddressCard';
 import { useCartAvailability } from './quote/useCartAvailability';
 import { useCheckoutQuote } from './quote/useCheckoutQuote';
+import { useGuestEstimate } from './quote/useGuestEstimate';
+import { GuestCheckoutBar } from './components/GuestCheckoutBar';
 import { quotedCartItems, quoteHasPriceChanges, quoteMatchesCart } from './quote/quoteItems';
 import { cartIdentity } from '../../store/cartIdentity';
 import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
@@ -51,6 +53,7 @@ import { RiderTipCard } from './components/RiderTipCard';
 import { BillDetailsCard } from './components/BillDetailsCard';
 import { CancellationNoteCard } from './components/CancellationNoteCard';
 import { BillSkeleton, CheckoutSkeleton } from './components/CheckoutSkeleton';
+import { MorningSlotChooser, nextMorningSlot } from './components/MorningSlotChooser';
 import type { AppStackParamList } from '../../navigation/types';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
 
@@ -128,7 +131,20 @@ export function CartScreen({ navigation, route }: Props) {
   const orderingClosedIssue = availabilityQuery.data?.issues.find(issue => issue.code === 'PLATFORM_CLOSED');
   const storeClosed = availabilityQuery.data?.lines.some(line => line.status === 'STORE_CLOSED') ?? false;
   const quoteQuery = useCheckoutQuote(selectedAddress?.id);
-  const quote = quoteQuery.data && quoteMatchesCart(items, quoteQuery.data) ? quoteQuery.data : undefined;
+  // A guest sees the same server-priced bill for the browsing pin (no
+  // promo, tip or address); signing in replaces it with the real quote.
+  const isGuest = !accessToken;
+  const guestEstimate = useGuestEstimate();
+  const shownQuote = isGuest ? guestEstimate.data : quoteQuery.data;
+  const quote = shownQuote && quoteMatchesCart(items, shownQuote) ? shownQuote : undefined;
+  const isPreorderCart = items.some((item) => item.preorderMinQty != null);
+  const morning = !isPreorderCart && quote?.morningSlots?.length ? nextMorningSlot(quote.morningSlots) : null;
+  const setMorningSlot = useCartStore((s) => s.setMorningSlot);
+  // Drop a morning booking the cart no longer qualifies for (another item
+  // added, or the slot closed).
+  useEffect(() => {
+    if (quote && !isPreorderCart && preorder && (morning?.slotId !== preorder.slotId || morning.date !== preorder.date)) setMorningSlot(null);
+  }, [quote, isPreorderCart, preorder, morning?.slotId, morning?.date, setMorningSlot]);
   const minimumShortfall = quote?.minimumOrder?.shortfall ?? 0;
   const storeGroups = useMemo(() => {
     const pricedItems = quote ? quotedCartItems(items, quote) : [];
@@ -146,11 +162,11 @@ export function CartScreen({ navigation, route }: Props) {
   // all in, so the page appears whole rather than top first, bill later.
   // Later re-checks (quantity change, refresh) keep the page and only hold
   // the bill's place.
-  const firstLoad = !quote && !quoteQuery.isError && !availabilityQuery.isError
+  const firstLoad = isGuest ? !quote && guestEstimate.isLoading : !quote && !quoteQuery.isError && !availabilityQuery.isError
     && (!addressSettled || quoteQuery.isLoading || availabilityQuery.isLoading);
-  const repricing = !quote && quoteQuery.isFetching;
+  const repricing = !quote && (isGuest ? guestEstimate.isFetching : quoteQuery.isFetching);
   const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod, selectedWallet: route.params?.selectedWallet, selectedNetbankingBank: route.params?.selectedNetbankingBank,
-    quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
+    quote: isGuest ? undefined : quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
   function choosePayment() {
     if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
     payment.choosePayment();
@@ -280,7 +296,7 @@ export function CartScreen({ navigation, route }: Props) {
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2.5">
                   <View>
-                    <Text className="font-bold tracking-tight text-ink/90" style={{ fontSize: Platform.OS === 'ios' ? 18 : 17 }}>{preorder ? `Pre-order · ${preorder.label}` : storeClosed ? 'Your cart' : `Delivery in ${estimatedMinutes} minutes`}</Text>
+                    <Text className="font-bold tracking-tight text-ink/90" style={{ fontSize: Platform.OS === 'ios' ? 18 : 17 }}>{preorder ? `${isPreorderCart ? 'Pre-order' : 'Morning delivery'} · ${preorder.label}` : storeClosed ? 'Your cart' : `Delivery in ${estimatedMinutes} minutes`}</Text>
                     <Text className="mt-1.5 text-[14px] font-medium text-ink/55">
                       {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
                       {storeGroups.length > 1 ? ` from ${storeGroups.length} stores` : ' in this order'}
@@ -288,6 +304,7 @@ export function CartScreen({ navigation, route }: Props) {
                   </View>
                 </View>
               </View>
+              {morning && !storeClosed && <MorningSlotChooser morning={morning} chosen={preorder} estimatedMinutes={estimatedMinutes} onChoose={setMorningSlot} />}
               <View className="my-3 h-px border-t border-dashed border-gray-200" />
 
               {storeGroups.map((group, groupIndex) => (
@@ -329,8 +346,8 @@ export function CartScreen({ navigation, route }: Props) {
             <RiderTipCard />
             {/* The last bill stays on screen (faded) while a changed cart is
                 re-priced; Place order is disabled until the fresh quote lands. */}
-            {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && (
-              <View style={{ opacity: quoteQuery.isPlaceholderData ? 0.55 : 1 }}>
+            {quote && (isGuest || (!quoteQuery.isError && availabilityQuery.data?.eligible)) && (
+              <View style={{ opacity: (isGuest ? guestEstimate.isPlaceholderData : quoteQuery.isPlaceholderData) ? 0.55 : 1 }}>
                 <BillDetailsCard quote={quote} itemCount={totalQuantity} />
               </View>
             )}
@@ -350,12 +367,12 @@ export function CartScreen({ navigation, route }: Props) {
               <Text className="px-2 text-[13px] text-[#996A16]">Some pack prices or sizes have changed. You’ll be asked to confirm before ordering.</Text>
             )}
             {!storeClosed && repricing && <BillSkeleton />}
-            {!storeClosed && !repricing && (quoteQuery.isError || !quote) && (
+            {!storeClosed && !repricing && (isGuest ? !quote : quoteQuery.isError || !quote) && (
               <View className="gap-2 rounded-2xl bg-white p-4">
-                <Text className="text-[13px] text-ink/65">{!accessToken ? 'Sign in to get your final bill.'
+                <Text className="text-[13px] text-ink/65">{isGuest ? (guestEstimate.isError ? 'Couldn’t load your bill right now.' : 'Choose your delivery location to see your bill.')
                   : !selectedAddress ? 'Choose a delivery address to get your final bill.'
                   : quoteQuery.isError ? quoteQuery.error.message : 'Checking current prices and fees…'}</Text>
-                {quoteQuery.isError && <Pressable onPress={() => { void quoteQuery.refetch(); }}><Text className="font-semibold text-[#155DFC]">Check again</Text></Pressable>}
+                {(isGuest ? guestEstimate.isError : quoteQuery.isError) && <Pressable onPress={() => { void (isGuest ? guestEstimate : quoteQuery).refetch(); }}><Text className="font-semibold text-[#155DFC]">Check again</Text></Pressable>}
               </View>
             )}
             <CancellationNoteCard />
@@ -363,8 +380,9 @@ export function CartScreen({ navigation, route }: Props) {
           </ScrollView>
 
           <CartCheckoutFooter
-            paymentBar={<CartPaymentBar total={payment.grandTotal} busy={payment.isPlacingOrder} loading={firstLoad || repricing}
-              storeClosed={storeClosed} disabled={checkoutDisabled} onProceed={choosePayment} />}
+            paymentBar={isGuest ? <GuestCheckoutBar onProceed={() => useAuthStore.getState().exitGuestMode()} /> : (
+              <CartPaymentBar total={payment.grandTotal} busy={payment.isPlacingOrder} loading={firstLoad || repricing}
+                storeClosed={storeClosed} disabled={checkoutDisabled} onProceed={choosePayment} />)}
           />
 
           {payment.receiptEmailForm}

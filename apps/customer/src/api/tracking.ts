@@ -21,7 +21,12 @@ export interface RiderLocation extends MapCoordinates {
 }
 export interface DeliveryRoutePoint { latitude: number; longitude: number }
 export interface RiderLocationResponse {
+  // A rider is heading to the store (leg 'pickup') or out for delivery ('drop').
   active: boolean;
+  leg?: 'pickup' | 'drop' | null;
+  // Version of the shared saved route for that leg; it goes up when the
+  // server re-routes a rider who left the road, so the map fetches it again.
+  route_version?: number | null;
   rider_location: RiderLocation | null;
   destination: MapCoordinates | null;
   pickup?: MapCoordinates | null;
@@ -30,5 +35,6 @@ export interface RiderLocationResponse {
 }
 export const fetchOrderRiderLocation = (id: string) => apiRequest<RiderLocationResponse>(`/orders/${id}/rider-location`);
 export const fetchTripRiderLocation = (id: string) => apiRequest<RiderLocationResponse>(`/trips/${id}/rider-location`);
+// The shared saved road route for the current leg (same line the rider app draws).
 export const fetchDeliveryRoute = (id: string, isTrip: boolean, signal: AbortSignal) =>
   apiRequest<RiderLocationResponse>(`/${isTrip ? 'trips' : 'orders'}/${id}/rider-location?route=1`, { signal });

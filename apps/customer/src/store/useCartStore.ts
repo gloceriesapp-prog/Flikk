@@ -101,6 +101,8 @@ interface CartState {
   addItem: (product: CartProduct, preorder?: CartPreorder, amount?: number) => void;
   // Move a pre-order cart to another day/slot (no-op for other carts).
   setPreorder: (preorder: CartPreorder) => void;
+  // Book a quick-delivery cart into a morning slot (null = deliver now).
+  setMorningSlot: (slot: CartPreorder | null) => void;
   incrementItem: (id: string) => void;
   decrementItem: (id: string) => void;
   removeItem: (id: string) => void;
@@ -223,6 +225,8 @@ export const useCartStore = create<CartState>()(
       setTipAmount: (tip) => set({ tipAmount: tip }),
 
       setPreorder: (preorder) => set((state) => (state.preorder ? { preorder } : {})),
+
+      setMorningSlot: (slot) => set((state) => (state.items.some((item) => item.preorderMinQty != null) ? {} : { preorder: slot })),
 
       clear: () => set({ items: [], appliedPromo: null, tipAmount: 0, lastAddedItemId: null, recentItemIds: [], preorder: null }),
     }),

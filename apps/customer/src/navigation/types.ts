@@ -15,6 +15,8 @@ export type AuthStackParamList = {
 export type AppStackParamList = {
   // Explicit local design route: structured rider/item feedback has no API yet.
   OrderRating: { previewOnly: true };
+  PaymentProcessingPreview: undefined;
+  TrackOrderPreview: undefined;
   // One-time (per session, until a saved location exists) flow between login
   // and Home — see src/screens/location/README.md for the full sequence.
   LocationPermission: undefined;
@@ -61,6 +63,7 @@ export type AppStackParamList = {
   Search: { storeId: string; storeName?: string } | undefined;
   Store: undefined;
   Purchase: undefined;
+  Reorder: undefined;
   Profile: undefined;
   AllBrands: undefined;
   BrandProducts: { brand: import('../api/brands').PopularBrand };

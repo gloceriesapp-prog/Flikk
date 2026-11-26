@@ -22,8 +22,9 @@ import type { CartPreorder } from '../../store/preorder';
 import { preorderMinimumLabel } from '../../store/preorderQuantity';
 
 import type { Product, ProductOption } from '../../screens/home/products/types';
+import { actionColors } from '../../theme/tokens';
 
-const BAR_BLUE = '#1447e6';
+const BAR_BLUE = actionColors.fill;
 
 interface Props {
   product: Product;

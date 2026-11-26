@@ -41,7 +41,7 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
   const showCart = showStandaloneCart(route.name, showBar, cartQuantity);
   const reserveCartSpace = showCart && !usesFloatingCollectionCart(route.name);
   const canPromptForRating = route.name === 'Home' || route.name === 'HomeCategory' ||
-    route.name === 'Purchase' || route.name === 'Categories' || route.name === 'Store';
+    route.name === 'Purchase' || route.name === 'Reorder' || route.name === 'Categories' || route.name === 'Store';
   return (
     <HomeNavigationProgressContext.Provider value={hidden}>
     <TopHeaderScrollContext.Provider value={headerScroll}>

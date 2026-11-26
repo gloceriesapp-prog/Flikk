@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
+import { actionColors } from '../../../theme/tokens';
 
 interface Props {
   name: string;
@@ -27,7 +28,7 @@ export const ProductCardCartControl = memo(function ProductCardCartControl({ nam
   }, [expanded, diameter, pillWidth, animatedWidth]);
   const animatedStyle = useAnimatedStyle(() => ({ width: animatedWidth.value }));
 
-  return <Animated.View style={[{ height: diameter, borderRadius: diameter / 2, borderWidth: 2, borderColor: '#FFFFFF', backgroundColor: '#008C4A', overflow: 'hidden' }, animatedStyle]}>
+  return <Animated.View style={[{ height: diameter, borderRadius: diameter / 2, borderWidth: 2, borderColor: '#FFFFFF', backgroundColor: actionColors.fill, overflow: 'hidden' }, animatedStyle]}>
     {expanded ? <View className="h-full flex-row items-center">
       <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`}
         onPress={event => { event.stopPropagation(); onDecrement(); }}

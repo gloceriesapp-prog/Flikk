@@ -43,9 +43,22 @@ export interface CheckoutQuote {
   // shortfall > 0: the server refuses the order until more is added.
   // Absent from older servers.
   minimumOrder?: { value: number; shortfall: number };
+  // Whole cart is milk/bread/fish… from one shop: the morning slots it can
+  // be booked into instead of quick delivery. Absent from older servers.
+  morningSlots?: { id: string; label: string; starts_minute: number; ends_minute: number }[];
 }
 export function fetchCheckoutQuote(items: CreateOrderItem[], promoCode?: string, addressId?: string, tipAmount = 0): Promise<CheckoutQuote> {
   return apiRequest('/checkout/quote', { method: 'POST', body: { items, promo_code: promoCode, address_id: addressId, ...(tipAmount > 0 ? { tip_amount: tipAmount } : {}) } });
+}
+
+// Guest cart (not signed in): the server prices the cart for the browsing
+// pin (POST /checkout/estimate) with no promo or tip. Shaped like a quote so
+// the bill card renders it, but with no token it can never place an order.
+export async function fetchCheckoutEstimate(items: CreateOrderItem[], pin: { latitude: number; longitude: number }): Promise<CheckoutQuote> {
+  const estimate = await apiRequest<Pick<CheckoutQuote, 'items' | 'bill' | 'minimumOrder'>>('/checkout/estimate', {
+    method: 'POST', auth: false, body: { items, lat: pin.latitude, lng: pin.longitude },
+  });
+  return { ...estimate, token: '', version: '', expiresAt: 0, promoCodeId: null };
 }
 
 export interface CartAvailability {

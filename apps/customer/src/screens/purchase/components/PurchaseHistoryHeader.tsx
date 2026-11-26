@@ -6,6 +6,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import type { OrderStatusFilter } from './OrderFilterSheet';
 import { PurchaseSearchBar } from './PurchaseSearchBar';
+import { IconlyArrowLeft } from '../../../components/icons/iconly';
 
 const TABS = [
   { status: 'all', label: 'History' },
@@ -15,20 +16,24 @@ const TABS = [
 ] as const;
 
 interface Props {
+  onBack: () => void;
   status: OrderStatusFilter;
   onSelectStatus: (status: OrderStatusFilter) => void;
   search: React.ComponentProps<typeof PurchaseSearchBar> | null;
 }
 
-export function PurchaseHistoryHeader({ status, onSelectStatus, search }: Props) {
+export function PurchaseHistoryHeader({ onBack, status, onSelectStatus, search }: Props) {
   const searchInput = useRef<TextInput>(null);
   const selectedStatus = status === 'failed' ? 'all' : status;
 
   return (
     <View className="bg-white">
-      <View className="flex-row items-center justify-between gap-3 px-5 pb-2 pt-2">
+      <View className="flex-row items-center justify-between gap-2 px-3 pb-2 pt-2">
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} hitSlop={8} className="h-11 w-11 items-center justify-center">
+          <IconlyArrowLeft size={22} color={colors.ink} />
+        </Pressable>
         <Text accessibilityRole="header" className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-ink/90`}>
-          Purchase History
+          Your Orders
         </Text>
         <Pressable
           accessibilityRole="button"

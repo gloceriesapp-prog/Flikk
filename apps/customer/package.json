@@ -1,6 +1,6 @@
 {
   "name": "customer",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "index.ts",
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.3",

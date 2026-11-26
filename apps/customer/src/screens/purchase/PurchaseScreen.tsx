@@ -7,12 +7,10 @@ import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
 import { ActivityIndicator, AppState, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
-import { moveNavBar } from '../home/category-page/useHomeBrowseScroll';
+import Animated from 'react-native-reanimated';
 import { FlashList, type FlashListProps } from '@shopify/flash-list';
 import { AppImage as Image } from '../../components/AppImage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { fetchAccountInfo } from '../../api/auth';
 import { fetchOrderHistoryStatuses, type OrderHistoryPage } from '../../api/orders';
 import { groupOrdersByTrip } from '../../utils/tripLegs';
@@ -155,28 +153,12 @@ export function PurchaseScreen({ navigation }: Props) {
     if (canLoadMore && !history.isFetching) void history.fetchNextPage({ cancelRefetch: false });
   }
 
-  // Same direction-based hide/show BottomNavBar logic as StoreListScreen.tsx
-  // (itself copied from HomeScreen.tsx) — direction-based, not a plain
-  // "scrolled past N px", so it reads as intentional here too.
-  const prevScrollY = useSharedValue(0);
-  const navTarget = useSharedValue(0);
-  const navHidden = useSharedValue(0);
-  const SCROLL_HIDE_THRESHOLD = 6;
-
-  const scrollHandler = useAnimatedScrollHandler((event) => {
-    const y = event.contentOffset.y;
-
-    const delta = y - prevScrollY.value;
-    if (y < 40 || delta < -SCROLL_HIDE_THRESHOLD) moveNavBar(navHidden, navTarget, 0);
-    else if (delta > SCROLL_HIDE_THRESHOLD) moveNavBar(navHidden, navTarget, 1);
-    prevScrollY.value = y;
-  });
-
   return (
     <View className="flex-1 bg-white pt-safe">
       <StatusBar style="dark" />
 
       <PurchaseHistoryHeader
+        onBack={() => navigation.goBack()}
         status={statusFilter}
         onSelectStatus={setStatusFilter}
         search={customerId ? {
@@ -193,11 +175,9 @@ export function PurchaseScreen({ navigation }: Props) {
       <AnimatedOrderList
         style={{ flex: 1 }}
         data={sortedOrders}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 112 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
         keyExtractor={(order) => order.orderId}
         onEndReached={!history.isFetchNextPageError ? loadMoreOrders : undefined}
         onEndReachedThreshold={0.4}
@@ -248,7 +228,6 @@ export function PurchaseScreen({ navigation }: Props) {
         )}
       />
 
-      <BottomNavBar hidden={navHidden} />
 
       <OrderFilterSheet
         visible={isFilterSheetOpen}

@@ -37,7 +37,7 @@ export function CartPaymentBar({ total, busy, loading = false, disabled, storeCl
         <Pressable onPress={onProceed} disabled={blocked}
           accessibilityRole="button" accessibilityState={{ disabled: blocked, busy }}
           accessibilityLabel={storeClosed ? 'Store closed' : ctaLabel}
-          className={`min-h-[54px] flex-row items-center justify-center gap-2 rounded-2xl px-3 ${storeClosed ? 'bg-[#E7E7EA]' : 'bg-[#007A42]'}`}
+          className={`min-h-[54px] flex-row items-center justify-center gap-2 rounded-2xl px-3 ${storeClosed ? 'bg-[#E7E7EA]' : 'bg-[#155DFC]'}`}
           style={({ pressed }) => ({ opacity: !disabled && !storeClosed && pressed ? 0.85 : 1 })}>
           {busy ? <ActivityIndicator color="#FFFFFF" /> : (
             <>

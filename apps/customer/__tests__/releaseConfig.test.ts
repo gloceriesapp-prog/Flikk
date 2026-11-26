@@ -97,7 +97,7 @@ describe('customer release safeguards', () => {
     `);
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({
-      version: '1.0.4', packageVersion: '1.0.4', runtime: '1.0.4-android-native-3',
+      version: '1.0.5', packageVersion: '1.0.5', runtime: '1.0.4-android-native-3',
     });
   });
 

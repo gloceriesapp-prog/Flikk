@@ -19,6 +19,17 @@ export const colors = {
   blue: '#007BFF',
 } as const;
 
+// Add, quantity and pay buttons everywhere use the brand blue (one source,
+// so a colour change is one edit): fill for solid buttons and text, deep for
+// the stepper's pressed-edge shadow, soft surfaces for outlined steppers.
+export const actionColors = {
+  fill: '#155DFC',
+  deep: '#0F47C9',
+  soft: '#EAF1FF',
+  softPressed: '#D9E6FF',
+  border: '#C9DAFE',
+} as const;
+
 export const spacing = (multiplier: number) => multiplier * 4;
 
 export const radius = {

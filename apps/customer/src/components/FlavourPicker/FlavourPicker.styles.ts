@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { actionColors } from '../../theme/tokens';
 export const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.48)' },
   container: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 22 },
@@ -10,10 +11,10 @@ export const styles = StyleSheet.create({
   imageBox: { aspectRatio: 0.92, backgroundColor: '#F7F8FA', borderRadius: 14, marginBottom: 12 },
   image: { width: '100%', height: '100%', borderRadius: 14 },
   add: { position: 'absolute', bottom: -8, right: 5 },
-  addButton: { minWidth: 76, height: 38, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', borderRadius: 11, borderWidth: 1.5, borderColor: '#008C4A', backgroundColor: '#008C4A' },
+  addButton: { minWidth: 76, height: 38, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', borderRadius: 11, borderWidth: 1.5, borderColor: actionColors.fill, backgroundColor: actionColors.fill },
   actionText: { fontFamily: 'Gilroy-Bold', fontSize: 14, color: '#FFFFFF' },
   disabled: { borderColor: '#D5D8DE', opacity: 0.6 },
-  stepper: { width: 76, height: 38, flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#008C4A', borderRadius: 11, backgroundColor: '#008C4A' },
+  stepper: { width: 76, height: 38, flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: actionColors.fill, borderRadius: 11, backgroundColor: actionColors.fill },
   step: { width: 28, height: 35, alignItems: 'center', justifyContent: 'center' },
   quantity: { minWidth: 16, textAlign: 'center' },
   cartFooter: { alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, flexShrink: 0 },

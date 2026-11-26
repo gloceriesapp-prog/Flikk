@@ -1,6 +1,6 @@
 import { Platform, Pressable, Text, View } from 'react-native';
 import { IconlyCategory, IconlyHome, IconlyStore, type IconlyIconProps } from '../icons/iconly';
-import { IconlyDeliveryBox } from '../icons/IconlyDeliveryBox';
+import { IconlyReplay } from '../icons/IconlyReplay';
 import type { NavTab } from './data';
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 // inactive, filled when active).
 const ICON_BY_TAB: Record<string, React.ComponentType<IconlyIconProps>> = {
   home: IconlyHome,
-  'order-again': IconlyDeliveryBox,
+  'order-again': IconlyReplay,
   categories: IconlyCategory,
   store: IconlyStore,
 };

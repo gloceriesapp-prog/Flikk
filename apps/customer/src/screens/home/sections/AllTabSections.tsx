@@ -34,6 +34,7 @@ import { SeasonalSection } from '../seasonal/SeasonalSection';
 import { HomeCategoryButton, HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { HomeSectionBanner } from '../components/HomeSectionBanner';
 import { PreorderSection } from '../preorders/PreorderSection';
+import { BuyAgainSection } from '../buy-again/BuyAgainSection';
 import { homePreviewLimit, homeProductLayout, supportsHomeBanner, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 export interface HomeSectionItem {
@@ -283,7 +284,7 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
           <WelcomeCardStrip />
         </View>
       ),
-    }];
+    }, { key: 'buy-again', node: <BuyAgainSection /> }];
     for (const cfg of sections) {
       const usesPicks = cfg.custom || !!cfg.sourceCategoryId;
       const render = usesPicks ? renderPickedSection : SECTION_REGISTRY[cfg.key];

@@ -67,17 +67,45 @@ export function remainingRoad(route: DeliveryRoutePoint[], progress: RouteProgre
   return [progress.point, ...ahead];
 }
 
-// Use a short stretch of road to face the scooter into the turn. Mirroring
-// preserves the side-on artwork while a small tilt suggests the road angle.
-export function scooterPose(road: DeliveryRoutePoint[] | null) {
-  if (!road || road.length < 2) return { facesRight: false, rotation: 0 };
+// Compass heading the top-down rider faces (degrees clockwise from north):
+// toward the road point about 18 m ahead. Null when there is no direction
+// yet (no road, or the rider is on the last point), so the map keeps the
+// last heading instead of snapping back to north.
+export function riderHeading(road: DeliveryRoutePoint[] | null): number | null {
+  if (!road || road.length < 2) return null;
   const from = road[0]!;
   const ahead = road.find(point => mapDistanceMeters(from, point) >= 18) ?? road[road.length - 1]!;
-
+  if (mapDistanceMeters(from, ahead) < 1) return null;
   const east = (ahead.longitude - from.longitude) * longitudeScale(from.latitude);
   const north = (ahead.latitude - from.latitude) * METERS_PER_DEGREE;
-  const facesRight = east > 0;
-  const tilt = Math.atan2(north, Math.abs(east)) * 180 / Math.PI;
-  const rotation = Math.max(-22, Math.min(22, facesRight ? -tilt : tilt));
-  return { facesRight, rotation };
+  return (Math.atan2(east, north) * 180 / Math.PI + 360) % 360;
+}
+
+// Road points between two matched positions on the same route, both ends
+// included. Null when `to` is not ahead of `from` (GPS jitter backwards).
+export function roadBetween(route: DeliveryRoutePoint[], from: RouteProgress, to: RouteProgress): DeliveryRoutePoint[] | null {
+  if (to.segment < from.segment || (to.segment === from.segment && to.fraction <= from.fraction)) return null;
+  return [from.point, ...route.slice(from.segment + 1, to.segment + 1), to.point];
+}
+
+// The point a share `t` (0..1) of the way along a path, by distance, and the
+// index of the segment it is on.
+export function pointAlong(path: DeliveryRoutePoint[], t: number): { point: DeliveryRoutePoint; segment: number } {
+  const lengths = path.slice(1).map((point, index) => mapDistanceMeters(path[index]!, point));
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  let left = Math.min(1, Math.max(0, t)) * total;
+  for (let segment = 0; segment < lengths.length; segment += 1) {
+    const length = lengths[segment]!;
+    if (left <= length && length > 0) {
+      const f = left / length;
+      const a = path[segment]!; const b = path[segment + 1]!;
+      return { point: { latitude: a.latitude + (b.latitude - a.latitude) * f, longitude: a.longitude + (b.longitude - a.longitude) * f }, segment };
+    }
+    left -= length;
+  }
+  return { point: path[path.length - 1]!, segment: Math.max(0, path.length - 2) };
+}
+
+export function pathMeters(path: DeliveryRoutePoint[]): number {
+  return path.slice(1).reduce((sum, point, index) => sum + mapDistanceMeters(path[index]!, point), 0);
 }

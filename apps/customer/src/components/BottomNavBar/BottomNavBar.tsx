@@ -98,7 +98,7 @@ const NAV_BOTTOM_OFFSET = IS_ANDROID ? 0 : PILL_BOTTOM_OFFSET;
 // link, anything.
 const ROUTE_TO_TAB_ID: Record<string, string> = {
   Home: 'home',
-  Purchase: 'order-again',
+  Reorder: 'order-again',
   Categories: 'categories',
   Store: 'store',
 };
@@ -138,7 +138,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
     if (tabId === 'categories') navigation.navigate('Categories');
     if (tabId === 'home') navigation.navigate('Home');
     if (tabId === 'store') navigation.navigate('Store');
-    if (tabId === 'order-again') navigation.navigate('Purchase');
+    if (tabId === 'order-again') navigation.navigate('Reorder');
   }
 
   return (

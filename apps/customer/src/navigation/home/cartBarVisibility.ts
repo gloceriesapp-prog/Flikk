@@ -12,7 +12,7 @@ const BROWSE_SCREENS = new Set<keyof AppStackParamList>([
   'FreshCategory', 'EverydayVegetables', 'FruitFavourites', 'HomeGrownProduce',
   'RegionalCategory', 'CoconutOilCollection',
 ]);
-const SHOPPING_NAVIGATION = new Set<keyof AppStackParamList>(['Home', 'HomeCategory', 'Categories', 'Store']);
+const SHOPPING_NAVIGATION = new Set<keyof AppStackParamList>(['Home', 'HomeCategory', 'Reorder', 'Categories', 'Store']);
 
 export function usesFloatingCollectionCart(route: keyof AppStackParamList) {
   return route === 'CategoryDetail' || route === 'HomeContentCollection' || route === 'HomeSectionCollection' ||

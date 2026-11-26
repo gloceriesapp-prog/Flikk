@@ -137,6 +137,15 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  return <PaymentProcessingView secondsLeft={secondsLeft} launchError={launchError} amount={amount} appName={route.params.appName}
+    onNotCompleted={() => navigation.replace('PaymentRecovery', { target })} />;
+}
+
+// The wait screen's look, shared by the real screen and the dev preview
+// (PaymentProcessingPreviewScreen), so UI work needs no live payment.
+export function PaymentProcessingView({ secondsLeft, launchError, amount, appName, onNotCompleted }: {
+  secondsLeft: number; launchError: string; amount: number; appName: string; onNotCompleted: () => void;
+}) {
   const timeLeft = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
   return (
     <View className="flex-1 bg-white px-8 pb-safe-offset-6 pt-safe">
@@ -147,12 +156,12 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
           ? <Text accessibilityRole="alert" className="mt-2 text-center text-[15px] font-medium text-[#B45309]">{launchError}</Text>
           : <Text className="mt-2 text-center text-[15px] font-medium text-ink/50">We are verifying your payment status.</Text>}
         <Text className="mt-1 text-center text-[13.5px] font-medium text-ink/40">
-          {`Paying ₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })} via ${route.params.appName}`}
+          {`Paying ₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })} via ${appName}`}
         </Text>
       </View>
       <View className="items-center gap-4">
         {/* Backed out of the UPI app? Recovery offers cancel / cash on delivery. */}
-        <Pressable onPress={() => navigation.replace('PaymentRecovery', { target })} hitSlop={8} accessibilityRole="button"
+        <Pressable onPress={onNotCompleted} hitSlop={8} accessibilityRole="button"
           accessibilityLabel="Didn’t complete the payment? See other options" className="justify-center px-2" style={{ minHeight: minTouchTarget }}>
           <Text className="text-[14px] font-semibold" style={{ color: BLUE }}>Didn’t complete the payment?</Text>
         </Pressable>

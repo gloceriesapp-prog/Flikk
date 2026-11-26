@@ -18,6 +18,7 @@ import { TripCancellationResult } from './components/TripCancellationResult';
 import { representativeLeg } from '../../utils/tripLegs';
 import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
+import { OnTheWayCard } from './components/OnTheWayCard';
 import { RiderLiveMap } from './components/RiderLiveMap';
 import { useRiderLocation } from './state/useRiderLocation';
 import { OrderInfoCard } from './components/OrderInfoCard';
@@ -150,10 +151,17 @@ function TrackingDetails({ navigation, route }: Props) {
         })()
       ) : (
         <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
-          <OrderInfoCard order={order!} />
-
-          {liveMap}
-          <DeliveryRiderCard order={order!} />
+          {/* On the way with a rider: the map, then the rider card (minutes,
+              call, delivery code), which replaces the status card. Every other
+              state keeps the status card above the map and the plain rider card. */}
+          {order!.status === 'out_for_delivery' && order!.riders ? <>
+            {liveMap}
+            <OnTheWayCard order={order!} />
+          </> : <>
+            <OrderInfoCard order={order!} />
+            {liveMap}
+            <DeliveryRiderCard order={order!} />
+          </>}
 
           <DeliveryDetailsSection address={order!.addresses} />
           <OrderSummarySection key={order!.id} items={order!.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId })} />

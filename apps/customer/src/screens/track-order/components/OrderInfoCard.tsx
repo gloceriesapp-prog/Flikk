@@ -30,7 +30,7 @@ function clockTime(date: Date): string {
   });
 }
 
-function arrivalDeadline(order: ApiOrder): number | null {
+export function arrivalDeadline(order: ApiOrder): number | null {
   const deadline = estimateDeliveryTime(
     order.placed_at,
     order.estimated_delivery_minutes,

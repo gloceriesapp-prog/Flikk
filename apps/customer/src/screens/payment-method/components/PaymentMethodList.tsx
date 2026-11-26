@@ -109,6 +109,24 @@ export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: d
         </View>
       ) : null}
 
+      {/* UPI first, then pay at the door: the two ways most customers here pay. */}
+      {allowed.cod && !upiOnly && <View>
+        <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay on Delivery</Text>
+        <View className="bg-white p-4 mt-1" style={{ borderRadius: 12 }}>
+          <Pressable onPress={() => onSelect('cod')} accessibilityRole="button" accessibilityLabel="Cash on delivery"
+            accessibilityState={{ selected: method === 'cod' }} className="flex-row items-center gap-3" style={{ minHeight: minTouchTarget }}>
+            <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <AppImage source={require('../../../../assets/payment/cash-stack.png')} contentFit="contain" style={{ width: 64, height: 64 }} accessible={false} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-[15px] font-medium text-ink">Cash on Delivery</Text>
+              <Text className="mt-0.5 text-[12.5px] text-ink/50 font-medium">Pay the rider in cash at your door.</Text>
+            </View>
+            <SelectionArrow selected={method === 'cod'} />
+          </Pressable>
+          <InlinePayButton selected={method === 'cod'} />
+        </View>
+      </View>}
       {allowed.online && !upiOnly && <View>
         <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">{'Cards & netbanking'}</Text>
         <View className="bg-white p-4" style={{ borderRadius: 12 }}>
@@ -123,23 +141,6 @@ export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: d
 
       {allowed.online && !upiOnly && <WalletOptions method={method} onSelect={onWalletSelect ?? onSelect} />}
 
-      {allowed.cod && !upiOnly && <View>
-        <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay on Delivery</Text>
-        <View className="bg-white p-4 mt-1" style={{ borderRadius: 12 }}>
-          <Pressable onPress={() => onSelect('cod')} accessibilityRole="button" accessibilityLabel="Cash on delivery"
-            accessibilityState={{ selected: method === 'cod' }} className="flex-row items-center gap-3" style={{ minHeight: minTouchTarget }}>
-            <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
-              <AppImage source={require('../../../../assets/payment/cash-stack.png')} contentFit="contain" style={{ width: 64, height: 64 }} accessible={false} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[15px] font-medium text-ink">Cash on Delivery</Text>
-              <Text className="mt-0.5 text-[12.5px] text-ink/50 font-medium">Keep exact change ready for the rider.</Text>
-            </View>
-            <SelectionArrow selected={method === 'cod'} />
-          </Pressable>
-          <InlinePayButton selected={method === 'cod'} />
-        </View>
-      </View>}
     </View>
   );
 }

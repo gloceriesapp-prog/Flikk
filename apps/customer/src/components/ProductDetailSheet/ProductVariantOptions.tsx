@@ -8,6 +8,7 @@ import { priceComparison, discountPercentLabel } from '../priceComparison';
 import { RupeePrice } from '../RupeePrice';
 import { GILROY } from '../../theme/fonts';
 import type { Product } from '../../screens/home/products/types';
+import { actionColors } from '../../theme/tokens';
 
 type ProductVariant = NonNullable<Product['variants']>[number];
 interface Props {
@@ -17,7 +18,7 @@ interface Props {
   deliveryLabel?: string;
 }
 const CARD_WIDTH = 176;
-const GREEN = '#007A42';
+const SELECTED = actionColors.fill;
 const money = (amount: number) => Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
 
 export function discountPercentOf(price: number, originalPrice?: number): number | null {
@@ -33,7 +34,7 @@ function UnitCard({ variant, selected, onSelect, deliveryLabel }: { variant: Pro
       accessibilityLabel={`${variant.label}, ₹${money(variant.price)}`}
       accessibilityState={{ selected, disabled: outOfStock }}
       className="gap-2 rounded-2xl bg-white px-3 pb-4 pt-3"
-      style={{ minHeight: 104, borderWidth: selected ? 1.5 : 1, borderColor: selected ? GREEN : '#E1E4E8' }}>
+      style={{ minHeight: 104, borderWidth: selected ? 1.5 : 1, borderColor: selected ? SELECTED : '#E1E4E8' }}>
       <View className="flex-row items-start justify-between gap-2">
         <Text className="min-w-0 flex-1 text-[14px] leading-[19px] text-[#737579]" style={{ fontFamily: GILROY.semibold }} numberOfLines={2}>{variant.label}</Text>
         {percent ? <Text className="pt-0.5 text-[11px] leading-[16px]" style={{ fontFamily: GILROY.bold, color: '#258C3D' }}>{percent}% OFF</Text> : null}

@@ -12,6 +12,8 @@ import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
 import { preorderMinimumLabel } from '../../../store/preorderQuantity';
 import { useProductAvailability } from './useProductAvailability';
+import { EtaPill } from '../../../components/EtaPill';
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import type { Product } from './types';
 
 interface Props {
@@ -27,7 +29,7 @@ interface Props {
   onDark?: boolean;
   onPress?: () => void;
   onAdd?: () => void;
-  // Kept for existing section callers; product cards no longer show ETA.
+  // Delivery estimate shown on the card (pill above the price).
   // Lifted from the parent section so one shared 30s browse-clock tick / a
   // delivery-settings refetch re-renders the section node once instead of
   // every card. ProductCard supplies these — either passing a section's
@@ -40,7 +42,7 @@ interface Props {
   availabilityLabel?: string;
 }
 
-function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = true, compact = false, onDark = false, onPress, onAdd, isAvailable, availabilityLabel }: Props) {
+function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = true, compact = false, onDark = false, onPress, onAdd, estimatedMinutes, isAvailable, availabilityLabel }: Props) {
   const {
     id,
     name,
@@ -130,10 +132,12 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
         <Text className={`${Platform.OS === 'ios' ? 'text-[14px] leading-[18px]' : 'text-[13px] leading-[17px]'} font-semibold ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
           {name}
         </Text>
+        {/* Pre-orders deliver in a booked slot, not in minutes. */}
+        {isAvailable && !product.preorder && estimatedMinutes ? <EtaPill minutes={estimatedMinutes} /> : null}
         {stockStatus ? (
           <Text className="text-[11px] font-semibold leading-[15px]" style={{ color: onDark ? '#FFB4AB' : '#D92D20' }}>{stockStatus}</Text>
         ) : null}
-        {/* Preserve the pre-order minimum; delivery estimates live in the header. */}
+        {/* Preserve the pre-order minimum. */}
         {product.preorder ? (
           <View className={`self-start rounded-md px-1.5 py-0.5 ${onDark ? 'bg-white/15' : 'bg-[#F1EAF4]'}`}>
             <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className={`text-[10px] font-semibold ${onDark ? 'text-white' : 'text-[#4A2C5A]'}`}>{preorderMinimumLabel(product.preorder.minQty, product.weight)}</Text>
@@ -166,11 +170,13 @@ export function SelfServiceProductCardView(
   props: Omit<Props, 'estimatedMinutes' | 'isAvailable' | 'availabilityLabel'>,
 ) {
   const availability = useProductAvailability(props.product);
+  const estimatedMinutes = useDeliveryEstimateMinutes();
   const [pickerOpen, setPickerOpen] = useState(false);
   return (
     <><ProductCardView
       {...props}
       onAdd={() => setPickerOpen(true)}
+      estimatedMinutes={estimatedMinutes}
       isAvailable={availability.isAvailable}
       availabilityLabel={availability.label}
     /><FlavourPickerSheet product={props.product} visible={pickerOpen} onClose={() => setPickerOpen(false)} isAvailable={availability.isAvailable} availabilityLabel={availability.label} /></>

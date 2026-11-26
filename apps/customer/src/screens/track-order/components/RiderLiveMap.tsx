@@ -13,13 +13,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useReducedMotion } from 'react-native-reanimated';
-import { IconlySend, IconlyStore } from '../../../components/icons/iconly';
+import { IconlyStore } from '../../../components/icons/iconly';
+import { HomeOutlineIcon } from '../../../components/icons/HomeOutlineIcon';
 import { GRAYSCALE_MAP_STYLE } from '../../../location/mapStyle';
 import { usesGoogleMaps } from '../../../location/mapProvider';
 import { colors } from '../../../theme/tokens';
 import type { DeliveryRoutePoint, MapCoordinates, RiderLocationResponse } from '../../../api/tracking';
 import { riderMapView } from '../state/riderLocationView';
-import { mapDistanceMeters, matchRoute, remainingRoad, scooterPose, type RouteProgress } from '../state/routeProgress';
+import { GlidingRider } from './GlidingRider';
+import { mapDistanceMeters, matchRoute, remainingRoad, riderHeading, roadBetween, type RouteProgress } from '../state/routeProgress';
 
 const USES_GOOGLE_MAPS = usesGoogleMaps();
 const MAPS_AVAILABLE = Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
@@ -30,30 +32,35 @@ const TRACKING_MAP_STYLE = [
   ...GRAYSCALE_MAP_STYLE,
   { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
 ];
-const SCOOTER_LEFT = require('../../../../assets/illustrations/tracking-scooter.png');
-const SCOOTER_RIGHT = require('../../../../assets/illustrations/tracking-scooter-right.png');
 const AGE_TICK_MS = 5_000;
 const CAMERA_ADVANCE_METERS = 25;
 const ENDPOINT_COLOR = '#35383A';
-const ENDPOINT_HEIGHT = 66;
-const ENDPOINT_ANCHOR_Y = 43;
+// Pin: icon circle, a short stem, and a dot that sits exactly on the
+// location (the marker anchor). The store pin adds its name under the dot;
+// the delivery address is just the house.
+const PIN_CIRCLE = 30;
+const PIN_STEM = 8;
+const PIN_DOT = 9;
+const PIN_ANCHOR_Y = PIN_CIRCLE + PIN_STEM + PIN_DOT / 2;
+const PIN_LABEL_HEIGHT = 20;
 
 function DeliveryEndpoint({ coordinate, isPickup = false }: { coordinate: MapCoordinates; isPickup?: boolean }) {
-  const label = isPickup ? 'Gloceries' : 'Deliver';
-  const Icon = isPickup ? IconlyStore : IconlySend;
+  const height = PIN_CIRCLE + PIN_STEM + PIN_DOT + (isPickup ? PIN_LABEL_HEIGHT : 0);
   return (
     <Marker
       coordinate={toLatLng(coordinate)}
-      anchor={{ x: 0.5, y: ENDPOINT_ANCHOR_Y / ENDPOINT_HEIGHT }}
-      centerOffset={{ x: 0, y: ENDPOINT_HEIGHT / 2 - ENDPOINT_ANCHOR_Y }}
-      title={label}
+      anchor={{ x: 0.5, y: PIN_ANCHOR_Y / height }}
+      centerOffset={{ x: 0, y: height / 2 - PIN_ANCHOR_Y }}
+      title={isPickup ? 'Gloceries' : 'Delivery address'}
       zIndex={1}
     >
-      <View collapsable={false} style={styles.endpoint}>
-        <View style={styles.endpointBody}><Icon size={19} color="#FFFFFF" /></View>
-        <View style={styles.endpointTip} />
+      <View collapsable={false} style={[styles.endpoint, { height }]}>
+        <View style={styles.endpointBody}>
+          {isPickup ? <IconlyStore size={15} color="#FFFFFF" /> : <HomeOutlineIcon size={15} color="#FFFFFF" />}
+        </View>
+        <View style={styles.endpointStem} />
         <View style={styles.endpointDot} />
-        <Text numberOfLines={1} style={styles.endpointLabel}>{label}</Text>
+        {isPickup ? <Text numberOfLines={1} style={styles.endpointLabel}>Gloceries</Text> : null}
       </View>
     </Marker>
   );
@@ -103,8 +110,12 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
   const [now, setNow] = useState(() => Date.now());
   const [mapFailed, setMapFailed] = useState(false);
   const [mapReady, setMapReady] = useState(false);
-  const [pannedPhase, setPannedPhase] = useState<boolean | null>(null);
-  const userMoved = pannedPhase === outForDelivery;
+  // Which leg the rider is on: heading to the store, or to the customer.
+  // Older servers send no leg; out for delivery then means the drop leg.
+  const leg = response?.active ? (response.leg ?? (outForDelivery ? 'drop' : null)) : null;
+  const towardStore = leg === 'pickup';
+  const [pannedPhase, setPannedPhase] = useState<string | null>(null);
+  const userMoved = pannedPhase === String(leg);
   const mapRef = useRef<MapView>(null);
   const lastFrame = useRef<{ key: string; focus: DeliveryRoutePoint | null } | null>(null);
   const [confirmed, setConfirmed] = useState<{
@@ -113,6 +124,8 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
     longitude: number;
     progress: RouteProgress | null;
     onRoute: boolean;
+    // Road from the previous fix to this one, for the rider to glide along.
+    glide: DeliveryRoutePoint[] | null;
   } | null>(null);
   const reduceMotion = useReducedMotion();
 
@@ -124,44 +137,51 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
 
   const view = riderMapView(response, fetchedAt, now);
   const { destination } = view;
-  const rider = outForDelivery && response?.active ? view.rider : null;
-  const caption = outForDelivery ? view.caption : 'Pickup and delivery locations';
+  const rider = leg ? view.rider : null;
+  const caption = leg ? view.caption : 'Pickup and delivery locations';
   const riderLat = rider?.lat; const riderLng = rider?.lng;
   const destLat = destination?.lat; const destLng = destination?.lng;
   const pickup = response?.pickup;
   const pickupLat = pickup?.lat; const pickupLng = pickup?.lng;
-  const roadRoute = outForDelivery && USES_GOOGLE_MAPS && route && route.length >= 2 ? route : null;
+  // The customer sees a route only once the order is out for delivery (drop
+  // leg): before that, just the rider, store and home pins, no line.
+  const roadRoute = leg === 'drop' && USES_GOOGLE_MAPS && route && route.length >= 2 ? route : null;
 
   const previousMatch = confirmed?.route === roadRoute ? confirmed : null;
   let progress = previousMatch?.progress ?? null;
   let onRoute = previousMatch?.onRoute ?? false;
+  let glide = previousMatch?.glide ?? null;
   // Record each new fix once, retaining the previous progress if the rider
   // strays from the route or GPS jitters backwards.
   if (roadRoute && riderLat !== undefined && riderLng !== undefined
     && (previousMatch?.latitude !== riderLat || previousMatch.longitude !== riderLng)) {
     const match = matchRoute(roadRoute, { latitude: riderLat, longitude: riderLng }, progress ?? undefined);
+    glide = match && progress && onRoute ? roadBetween(roadRoute, progress, match) : null;
     progress = match ?? progress;
     onRoute = match !== null;
-    setConfirmed({ route: roadRoute, latitude: riderLat, longitude: riderLng, progress, onRoute });
+    setConfirmed({ route: roadRoute, latitude: riderLat, longitude: riderLng, progress, onRoute, glide });
   }
 
   const riderPoint = rider ? toLatLng(rider) : null;
   const destinationPoint = destination ? toLatLng(destination) : null;
+  const pickupPoint = pickup ? toLatLng(pickup) : null;
+  // Where the rider is heading on this leg (which way the scooter faces).
+  const targetPoint = towardStore ? pickupPoint : destinationPoint;
   const followsRoad = roadRoute !== null && (!riderPoint || onRoute);
   const roadAhead = followsRoad ? remainingRoad(roadRoute, progress) : null;
   // The solid line starts at the scooter itself, not the snapped road point.
   const solidLine = roadAhead && riderPoint ? [riderPoint, ...roadAhead] : roadAhead;
-  const dashFrom = outForDelivery ? (followsRoad ? null : riderPoint) : pickup ? toLatLng(pickup) : null;
-  const dashes = dashFrom && destinationPoint ? dashedConnector(dashFrom, destinationPoint) : [];
-  const { facesRight, rotation } = scooterPose(
+  // Blue dashes: out for delivery but off the saved road, straight to the
+  // customer while the server re-routes.
+  const riderDashes = leg === 'drop' && !followsRoad && riderPoint && destinationPoint ? dashedConnector(riderPoint, destinationPoint) : [];
+  const heading = riderHeading(
     riderPoint && onRoute && roadAhead ? roadAhead
-      : riderPoint && destinationPoint ? [riderPoint, destinationPoint] : null,
+      : riderPoint && targetPoint ? [riderPoint, targetPoint] : null,
   );
-  const offRoute = !!riderPoint && roadRoute !== null && !onRoute;
-
-  useEffect(() => {
-    if (offRoute) onOffRoute?.();
-  }, [offRoute, riderLat, riderLng, onOffRoute]);
+  // A stopped rider keeps facing the way they were going.
+  const [lastHeading, setLastHeading] = useState(0);
+  if (heading !== null && heading !== lastHeading) setLastHeading(heading);
+  const rotation = heading ?? lastHeading;
 
   // Keep the rider and the customer's pin in view together. Small GPS shifts
   // and manual map gestures leave the camera alone; a stale fix keeps the
@@ -171,7 +191,7 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
     if (!map || !mapReady || userMoved) return;
 
     const focus = riderLat !== undefined && riderLng !== undefined ? { latitude: riderLat, longitude: riderLng } : null;
-    const key = [outForDelivery, roadRoute !== null, pickupLat, pickupLng, destLat, destLng].join(',');
+    const key = [leg, roadRoute !== null, pickupLat, pickupLng, destLat, destLng].join(',');
     const previous = lastFrame.current;
     if (previous?.key === key
       && (!focus || (previous.focus && mapDistanceMeters(previous.focus, focus) < CAMERA_ADVANCE_METERS))) return;
@@ -179,10 +199,10 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
     const points: DeliveryRoutePoint[] = [];
     if (focus) points.push(focus);
     if (destLat !== undefined && destLng !== undefined) points.push({ latitude: destLat, longitude: destLng });
-    if (!outForDelivery && pickupLat !== undefined && pickupLng !== undefined) {
+    if (leg !== 'drop' && pickupLat !== undefined && pickupLng !== undefined) {
       points.push({ latitude: pickupLat, longitude: pickupLng });
     }
-    if (outForDelivery && !focus && roadRoute) points.push(...remainingRoad(roadRoute, progress));
+    if (leg && !focus && roadRoute) points.push(...remainingRoad(roadRoute, progress));
     const first = points[0];
     if (!first) return;
 
@@ -190,7 +210,7 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
     const hasExtent = points.some(point => point.latitude !== first.latitude || point.longitude !== first.longitude);
     if (hasExtent) {
       map.fitToCoordinates(points, {
-        edgePadding: outForDelivery ? DELIVERY_PADDING : PICKUP_PADDING,
+        edgePadding: leg === 'drop' ? DELIVERY_PADDING : PICKUP_PADDING,
         animated: !reduceMotion,
       });
     } else {
@@ -198,7 +218,7 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
       if (reduceMotion) map.setCamera(camera);
       else map.animateCamera(camera, { duration: 400 });
     }
-  }, [destLat, destLng, mapReady, outForDelivery, pickupLat, pickupLng, progress, reduceMotion, riderLat, riderLng, roadRoute, userMoved]);
+  }, [destLat, destLng, leg, mapReady, pickupLat, pickupLng, progress, reduceMotion, riderLat, riderLng, roadRoute, userMoved]);
 
   function recenter() {
     lastFrame.current = null;
@@ -226,9 +246,9 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
                 setMapReady(true);
               }}
               onRegionChangeStart={(_, details) => {
-                if (details.isGesture) setPannedPhase(outForDelivery);
+                if (details.isGesture) setPannedPhase(String(leg));
               }}
-              onPanDrag={() => setPannedPhase(outForDelivery)}
+              onPanDrag={() => setPannedPhase(String(leg))}
               showsUserLocation={false}
               showsMyLocationButton={false}
               showsCompass={false}
@@ -239,24 +259,18 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
               pitchEnabled={false}
               accessibilityLabel={`Map. ${caption}`}
             >
-              {dashes.map((coordinates, index) => (
-                <Polyline key={index} coordinates={coordinates} strokeWidth={outForDelivery ? 3 : 1.5}
-                  strokeColor={outForDelivery ? colors.primary : ENDPOINT_COLOR} />
+              {riderDashes.map((coordinates, index) => (
+                <Polyline key={`rider-${index}`} coordinates={coordinates} strokeWidth={3} strokeColor={colors.primary} />
               ))}
-              {solidLine && solidLine.length >= 2 ? (
+              {!riderPoint && solidLine && solidLine.length >= 2 ? (
                 <Polyline coordinates={solidLine} strokeWidth={4} strokeColor={colors.primary} lineCap="round" />
               ) : null}
-              {pickup && !outForDelivery ? <DeliveryEndpoint coordinate={pickup} isPickup /> : null}
+              {pickup && leg !== 'drop' ? <DeliveryEndpoint coordinate={pickup} isPickup /> : null}
               {destination ? <DeliveryEndpoint coordinate={destination} /> : null}
               {riderPoint ? (
-                <Marker
-                  coordinate={riderPoint}
-                  image={facesRight ? SCOOTER_RIGHT : SCOOTER_LEFT}
-                  rotation={rotation}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                  title="Your rider"
-                  zIndex={2}
-                />
+                <GlidingRider latitude={riderPoint.latitude} longitude={riderPoint.longitude}
+                  fixAt={Date.parse(response.rider_location?.updated_at ?? '') || fetchedAt} glide={onRoute ? glide : null} line={solidLine}
+                  heading={rotation} reduceMotion={reduceMotion} />
               ) : null}
             </MapView>
           </MapBoundary>
@@ -268,7 +282,9 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
           ) : null}
         </View>
       ) : null}
-      {outForDelivery || !showMap ? (
+      {/* A fresh rider position needs no caption (the moving rider says it);
+          a waiting or stale position, or no map, still explains itself. */}
+      {(outForDelivery && !rider) || !showMap ? (
         <View className="flex-row items-center gap-2 px-5 py-3.5">
           <View style={[styles.dot, { backgroundColor: rider ? colors.success : '#9CA3AF' }]} />
           <Text className="flex-1 text-[13px] font-medium text-ink/70">{caption}</Text>
@@ -279,18 +295,18 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOff
 }
 
 const styles = StyleSheet.create({
-  endpoint: { width: 82, height: ENDPOINT_HEIGHT, alignItems: 'center' },
+  endpoint: { width: 82, alignItems: 'center' },
   endpointBody: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: ENDPOINT_COLOR,
-    alignItems: 'center', justifyContent: 'center',
+    width: PIN_CIRCLE, height: PIN_CIRCLE, borderRadius: PIN_CIRCLE / 2, backgroundColor: ENDPOINT_COLOR,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFFFFF',
   },
-  endpointTip: {
-    marginTop: -1, borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 6,
-    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: ENDPOINT_COLOR,
+  endpointStem: { width: 2.5, height: PIN_STEM, backgroundColor: ENDPOINT_COLOR },
+  endpointDot: {
+    width: PIN_DOT, height: PIN_DOT, borderRadius: PIN_DOT / 2, backgroundColor: ENDPOINT_COLOR,
+    borderWidth: 1.5, borderColor: '#FFFFFF',
   },
-  endpointDot: { width: 4, height: 4, marginTop: 2, borderRadius: 2, backgroundColor: ENDPOINT_COLOR },
   endpointLabel: {
-    marginTop: 3, paddingHorizontal: 7, borderRadius: 4, overflow: 'hidden',
+    marginTop: 4, paddingHorizontal: 7, borderRadius: 4, overflow: 'hidden',
     backgroundColor: '#FFFFFF', borderColor: '#DFE1E4', borderWidth: StyleSheet.hairlineWidth,
     color: '#454B55', fontSize: 11, fontWeight: '600', lineHeight: 17,
     textAlign: 'center', includeFontPadding: false,

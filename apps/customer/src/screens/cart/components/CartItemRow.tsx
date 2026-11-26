@@ -17,6 +17,7 @@ import { useWishlistStore } from '../../../store/useWishlistStore';
 import type { CartAvailability } from '../../../api/checkout';
 import { CUT_SIZE_LABEL, cartIdentity, SERVING_LABEL } from '../../../store/cartIdentity';
 import type { Product } from '../../home/products/types';
+import { actionColors } from '../../../theme/tokens';
 
 const STEPPER_TINT = '#155DFC';
 
@@ -191,23 +192,23 @@ export function CartItemRow({ item, availability }: Props) {
       <View className="items-end gap-2">
 
         {/* QUANTITY STEPPER */}
-        <View style={{ width: 80, height: 32, borderRadius: 10, backgroundColor: '#005C32', paddingRight: 2, paddingBottom: 2 }}>
+        <View style={{ width: 80, height: 32, borderRadius: 10, backgroundColor: actionColors.deep, paddingRight: 2, paddingBottom: 2 }}>
           <View className="flex-1 flex-row items-center overflow-hidden"
-            style={{ borderRadius: 9, borderWidth: 1.5, borderColor: '#007A42', backgroundColor: '#E7F3EB' }}>
+            style={{ borderRadius: 9, borderWidth: 1.5, borderColor: actionColors.fill, backgroundColor: actionColors.soft }}>
             <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${item.name}`}
               onPress={() => decrementItem(item.id)} hitSlop={{ top: 8, bottom: 8 }}
-              className="h-full flex-1 items-center justify-center active:bg-[#D4E9DC]">
-              <AppIcon icon={MinusSignIcon} size={15} color="#007A42" />
+              className="h-full flex-1 items-center justify-center active:bg-[#D9E6FF]">
+              <AppIcon icon={MinusSignIcon} size={15} color={actionColors.fill} />
             </Pressable>
-            <Text className="min-w-[22px] text-center text-[12px] font-semibold text-[#007A42]">
+            <Text className="min-w-[22px] text-center text-[12px] font-semibold text-[#155DFC]">
               {item.quantity}
             </Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${item.name}`}
               disabled={cannotIncrease} accessibilityState={{ disabled: cannotIncrease }}
               onPress={() => incrementItem(item.id)} hitSlop={{ top: 8, bottom: 8 }}
-              className="h-full flex-1 items-center justify-center active:bg-[#D4E9DC]"
+              className="h-full flex-1 items-center justify-center active:bg-[#D9E6FF]"
               style={{ opacity: cannotIncrease ? 0.35 : 1 }}>
-              <AppIcon icon={Add01Icon} size={16} color="#007A42" />
+              <AppIcon icon={Add01Icon} size={16} color={actionColors.fill} />
             </Pressable>
           </View>
         </View>

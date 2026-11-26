@@ -42,7 +42,7 @@ export function ForgotToAddSection({ cartItemIds }: Props) {
 
       <Pressable
         onPress={() => setIsModalOpen(true)}
-        className="mx-5 mb-5 flex-row items-center justify-center gap-2.5 rounded-2xl border border-[#CEE5D7] bg-[#E7F3EB] py-2.5 active:bg-[#D4E9DC]"
+        className="mx-5 mb-5 flex-row items-center justify-center gap-2.5 rounded-2xl border border-[#C9DAFE] bg-[#EAF1FF] py-2.5 active:bg-[#D9E6FF]"
       >
         <View className="flex-row">
           {avatarCandidates.map((product, index) => (
@@ -55,7 +55,7 @@ export function ForgotToAddSection({ cartItemIds }: Props) {
             />
           ))}
         </View>
-        <Text className="text-[14.5px] font-semibold text-[#007A42]">Explore more picks</Text>
+        <Text className="text-[14.5px] font-semibold text-[#155DFC]">Explore more picks</Text>
       </Pressable>
 
       <ForgotToAddModal visible={isModalOpen} cartItemIds={cartItemIds} onClose={() => setIsModalOpen(false)} />

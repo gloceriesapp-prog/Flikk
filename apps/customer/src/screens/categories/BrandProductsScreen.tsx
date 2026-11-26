@@ -11,6 +11,7 @@ import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import type { AppStackParamList } from '../../navigation/types';
 import { useLocationStore } from '../../store/useLocationStore';
 import { colors } from '../../theme/tokens';
+import { HeaderEtaPill } from '../../components/EtaPill';
 import { GroceryProductTile } from '../home/groceries/components/GroceryProductTile';
 import { useCollectionBottomPadding } from '../../navigation/home/useCollectionBottomPadding';
 
@@ -42,7 +43,8 @@ export function BrandProductsScreen({ navigation, route }: Props) {
           className="h-11 w-11 items-center justify-center">
           <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text accessibilityRole="header" numberOfLines={1} className={`${PAGE_TITLE_CLASS_NAME} flex-1 text-ink`}>{currentBrand.name}</Text>
+        <Text accessibilityRole="header" numberOfLines={1} className={`${PAGE_TITLE_CLASS_NAME} shrink text-ink`}>{currentBrand.name}</Text>
+        <HeaderEtaPill />
       </View>
 
       <FlashList
