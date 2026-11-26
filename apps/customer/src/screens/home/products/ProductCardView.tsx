@@ -120,9 +120,10 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
 
       {/* Pricing, name and stock keep their existing hierarchy. */}
       <View className="gap-1 px-0.5 pt-0">
-        <View className={showImage ? 'pr-12' : undefined} style={{ minHeight: 18, marginBottom: -2 }}>
-          <Text numberOfLines={1} className={`text-[12px] font-semibold ${onDark ? 'text-white/80' : ''}`}
-            style={onDark ? undefined : { color: actionColors.fill }}>{weight}</Text>
+        <View className={showImage ? 'pr-12' : undefined} style={{ minHeight: 18, marginBottom: -4 }}>
+          {weight.trim() ? <Text numberOfLines={1} className={`text-[12px] font-semibold ${onDark ? 'text-white/80' : ''}`}
+            style={{ alignSelf: 'flex-start', maxWidth: '100%', borderWidth: 1, borderColor: '#155DFC', borderRadius: 5,
+              paddingHorizontal: 5, paddingVertical: 1, lineHeight: 14, color: onDark ? '#FFFFFFCC' : actionColors.fill }}>{weight}</Text> : null}
           {sizeOptionLabel && <Text className={`text-[9px] font-medium leading-[12px] ${onDark ? 'text-white/60' : 'text-[#73809B]'}`}>{sizeOptionLabel}</Text>}
         </View>
 
