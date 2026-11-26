@@ -36,16 +36,16 @@ function FlavourPickerContent({ product, onClose, isAvailable, availabilityLabel
   return <Modal transparent animationType="slide" visible statusBarTranslucent onRequestClose={onClose}>
     <View style={styles.overlay}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close flavour picker" />
-      <View style={[styles.container, { maxHeight: Math.min(height * 0.84, height - insets.top - 80), marginBottom: Math.max(insets.bottom, 8), paddingBottom: 12 }]} accessibilityViewIsModal>
+      <View style={[styles.container, { maxHeight: Math.min(height * 0.84, height - insets.top - 80), paddingBottom: Math.max(insets.bottom, 16) }]} accessibilityViewIsModal>
         <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={styles.close} hitSlop={8}>
           <IconlyClose size={28} color="#FFFFFF" />
         </Pressable>
         <Text style={styles.title} accessibilityRole="header">{product.name}</Text>
-        <FlatList data={choices} keyExtractor={({ option, pack }) => `${option.id}:${pack.id ?? 'base'}`}
-          style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={styles.list}
+        <FlatList data={choices} numColumns={2} keyExtractor={({ option, pack }) => `${option.id}:${pack.id ?? 'base'}`}
+          style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={styles.list} columnWrapperStyle={{ gap: 12 }}
           showsVerticalScrollIndicator={false} initialNumToRender={4} windowSize={3}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListHeaderComponent={<View style={{ gap: 14 }}>
+          ListHeaderComponent={<View style={{ gap: 14, marginBottom: 12 }}>
+            <Text style={styles.hint}>{product.options?.length ? 'Choose your flavour and pack' : 'Choose your pack'}</Text>
             {product.servingOptions?.length ? <ProductServingOptions options={product.servingOptions} selected={serving} onSelect={setServing} /> : null}
             {product.cutOptions ? <ProductCutOptions selected={cut} onSelect={setCut} bulkMinKg={product.bulkMinKg} /> : null}
             {product.preorder ? <ProductPreorderOptions minQty={product.preorder.minQty} leadDays={product.preorder.leadDays} value={preorder} onChange={setPreorder} /> : null}

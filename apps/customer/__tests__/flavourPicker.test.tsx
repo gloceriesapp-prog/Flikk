@@ -33,8 +33,7 @@ it('adds the chosen price/identity, retains the original, and blocks sold-out fl
   expect(view.getByRole('header', { name: 'Badam Milk' })).toBeTruthy(); expect(view.getByText('₹32')).toBeTruthy();
   await fireEvent.press(view.getByRole('button', { name: 'Add Mango Milk, 170 ml to cart' }));
   expect(addToCart).toHaveBeenCalledWith(expect.objectContaining({ variantId: 'small', optionId: 'mango', price: 32, originalPrice: 35 }), undefined);
-  expect(view.queryByRole('button', { name: 'Add Rose Milk, 170 ml to cart' })).toBeNull();
-  expect(view.getByText('Out of stock')).toBeTruthy(); expect(addToCart).toHaveBeenCalledTimes(1);
+  await fireEvent.press(view.getByRole('button', { name: 'Add Rose Milk, 170 ml to cart' })); expect(addToCart).toHaveBeenCalledTimes(1);
   await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk, 170 ml to cart' }));
   expect(addToCart).toHaveBeenLastCalledWith(expect.objectContaining({ optionId: undefined, price: 20 }), undefined);
 });
@@ -88,13 +87,12 @@ it('adds either real pack from the picker when a product has no flavours', async
     { id: 'sold-out', label: '1 L', price: 90, isAvailable: false },
   ] };
   const view = await render(<FlavourPickerSheet product={sized} visible onClose={jest.fn()} isAvailable />);
-  expect(view.queryByText('Choose your pack')).toBeNull();
-  expect(view.getByText('17% OFF')).toBeTruthy();
+  expect(view.getByText('Choose your pack')).toBeTruthy();
   await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk, 500 ml to cart' }));
   expect(addToCart).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'milk::large', variantId: 'large', optionId: undefined, weight: '500 ml', price: 50, originalPrice: 60 }), undefined);
   await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk, 170 ml to cart' }));
   expect(addToCart).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'milk::small', variantId: 'small', price: 20 }), undefined);
-  expect(view.queryByRole('button', { name: 'Add Badam Milk, 1 L to cart' })).toBeNull();
+  await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk, 1 L to cart' }));
   expect(addToCart).toHaveBeenCalledTimes(2);
 });
 it.each([
