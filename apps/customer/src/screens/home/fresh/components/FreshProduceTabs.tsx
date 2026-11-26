@@ -28,7 +28,7 @@ function Sprig({ flip = false }: { flip?: boolean }) {
 
 // Heading above the three choices.
 export function FreshHeading() {
-  return <View className="items-center px-5 pb-3" accessible accessibilityRole="header"
+  return <View className="items-center px-5 pb-4" accessible accessibilityRole="header"
     accessibilityLabel="Fresh Every Morning. Picked today for your kitchen">
     <View className="flex-row items-center gap-2">
       <Sprig />
@@ -44,7 +44,7 @@ export function FreshProduceTabs({ value, onChange, titles }: { value: FreshProd
     const title = freshTabTitle(titles, id);
     return { id, title };
   });
-  return <View className="w-full bg-white pt-4">
+  return <View className="w-full bg-white pt-8">
     <FreshHeading />
     <View className="relative h-[96px] w-full flex-row">
       <Svg width="100%" height={96} viewBox="0 0 600 96" preserveAspectRatio="none" accessible={false} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0 }}>
