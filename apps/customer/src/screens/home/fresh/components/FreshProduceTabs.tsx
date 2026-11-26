@@ -17,12 +17,35 @@ function GrowerIcon({ color = '#616871' }: { color?: string }) {
   </Svg>;
 }
 
+// Small lime sprig either side of the heading (mirrored on the right).
+function Sprig({ flip = false }: { flip?: boolean }) {
+  return <Svg width={22} height={14} viewBox="0 0 22 14" accessible={false} style={flip ? { transform: [{ scaleX: -1 }] } : undefined}>
+    <Path d="M1 9C6 9 10 7 14 4" stroke="#A8D93A" strokeWidth={2.4} strokeLinecap="round" fill="none" />
+    <Path d="M14 4C15.5 1.6 18.4 0.8 21 1.5C20.4 4.2 18 6 15.2 5.6Z" fill="#A8D93A" />
+    <Path d="M9 7.2C9.8 9.6 12.3 11.2 15 11C14.4 8.6 12 7 9 7.2Z" fill="#C6E77A" />
+  </Svg>;
+}
+
+// Heading above the three choices.
+export function FreshHeading() {
+  return <View className="items-center px-5 pb-3" accessible accessibilityRole="header"
+    accessibilityLabel="Fresh Every Morning. Picked today for your kitchen">
+    <View className="flex-row items-center gap-2">
+      <Sprig />
+      <Text className="text-[23px] font-bold tracking-tight" style={{ color: '#1E4D33', lineHeight: 28 }}>Fresh Every Morning</Text>
+      <Sprig flip />
+    </View>
+    <Text className="mt-1 text-[14px] font-semibold" style={{ color: '#3E6E4E' }}>Picked today for your kitchen</Text>
+  </View>;
+}
+
 export function FreshProduceTabs({ value, onChange, titles }: { value: FreshProduceMode; onChange: (mode: FreshProduceMode) => void; titles?: FreshTabs }) {
   const options = FRESH_CHOICES.map(id => {
     const title = freshTabTitle(titles, id);
     return { id, title };
   });
   return <View className="w-full bg-white pt-4">
+    <FreshHeading />
     <View className="relative h-[96px] w-full flex-row">
       <Svg width="100%" height={96} viewBox="0 0 600 96" preserveAspectRatio="none" accessible={false} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0 }}>
         <Defs>

@@ -8,6 +8,8 @@ it('has three full-width choices with accessible selection', async () => {
   const onChange = jest.fn();
   const view = await render(<FreshProduceTabs value="everyday" onChange={onChange} />);
   expect(view.getAllByRole('tab')).toHaveLength(3);
+  expect(view.getByText('Fresh Every Morning')).toBeTruthy();
+  expect(view.getByText('Picked today for your kitchen')).toBeTruthy();
   expect(view.getByText('Vegetables')).toBeTruthy();
   expect(view.getByText('Fruits')).toBeTruthy();
   expect(view.getByText('Village Fresh')).toBeTruthy();
