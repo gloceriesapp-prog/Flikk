@@ -70,6 +70,9 @@ export interface OrderDetail {
   commissionAmount: number;
   // Bulk chicken order: the store had the longer bulk response window.
   isBulk: boolean;
+  // Customer complaint flag (orders.complaint_reported_at). available is
+  // false until migration 20261127090000 is applied.
+  complaint: { available: boolean; reportedAt: string | null };
   // Pre-orders: the delivery slot the customer chose (null = instant).
   deliverFrom: string | null;
   deliverUntil: string | null;

@@ -59,3 +59,13 @@ export function recentOrderProductIds(orders: { order_items?: { product_id: stri
   }
   return [...ids];
 }
+
+// Optional ?days= on GET /orders/reorder-items: only orders placed in the
+// last N days (the Buy again tab sends 2, so items drop off on their own).
+// Missing or invalid means no time limit, which older app versions rely on.
+export const MAX_REORDER_DAYS = 90;
+export function reorderWindowStart(days: unknown, now = Date.now()): string | null {
+  const value = typeof days === 'string' && /^\d{1,2}$/.test(days) ? Number(days) : NaN;
+  if (!Number.isInteger(value) || value < 1 || value > MAX_REORDER_DAYS) return null;
+  return new Date(now - value * 24 * 60 * 60 * 1000).toISOString();
+}

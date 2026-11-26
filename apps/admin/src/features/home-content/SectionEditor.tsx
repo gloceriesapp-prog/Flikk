@@ -1,7 +1,7 @@
 'use client';
 
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
-import { DEFAULT_FRESH_TABS, freshSectionPlacement, categoryCardStyle, createItem, type CategoryCardStyle, type HomeContentKey, type HomeContentSection, type HomeContentItem } from '@/lib/homeContent';
+import { freshSectionPlacement, freshTabTitle, categoryCardStyle, createItem, type CategoryCardStyle, type HomeContentKey, type HomeContentSection, type HomeContentItem, type FreshTabs } from '@/lib/homeContent';
 import { Field, inputClass, Toggle } from './Fields';
 import { PopularBrandPicker } from './PopularBrandPicker';
 import { SelectionEditor } from './SelectionEditor';
@@ -12,14 +12,14 @@ export function SectionEditor({
   tabKey,
   tabTitle,
   sections,
-  freshTabs = DEFAULT_FRESH_TABS,
+  freshTabs,
   onChange,
 }: {
   value: HomeContentSection;
   tabKey: HomeContentKey;
   tabTitle: string;
   sections: HomeContentSection[];
-  freshTabs?: { everyday: string; village: string };
+  freshTabs?: FreshTabs;
   onChange: (value: HomeContentSection) => void;
 }) {
   const update = (patch: Partial<HomeContentSection>) => onChange({ ...section, ...patch });
@@ -55,14 +55,15 @@ export function SectionEditor({
           <Field label="Show this section in" hint="Choose the destination, then edit its title and product selection below. Village origin must be verified by you.">
             <select className={inputClass} value={freshSectionPlacement(section, sections)}
               onChange={event => update({ freshPlacement: event.target.value as HomeContentSection['freshPlacement'] })}>
-              <option value="intro">Above both choices</option>
-              <option value="everyday">{freshTabs.everyday}</option>
-              <option value="village">{freshTabs.village}</option>
-              <option value="both">Both choices</option>
+              <option value="intro">Above the choices</option>
+              <option value="everyday">{freshTabTitle(freshTabs, 'everyday')}</option>
+              <option value="fruits">{freshTabTitle(freshTabs, 'fruits')}</option>
+              <option value="village">{freshTabTitle(freshTabs, 'village')}</option>
+              <option value="both">All three choices</option>
             </select>
           </Field>
           {['products', 'hero'].includes(section.kind) && <button type="button" className="text-sm font-semibold text-blue-600"
-            onClick={() => update({ selection: { mode: 'manual', productIds: section.selection.productIds, categoryIds: [], storeIds: [], includeTerms: [], excludeTerms: [], discountedOnly: false } })}>Choose exact vegetables for this section</button>}
+            onClick={() => update({ selection: { mode: 'manual', productIds: section.selection.productIds, categoryIds: [], storeIds: [], includeTerms: [], excludeTerms: [], discountedOnly: false } })}>Choose exact products for this section</button>}
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -315,14 +316,15 @@ export function SectionEditor({
           <Field label="Show this section in" hint="Choose the destination, then edit its title and product selection below. Village origin must be verified by you.">
             <select className={inputClass} value={freshSectionPlacement(section, sections)}
               onChange={event => update({ freshPlacement: event.target.value as HomeContentSection['freshPlacement'] })}>
-              <option value="intro">Above both choices</option>
-              <option value="everyday">{freshTabs.everyday}</option>
-              <option value="village">{freshTabs.village}</option>
-              <option value="both">Both choices</option>
+              <option value="intro">Above the choices</option>
+              <option value="everyday">{freshTabTitle(freshTabs, 'everyday')}</option>
+              <option value="fruits">{freshTabTitle(freshTabs, 'fruits')}</option>
+              <option value="village">{freshTabTitle(freshTabs, 'village')}</option>
+              <option value="both">All three choices</option>
             </select>
           </Field>
           {['products', 'hero'].includes(section.kind) && <button type="button" className="text-sm font-semibold text-blue-600"
-            onClick={() => update({ selection: { mode: 'manual', productIds: section.selection.productIds, categoryIds: [], storeIds: [], includeTerms: [], excludeTerms: [], discountedOnly: false } })}>Choose exact vegetables for this section</button>}
+            onClick={() => update({ selection: { mode: 'manual', productIds: section.selection.productIds, categoryIds: [], storeIds: [], includeTerms: [], excludeTerms: [], discountedOnly: false } })}>Choose exact products for this section</button>}
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">

@@ -824,6 +824,22 @@
     {
       "file": "20261126090000_delivery_routes.sql",
       "sha256": "38d7034d219183f51cdc575bf76477be3c6eeee99c85ea8fb9f435c56271bddb"
+    },
+    {
+      "file": "20261127090000_order_complaints.sql",
+      "sha256": "fd7471167089f18b7fec96caf481f3475d465778dad4f726d6de9eb9c7cc099e"
+    },
+    {
+      "file": "20261127100000_namma_brands.sql",
+      "sha256": "d7b2c6622b5cc099eb87968add9782ffb7d897968df3ec998abae9fe6ecf03e7"
+    },
+    {
+      "file": "20261127110000_namma_brands_sort.sql",
+      "sha256": "db9d654dd80a678ca35de640b70da9b70170bdfca50ae9785755ae326def0b76"
+    },
+    {
+      "file": "20261127120000_welcome_banner_toggle.sql",
+      "sha256": "b51583bccf1d278b338f9d81fc173227f1e4b72602d39c8ba8de8ea6ef343d05"
     }
   ]
 }

@@ -8,6 +8,7 @@
 //   unassign rider   POST /api/orders/[id]/unassign-rider
 //   reassign rider   POST /api/orders/[id]/reassign-rider   (trip-wide)
 //   delivery code    POST /api/orders/[id]/delivery-code/reissue
+//   complaint        POST /api/orders/[id]/complaint             (mark / clear)
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -24,7 +25,7 @@ import type { ActiveRider } from '@/lib/types';
 import { SERVING_LABEL } from '@/lib/types';
 import { toast } from '@/components/ui/Toast';
 
-type ActionKind = 'cancel' | 'packed' | 'out_for_delivery' | 'unassign' | 'reassign' | 'reissue';
+type ActionKind = 'cancel' | 'packed' | 'out_for_delivery' | 'unassign' | 'reassign' | 'reissue' | 'complaint_mark' | 'complaint_clear';
 
 const ACTION_COPY: Record<ActionKind, { title: string; confirm: string; danger?: boolean; needsReason: boolean }> = {
   cancel: { title: 'Cancel order', confirm: 'Cancel order', danger: true, needsReason: true },
@@ -33,6 +34,8 @@ const ACTION_COPY: Record<ActionKind, { title: string; confirm: string; danger?:
   unassign: { title: 'Remove rider', confirm: 'Remove rider', danger: true, needsReason: true },
   reassign: { title: 'Reassign rider', confirm: 'Reassign', needsReason: true },
   reissue: { title: 'Reissue delivery code', confirm: 'Reissue code', needsReason: false },
+  complaint_mark: { title: 'Mark customer complaint', confirm: 'Mark complaint', danger: true, needsReason: true },
+  complaint_clear: { title: 'Clear complaint', confirm: 'Clear complaint', needsReason: true },
 };
 
 const CODE_STATE_LABEL: Record<OrderDetail['deliveryCode']['state'], string> = {
@@ -121,6 +124,8 @@ export default function OrderDetailPage() {
       unassign: [`/api/orders/${id}/unassign-rider`, { reason }],
       reassign: [`/api/orders/${id}/reassign-rider`, { riderId, reason }],
       reissue: [`/api/orders/${id}/delivery-code/reissue`, {}],
+      complaint_mark: [`/api/orders/${id}/complaint`, { reported: true, reason }],
+      complaint_clear: [`/api/orders/${id}/complaint`, { reported: false, reason }],
     };
     const [url, body] = request[action];
     setBusy(true);
@@ -212,6 +217,8 @@ export default function OrderDetailPage() {
             {action === 'unassign' && (isTrip ? 'The rider is removed from every stop of this trip and it is offered to riders again.' : 'The rider is removed and the order is offered to riders again.')}
             {action === 'reassign' && (isTrip ? 'Every stop of this trip moves to the new rider.' : 'The order moves to the new rider.')}
             {action === 'reissue' && 'Issues a fresh 4-digit code (valid 2 hours) and resets wrong attempts. Only the customer can see the code.'}
+            {action === 'complaint_mark' && 'Records that the customer complained about this order (missing items, damage, a bad delivery). The app then never asks them for a store review about it.'}
+            {action === 'complaint_clear' && 'Removes the complaint mark, for example if it was added by mistake.'}
           </p>
           {action === 'reassign' && (
             <div className="mt-3">
@@ -368,6 +375,28 @@ export default function OrderDetailPage() {
                 {order.payment.refundJob.status} · {formatCurrency(order.payment.refundJob.targetPaise / 100)}
                 {order.payment.refundJob.lastError && <span className="block text-xs text-muted">{order.payment.refundJob.lastError}</span>}
               </Row>
+            )}
+          </Section>
+
+          <Section title="Customer complaint">
+            {!order.complaint.available ? (
+              <p className="text-sm text-muted">Available once the order complaints database update is applied.</p>
+            ) : order.complaint.reportedAt ? (
+              <>
+                <Row label="Reported">{formatDateTime(order.complaint.reportedAt)}</Row>
+                <button type="button" onClick={() => openAction('complaint_clear')}
+                  className="mt-2 rounded-[10px] border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas">
+                  Clear complaint
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted">No complaint recorded. Mark one when the customer emails about a problem with this order.</p>
+                <button type="button" onClick={() => openAction('complaint_mark')}
+                  className="mt-2 rounded-[10px] border border-danger/40 px-4 py-2 text-xs font-semibold text-danger hover:bg-red-50">
+                  Mark customer complaint
+                </button>
+              </>
             )}
           </Section>
 
