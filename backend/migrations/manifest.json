@@ -828,6 +828,14 @@
     {
       "file": "20261127090000_order_complaints.sql",
       "sha256": "fd7471167089f18b7fec96caf481f3475d465778dad4f726d6de9eb9c7cc099e"
+    },
+    {
+      "file": "20261127100000_namma_brands.sql",
+      "sha256": "d7b2c6622b5cc099eb87968add9782ffb7d897968df3ec998abae9fe6ecf03e7"
+    },
+    {
+      "file": "20261127110000_namma_brands_sort.sql",
+      "sha256": "db9d654dd80a678ca35de640b70da9b70170bdfca50ae9785755ae326def0b76"
     }
   ]
 }

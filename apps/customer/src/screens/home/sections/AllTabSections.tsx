@@ -35,6 +35,7 @@ import { HomeCategoryButton, HomeProductCollectionButton } from '../components/H
 import { HomeSectionBanner } from '../components/HomeSectionBanner';
 import { PreorderSection } from '../preorders/PreorderSection';
 import { BuyAgainSection } from '../buy-again/BuyAgainSection';
+import { NammaBrandsSection } from '../namma-brands/NammaBrandsSection';
 import { homePreviewLimit, homeProductLayout, supportsHomeBanner, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 export interface HomeSectionItem {
@@ -133,7 +134,7 @@ const EMPTY_PICKS: Record<string, Product[]> = {};
 // Items rendered on first paint (HomeScreen's initialNumToRender): the welcome
 // banner plus 6 sections reliably overflow a phone viewport, so the rest mount
 // off-screen as the list fills in — no layout jump, no blank flash.
-export const ABOVE_FOLD_ITEM_COUNT = 7;
+export const ABOVE_FOLD_ITEM_COUNT = 8;
 
 // One section, memoized: React.memo skips the whole subtree (and never calls
 // its registry renderer) when its props are referentially equal, so a single
@@ -205,6 +206,8 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   const t = useCopyText();
 
   // The header's category row replaces the Quick categories grid on Home.
+  // Namma Brands always sits above the welcome card; its row only says on/off.
+  const nammaBrandsOn = !!sectionConfig?.some((section) => section.key === 'namma-brands' && section.enabled);
   const sections = useMemo(() => resolveAllTabSections(sectionConfig).filter((section) => section.key !== 'quick-categories'), [sectionConfig]);
 
   // Only visible sections can claim products from a shared feed.
@@ -271,7 +274,7 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   // doesn't change a given section's inputs reuses its element (React skips the
   // subtree and never re-runs that section's registry renderer).
   return useMemo(() => {
-    const items: HomeSectionItem[] = [{
+    const items: HomeSectionItem[] = [{ key: 'namma-brands', node: <NammaBrandsSection enabled={nammaBrandsOn} /> }, {
       key: 'welcome-banner',
       node: (
         // Inset to the content width under the header's white sheet.
@@ -306,5 +309,5 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
       });
     }
     return items;
-  }, [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground]);
+  }, [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground, nammaBrandsOn]);
 }

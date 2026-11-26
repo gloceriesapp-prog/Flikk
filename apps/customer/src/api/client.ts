@@ -89,7 +89,7 @@ function refreshAccessToken(epoch: number): Promise<string | null> {
 export async function apiRequest<T>(path: string, options?: ApiRequestOptions): Promise<T> {
   const snapshot = useAuthStore.getState();
   const pin = useLocationStore.getState().location;
-  const scoped = /^\/(?:browse\/|stores(?:\?|$)|stores\/products\/|categories\/.+\/products|orders\/(?:buy-it-again|reorder-items))/.test(path);
+  const scoped = /^\/(?:browse\/|stores(?:\?|$)|stores\/products\/|categories\/.+\/products|orders\/(?:buy-it-again|reorder-items)|home\/namma-brands)/.test(path);
   if (scoped && pin) path += `${path.includes('?') ? '&' : '?'}lat=${pin.latitude}&lng=${pin.longitude}`;
   const client = createApiClient({
     baseUrl: API_BASE_URL,

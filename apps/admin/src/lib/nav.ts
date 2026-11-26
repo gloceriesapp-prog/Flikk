@@ -99,6 +99,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/home-categories', label: 'Quick categories & tabs', icon: Home },
       { href: '/home-sections', label: '“All” tab layout', icon: LayoutGrid },
+      { href: '/namma-brands', label: 'Namma Brands', icon: Tag },
       { href: '/home-content', label: 'Category-tab content', icon: LayoutGrid },
       { href: '/festival-layout', label: 'Festival sections & layout', icon: LayoutGrid },
       { href: '/festival-section', label: 'Festival products', icon: PartyPopper },
