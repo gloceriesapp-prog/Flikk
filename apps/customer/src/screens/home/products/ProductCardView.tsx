@@ -54,20 +54,12 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
     originalPrice,
     imageUrl,
     freshnessTag,
-    sizeOptions,
     storeId,
     storeName,
     isVeg,
   } = product;
 
 
-  // Count real, distinct pack sizes, not photos or added flavours.
-  const packs = product.variants?.length ? product.variants.map(variant => variant.label) : sizeOptions ?? [weight];
-  const optionCount = Math.max(1, new Set(packs.map(label => label.trim().toLowerCase()).filter(Boolean)).size);
-  const packCount = optionCount;
-  const additionalSizeCount = packCount - 1;
-  const sizeOptionLabel = weight.trim() && additionalSizeCount > 0
-    ? `(${additionalSizeCount} ${additionalSizeCount === 1 ? 'option' : 'options'})` : null;
   const chooseOptions = requiresProductSelection(product);
 
   const photos = product.imageUrls?.length ? product.imageUrls : imageUrl ? [imageUrl] : [];
@@ -127,7 +119,6 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
         <View className={showImage ? 'pr-12' : undefined} style={{ minHeight: 14, marginBottom: -4 }}>
           {weight.trim() ? <Text numberOfLines={1} className={`text-[12px] font-semibold ${onDark ? 'text-white/80' : ''}`}
             style={{ alignSelf: 'flex-start', maxWidth: '100%', lineHeight: 14, color: onDark ? '#FFFFFFCC' : actionColors.fill }}>{weight}</Text> : null}
-          {sizeOptionLabel && <Text className={`text-[9px] font-medium leading-[12px] ${onDark ? 'text-white/60' : 'text-[#73809B]'}`}>{sizeOptionLabel}</Text>}
         </View>
 
         {/* Price, discount and per-kg/litre price read as one block: no gap
