@@ -66,7 +66,7 @@ export function NammaBrandsBlock({ headerImageUrl, cards, onOpen }: { headerImag
           const next = welcomeBannerRatio(event.source.width, event.source.height);
           if (next && next !== ratio) setRatio(next);
         }} />
-      <View className="mt-2 flex-row flex-wrap" style={{ gap: GAP }}>
+      <View className="mt-2 flex-row flex-wrap" style={{ gap: GAP, paddingHorizontal: SIDE }}>
         {cards.slice(0, 6).map((card) => (
           <Pressable key={card.brand.id} onPress={() => onOpen(card)} accessibilityRole="button"
             accessibilityLabel={`${card.title}, ${card.pill}`} testID={`namma-card-${card.brand.id}`}
@@ -107,9 +107,11 @@ function useCardWidth(blockWidth: number | null = null) {
   return Math.floor(((blockWidth ?? width - MARGIN * 2) - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
 }
 
+// The header image runs edge to edge across the card, flush with its top;
+// only the brand cards below it are padded.
 const BLOCK_STYLE = {
   backgroundColor: NAMMA_BG, marginHorizontal: MARGIN, marginTop: 12, borderRadius: RADIUS, overflow: 'hidden' as const,
-  paddingTop: 8, paddingBottom: SIDE, paddingHorizontal: SIDE,
+  paddingBottom: SIDE,
 };
 
 // Same layout in grey while the block loads.
@@ -117,8 +119,8 @@ export function NammaBrandsSkeleton() {
   const cardWidth = useCardWidth();
   return (
     <View accessibilityLabel="Loading Namma Brands" style={BLOCK_STYLE}>
-      <View className="rounded-2xl bg-white/60" style={{ width: '100%', aspectRatio: 3 }} />
-      <View className="mt-2 flex-row flex-wrap" style={{ gap: GAP }}>
+      <View className="bg-white/60" style={{ width: '100%', aspectRatio: 3 }} />
+      <View className="mt-2 flex-row flex-wrap" style={{ gap: GAP, paddingHorizontal: SIDE }}>
         {Array.from({ length: 6 }, (_, i) => (
           <View key={i} className="overflow-hidden rounded-2xl bg-white" style={{ width: cardWidth }}>
             <View className="mx-3 mt-3 h-3.5 rounded bg-[#E6EAF0]" />
