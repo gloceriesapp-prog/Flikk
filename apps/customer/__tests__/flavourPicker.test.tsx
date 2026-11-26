@@ -48,7 +48,7 @@ it('opens pack selection instead of silently adding the default size', async () 
   const onPress = jest.fn(), onAdd = jest.fn(), stopPropagation = jest.fn();
   const sized = { ...product, options: undefined, variants: [{ id: 'small', label: '170 ml', price: 20 }, { id: 'large', label: '500 ml', price: 50 }] };
   const view = await render(<ProductCardView product={sized} onPress={onPress} onAdd={onAdd} isAvailable />);
-  expect(view.getByText('(1 option)')).toBeTruthy();
+  expect(view.queryByText(/\(\d+ options?\)/)).toBeNull();
   await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk to cart' }), { stopPropagation });
   expect(onAdd).toHaveBeenCalledTimes(1);
   expect(onPress).not.toHaveBeenCalled();
@@ -66,16 +66,16 @@ it('keeps single-pack quick add and out-of-stock behavior', async () => {
   expect(view.getByText('Out of stock')).toBeTruthy();
 });
 
-it('counts additional distinct sizes below the weight', async () => {
+it('hides the options count for multiple sizes', async () => {
   const sized = { ...product, options: undefined, sizeOptions: ['170 ml', '500 ml', '500 ML'], imageUrls: ['one', 'two', 'three'] };
   const view = await render(<ProductCardView product={sized} isAvailable />);
-  expect(view.getByText('(1 option)')).toBeTruthy();
+  expect(view.queryByText(/\(\d+ options?\)/)).toBeNull();
 });
 
-it('pluralizes additional sizes and hides the label when there is no weight', async () => {
+it('keeps options labels hidden with or without a weight', async () => {
   const sized = { ...product, options: undefined, sizeOptions: ['170 ml', '500 ml', '1 L'] };
   const view = await render(<ProductCardView product={sized} isAvailable />);
-  expect(view.getByText('(2 options)')).toBeTruthy();
+  expect(view.queryByText(/\(\d+ options?\)/)).toBeNull();
   await view.rerender(<ProductCardView product={{ ...sized, weight: '' }} isAvailable />);
   expect(view.queryByText(/\(\d+ options?\)/)).toBeNull();
 });
