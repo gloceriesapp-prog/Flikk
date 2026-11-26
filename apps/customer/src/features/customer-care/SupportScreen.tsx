@@ -7,6 +7,8 @@ import { IconlyHeadphone } from '../../components/icons/iconly';
 import { colors } from '../../theme/tokens';
 import { CareLayout, CareButton, CareCard } from './components/CareLayout';
 import { supportEmailAddress, supportEmailUrl } from './supportEmail';
+import { recordIssueReport } from '../store-review/storage';
+import { useAuthStore } from '../../store/useAuthStore';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Support'>;
 
@@ -14,6 +16,7 @@ export function SupportScreen({ navigation, route }: Props) {
   const { support } = useAppConfig();
   const hours = useCopy('support.hours.text');
   const email = supportEmailAddress(support.email);
+  const customerId = useAuthStore(state => state.customerId);
   const [opening, setOpening] = useState(false);
   const lock = useRef(false);
 
@@ -21,6 +24,12 @@ export function SupportScreen({ navigation, route }: Props) {
     if (lock.current) return;
     lock.current = true;
     setOpening(true);
+    // An order or payment issue pauses the store-review prompt
+    // (features/store-review). Best effort: never blocks the email.
+    const { category, target } = route.params ?? {};
+    if (customerId && (target || (category && category !== 'general'))) {
+      void recordIssueReport(customerId, target?.orderId).catch(() => undefined);
+    }
     try {
       await Linking.openURL(supportEmailUrl(email, route.params?.category, route.params?.target));
     } catch {

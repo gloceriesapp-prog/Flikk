@@ -27,6 +27,8 @@ import { OrderSummarySection } from './sections/order-summary/OrderSummarySectio
 import type { AppStackParamList } from '../../navigation/types';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
 import { registerNotifications } from '../../features/notifications/native';
+import { useStoreReviewPrompt } from '../../features/store-review/useStoreReviewPrompt';
+import { useTrackingPreview } from './state/trackingPreview';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrder'>;
 
@@ -49,6 +51,8 @@ function TrackingDetails({ navigation, route }: Props) {
     : order?.status === 'out_for_delivery';
   const showMap = beforePickup || outForDelivery;
   const riderLocation = useRiderLocation(orderId, !!isTrip, showMap, outForDelivery);
+  // After a good delivery, maybe the OS store-review popup (features/store-review).
+  useStoreReviewPrompt(isTrip ? trip?.orders : order ? [order] : undefined, !useTrackingPreview());
   const liveMap = showMap ? (
     <RiderLiveMap
       outForDelivery={outForDelivery}

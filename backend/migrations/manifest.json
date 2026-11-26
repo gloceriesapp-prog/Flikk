@@ -824,6 +824,10 @@
     {
       "file": "20261126090000_delivery_routes.sql",
       "sha256": "38d7034d219183f51cdc575bf76477be3c6eeee99c85ea8fb9f435c56271bddb"
+    },
+    {
+      "file": "20261127090000_order_complaints.sql",
+      "sha256": "fd7471167089f18b7fec96caf481f3475d465778dad4f726d6de9eb9c7cc099e"
     }
   ]
 }

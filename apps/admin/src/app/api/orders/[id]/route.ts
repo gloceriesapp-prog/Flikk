@@ -23,6 +23,8 @@ const ACTION_LABELS: Record<string, string> = {
   advance_status: 'Admin changed the status',
   reissue_delivery_code: 'Admin reissued the delivery code',
   trip_failure_refund: 'Admin approved a failed-trip refund',
+  mark_complaint: 'Admin marked a customer complaint',
+  clear_complaint: 'Admin cleared the customer complaint',
 };
 
 const EVENT_LABELS: Record<string, string> = {
@@ -53,6 +55,12 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
     if (error) throw error;
     if (!o) return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     const scope = (o.trip_id ?? o.id) as string;
+    // Read on its own so the page still loads before the complaints
+    // migration is applied (the column is missing until then).
+    const complaintRes = await supabaseAdmin.from('orders').select('complaint_reported_at').eq('id', id).maybeSingle();
+    const complaint = complaintRes.error
+      ? { available: false, reportedAt: null }
+      : { available: true, reportedAt: (complaintRes.data as { complaint_reported_at: string | null } | null)?.complaint_reported_at ?? null };
 
     const [itemsRes, customerRes, storeRes, riderRes, tripRes, legsRes, promoRes, codeRes, resetsRes, actionsRes, eventsRes, orderJobRes, tripJobRes, addressRes] = await Promise.all([
       supabaseAdmin.from('order_items').select('id, quantity, unit_price_at_order, unit_at_order, cut_size, option_name_at_order, serving, product_name_at_order, product_image_at_order, products(name, unit, image_url)').eq('order_id', id),
@@ -159,6 +167,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
       total: num(o.total),
       commissionAmount: num(o.commission_amount),
       isBulk: o.is_bulk === true,
+      complaint,
       deliverFrom: o.deliver_from ?? null,
       deliverUntil: o.deliver_until ?? null,
       items: ((itemsRes.data ?? []) as unknown as ItemRow[]).map((item) => ({

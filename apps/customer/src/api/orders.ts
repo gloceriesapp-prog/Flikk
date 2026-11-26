@@ -125,6 +125,9 @@ export interface ApiOrder {
   picked_up_at: string | null;
   rider_arrived_at?: string | null;
   delivered_at: string | null;
+  // Set by an admin when the customer complained about this order
+  // (migration 20261127090000); absent until that migration is applied.
+  complaint_reported_at?: string | null;
   // Real orders.delivery_otp (backend/migrations/049_delivery_otp.sql) — a
   // 4-digit code the customer reads out to the rider at the door. Only set
   // while the order is out_for_delivery (issued at pickup, nulled the instant
