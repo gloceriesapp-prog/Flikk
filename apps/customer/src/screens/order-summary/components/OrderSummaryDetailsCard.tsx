@@ -1,11 +1,14 @@
 import { Text, View } from 'react-native';
+import { GILROY } from '../../../theme/fonts';
 import type { OrderSummary } from '../data';
 
+// Same type scale as Bill details: 15 px grey label on the left, the value
+// on the right.
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <View className="gap-1">
-      <Text className="text-[12px] font-medium text-ink/45">{label}</Text>
-      <Text selectable className="text-[14px] font-semibold leading-5 text-ink">{value}</Text>
+    <View className="flex-row items-start justify-between gap-4">
+      <Text className="text-[15px] font-medium text-[#737579]">{label}</Text>
+      <Text selectable className="min-w-0 flex-1 text-right text-[15px] leading-[21px] text-[#505257]" style={{ fontFamily: GILROY.semibold }}>{value}</Text>
     </View>
   );
 }
@@ -16,11 +19,13 @@ export function OrderSummaryDetailsCard({ summary }: { summary: OrderSummary }) 
     ? date.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
     : 'Not available';
   return (
-    <View className="gap-4 rounded-3xl bg-white p-5">
-      <Text accessibilityRole="header" className="text-[18px] font-bold text-ink">Order details</Text>
-      <Detail label={summary.orderNumbers.length > 1 ? 'Order numbers' : 'Order number'} value={summary.orderNumbers.join('\n')} />
-      <Detail label="Payment" value={summary.paymentLabel} />
-      <Detail label="Placed on" value={dateLabel} />
+    <View className="gap-4 rounded-3xl bg-white px-5 py-5">
+      <Text accessibilityRole="header" className="text-[16px] font-semibold text-ink">Order details</Text>
+      <View className="gap-3">
+        <Detail label={summary.orderNumbers.length > 1 ? 'Order IDs' : 'Order ID'} value={summary.orderNumbers.join('\n')} />
+        <Detail label="Payment" value={summary.paymentLabel} />
+        <Detail label="Placed on" value={dateLabel} />
+      </View>
     </View>
   );
 }

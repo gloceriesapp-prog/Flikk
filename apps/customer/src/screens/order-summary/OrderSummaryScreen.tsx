@@ -43,7 +43,7 @@ export function OrderSummaryScreen({ navigation, route }: Props) {
         <FlatList
           data={summary.items}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <OrderSummaryItemRow item={item} />}
+          renderItem={({ item, index }) => <OrderSummaryItemRow item={item} first={index === 0} last={index === summary.items.length - 1} />}
           showsVerticalScrollIndicator={false}
           contentContainerClassName="pb-safe-offset-6"
           contentInsetAdjustmentBehavior="never"
@@ -53,10 +53,9 @@ export function OrderSummaryScreen({ navigation, route }: Props) {
               <View className="mx-5 rounded-t-3xl bg-white px-4 pb-1 pt-5"><Text accessibilityRole="header" className="text-[18px] font-bold text-ink">In your order</Text></View>
             </>
           }
-          ListEmptyComponent={<View className="mx-5 bg-white p-5"><Text className="text-[13px] text-ink/55">Item details unavailable.</Text></View>}
+          ListEmptyComponent={<View className="mx-5 rounded-b-3xl bg-white p-5"><Text className="text-[13px] text-ink/55">Item details unavailable.</Text></View>}
           ListFooterComponent={
             <>
-              <View className="mx-5 h-4 rounded-b-3xl bg-white" />
               <View className="mx-5 mt-4 gap-4">
                 {summary.refunds?.map(refund => <View key={`${refund.kind}:${refund.targetId}`} accessibilityLiveRegion="polite" className="gap-2 rounded-3xl bg-white p-5">
                   <Text className="text-[16px] font-semibold text-ink">{refundPresentation(refund.status, refund.providerRefundId).title}</Text>
@@ -67,7 +66,7 @@ export function OrderSummaryScreen({ navigation, route }: Props) {
                 </View>)}
                 <OrderSummaryBillCard summary={summary} />
                 <OrderSummaryDetailsCard summary={summary} />
-                <DeliveryDetailsSection address={summary.address} />
+                <DeliveryDetailsSection address={summary.address} titleInside />
               </View>
             </>
           }

@@ -55,6 +55,6 @@ export function useOrderRating(orderId: string | undefined, enabled: boolean, pr
     finally { sending.current = false; }
   }
 
-  return { visible, rating: selection?.orderId === orderId ? selection?.score ?? 0 : 0, rate, isSaving: savingCount > 0,
+  return { visible, saved: review.data?.rating ?? 0, rating: selection?.orderId === orderId ? selection?.score ?? 0 : 0, rate, isSaving: savingCount > 0,
     error: save.isError && selection?.orderId === orderId ? 'Couldn’t save your rating. Please try again.' : null };
 }

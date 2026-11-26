@@ -1,3 +1,4 @@
+import { apiRequest } from './client';
 // Shared mapping from the backend's real product+variant+store rows
 // (routes/stores.ts: /stores/products/deals, /stores/products/catalog,
 // /stores/products/similar — same products.product_variants rows a founder
@@ -174,4 +175,10 @@ export function mapApiProduct(row: ApiProduct): Product {
           }
         : undefined,
   };
+}
+
+// Public catalogue near the current location (no sign-in). Used by the dev
+// Track Order preview for real sample items and their reorder.
+export async function fetchPublicCatalogue(): Promise<Product[]> {
+  return (await apiRequest<ApiProduct[]>('/stores/products/catalog', { auth: false })).map(mapApiProduct);
 }

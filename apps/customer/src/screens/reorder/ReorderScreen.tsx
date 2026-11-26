@@ -1,7 +1,10 @@
-// Re-order tab (bottom nav): items from the customer's recent orders —
-// delivered, on the way and scheduled — newest first, each with a Re-order
-// button. The full order list (statuses, tracking, receipts) stays in
+// Re-order tab (bottom nav): items from the customer's orders placed in the
+// last 2 days (RECENT_DAYS) — delivered, on the way and scheduled — newest
+// first, each with a Re-order button. Older items drop off on their own; the
+// list refreshes whenever the tab is opened. The full order list (statuses, tracking, receipts) stays in
 // Profile → Orders (PurchaseScreen).
+import { useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
@@ -17,15 +20,20 @@ import { ReorderItemRow } from './ReorderItemRow';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Reorder'>;
 
+const RECENT_DAYS = 2;
+
 export function ReorderScreen({ navigation }: Props) {
   const customerId = useAuthStore((s) => s.customerId);
   const location = useLocationStore((s) => s.location);
   const items = useQuery({
-    queryKey: ['home', 'reorder-items', customerId, location?.latitude, location?.longitude],
-    queryFn: fetchReorderItems,
+    queryKey: ['home', 'reorder-items', RECENT_DAYS, customerId, location?.latitude, location?.longitude],
+    queryFn: () => fetchReorderItems(RECENT_DAYS),
     enabled: !!customerId && !!location,
     staleTime: 60_000,
   });
+  // Opening the tab again drops items that have aged past the window.
+  const { refetch } = items;
+  useFocusEffect(useCallback(() => { void refetch(); }, [refetch]));
   const products = items.data ?? [];
   const loading = !!customerId && !!location && items.isPending;
 

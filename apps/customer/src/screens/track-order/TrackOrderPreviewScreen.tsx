@@ -8,6 +8,9 @@
 // itself; every other request still goes to the server. Registered under
 // __DEV__ in AppNavigator.
 import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { fetchPublicCatalogue } from '../../api/products';
+import type { Product } from '../home/products/types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../navigation/types';
 import { TrackOrderScreen } from './TrackOrderScreen';
@@ -79,6 +82,11 @@ function stageAt(elapsed: number): Stage {
   return { name: 'delivered' };
 }
 
+// Set to 'delivered' to hold the preview on the finished order (UI work on
+// the delivered state); 'loop' plays the whole ride.
+const PREVIEW_HOLD: 'loop' | 'delivered' = 'delivered';
+const DELIVERED_AT = PLACED_MS + PICKUP_MS + DROP_MS + 1;
+
 const asRoute = (points: { lat: number; lng: number }[]) => points.map(p => ({ latitude: p.lat, longitude: p.lng }));
 const STAGE_NUMBER = { placed: 0, pickup: 1, drop: 2, delivered: 3 } as const;
 
@@ -98,14 +106,17 @@ function previewOrder(elapsed: number) {
     rider_id: assigned ? 'preview-rider' : null,
     estimated_delivery_minutes: 20, estimated_delivery_at: at(20 * 60_000),
     deliver_from: null, deliver_until: null,
-    addresses: { label: 'Home', line1: 'Yenna Gudde, Udupi, Karnataka 576101', landmark: 'Near the temple', recipient_name: 'Nishal', recipient_phone: '+919000000000', map_address: null },
+    addresses: { label: 'Home', line1: 'House 12, Sri Krishna Nilaya', landmark: 'Near the temple', recipient_name: 'Nishal', recipient_phone: '+919000000000', map_address: 'Yenna Gudde, Kunjibettu, Udupi, Karnataka 576102' },
     item_total: 180, delivery_fee: 0, handling_fee: 5, commission_amount: 0, total: 185, discount_amount: 0, promo_code_id: null,
     provider_payment_id: null, payment_method: 'cod', cancel_reason: null, refund_status: 'none', provider_refund_id: null, refunded_at: null,
     placed_at: at(0), packed_at: at(10_000),
     picked_up_at: pickedUp ? at(PLACED_MS + PICKUP_MS) : null, rider_arrived_at: null,
     delivered_at: stage.name === 'delivered' ? at(PLACED_MS + PICKUP_MS + DROP_MS) : null,
     delivery_otp: stage.name === 'drop' ? '4821' : null, trip_id: null,
-    order_items: [
+    order_items: sampleProducts.length ? sampleProducts.map((p, i) => ({
+      id: `i${i}`, product_id: p.id, quantity: i + 1, unit_price_at_order: p.price, unit_at_order: p.weight,
+      variant_id: p.defaultVariantId ?? null, products: { name: p.name, image_url: p.imageUrl ?? null, unit: p.weight },
+    })) : [
       { id: 'i1', product_id: 'p1', quantity: 1, unit_price_at_order: 120, unit_at_order: '500 g', products: { name: 'Pure Natural Sunflower Oil', image_url: null, unit: '500 g' } },
       { id: 'i2', product_id: 'p2', quantity: 1, unit_price_at_order: 60, unit_at_order: '60 g', products: { name: 'Kellogg’s Chocolate Muesli', image_url: null, unit: '60 g' } },
     ],
@@ -149,6 +160,10 @@ function previewResponse(url: string, elapsed: number): unknown {
   return order;
 }
 
+// Two real products from the public catalogue, so the sample order shows
+// real photos and "Reorder items" fills the cart with real lines.
+let sampleProducts: Product[] = [];
+
 type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrderPreview'>;
 
 export function TrackOrderPreviewScreen({ navigation, route }: Props) {
@@ -160,11 +175,21 @@ export function TrackOrderPreviewScreen({ navigation, route }: Props) {
     global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       if (!url.includes(PREVIEW_ID)) return original(input, init);
-      return new Response(JSON.stringify(previewResponse(url, Date.now() - started)), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      const elapsed = PREVIEW_HOLD === 'delivered' ? DELIVERED_AT : Date.now() - started;
+      return new Response(JSON.stringify(previewResponse(url, elapsed)), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }) as typeof fetch;
     return original;
   });
   useEffect(() => () => { global.fetch = realFetch; }, [realFetch]);
+  const [ready, setReady] = useState(sampleProducts.length > 0);
+  useEffect(() => {
+    if (ready) return;
+    fetchPublicCatalogue()
+      .then(products => { sampleProducts = products.filter(p => p.isAvailable !== false && !p.preorder && !p.options?.length).slice(0, 2); })
+      .catch(() => undefined)
+      .finally(() => setReady(true));
+  }, [ready]);
+  if (!ready) return <View className="flex-1 items-center justify-center bg-[#F1F2F4]"><ActivityIndicator /></View>;
   // The preview can be the first screen: Back then goes Home instead of nowhere.
   const previewNavigation = { ...navigation, goBack: () => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')) };
   const trackProps = { navigation: previewNavigation, route: { ...route, name: 'TrackOrder', params: { orderId: PREVIEW_ID, paymentMethodLabel: 'Cash on delivery' } } };

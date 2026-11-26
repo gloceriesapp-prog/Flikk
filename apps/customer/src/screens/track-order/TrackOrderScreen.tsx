@@ -17,6 +17,8 @@ import { TrackingFeedback } from './components/TrackingFeedback';
 import { TripCancellationResult } from './components/TripCancellationResult';
 import { representativeLeg } from '../../utils/tripLegs';
 import { CancelOrderModal } from './components/CancelOrderModal';
+import { DeliveredCard } from './components/DeliveredCard';
+import { DeliveredFooter, ThanksNote } from './components/DeliveredFooter';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
 import { OnTheWayCard } from './components/OnTheWayCard';
 import { RiderLiveMap } from './components/RiderLiveMap';
@@ -27,6 +29,8 @@ import { OrderSummarySection } from './sections/order-summary/OrderSummarySectio
 import type { AppStackParamList } from '../../navigation/types';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
 import { registerNotifications } from '../../features/notifications/native';
+import { useStoreReviewPrompt } from '../../features/store-review/useStoreReviewPrompt';
+import { useTrackingPreview } from './state/trackingPreview';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrder'>;
 
@@ -49,6 +53,8 @@ function TrackingDetails({ navigation, route }: Props) {
     : order?.status === 'out_for_delivery';
   const showMap = beforePickup || outForDelivery;
   const riderLocation = useRiderLocation(orderId, !!isTrip, showMap, outForDelivery);
+  // After a good delivery, maybe the OS store-review popup (features/store-review).
+  useStoreReviewPrompt(isTrip ? trip?.orders : order ? [order] : undefined, !useTrackingPreview());
   const liveMap = showMap ? (
     <RiderLiveMap
       outForDelivery={outForDelivery}
@@ -137,44 +143,45 @@ function TrackingDetails({ navigation, route }: Props) {
               {liveMap}
               <DeliveryRiderCard order={leg} />
               <DeliveryDetailsSection address={trip!.addresses} />
-              <OrderSummarySection key={trip!.id} items={combinedOrder.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId, isTrip: true })} />
+              <OrderSummarySection key={trip!.id} items={combinedOrder.order_items} orderNumbers={legs.map((l) => l.order_number)} placedAt={leg.placed_at} onViewSummary={() => navigation.navigate('OrderSummary', { orderId, isTrip: true })} />
 
-              <Text className="mt-4 text-center text-sm font-medium text-gray-500">
-                {legs.every((l) => l.status === 'delivered')
-                  ? "Thanks for shopping, we'll be here when you need us again."
-                  : legs.some((l) => l.status === 'failed')
+              {legs.every((l) => l.status === 'delivered') ? <ThanksNote /> : <Text className="mt-4 text-center text-sm font-medium text-gray-500">
+                {legs.some((l) => l.status === 'failed')
                     ? "Part of this trip couldn't be delivered — see the details above."
                     : "We'll keep this updated as your trip moves along."}
-              </Text>
+              </Text>}
             </ScrollView>
           );
         })()
       ) : (
         <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
           {/* On the way with a rider: the map, then the rider card (minutes,
-              call, delivery code), which replaces the status card. Every other
+              call, delivery code), which replaces the status card. Delivered
+              by a rider: the delivered card (time taken, rating, call). Every other
               state keeps the status card above the map and the plain rider card. */}
           {order!.status === 'out_for_delivery' && order!.riders ? <>
             {liveMap}
             <OnTheWayCard order={order!} />
-          </> : <>
+          </> : order!.status === 'delivered' && order!.riders ? (
+            <DeliveredCard order={order!} />
+          ) : <>
             <OrderInfoCard order={order!} />
             {liveMap}
             <DeliveryRiderCard order={order!} />
           </>}
 
           <DeliveryDetailsSection address={order!.addresses} />
-          <OrderSummarySection key={order!.id} items={order!.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId })} />
+          <OrderSummarySection key={order!.id} items={order!.order_items} orderNumbers={[order!.order_number]} placedAt={order!.placed_at} onViewSummary={() => navigation.navigate('OrderSummary', { orderId })} />
 
-          <Text className="mt-4 text-center text-[13.5px] font-medium text-gray-500">
-            {order!.status === 'delivered'
-              ? "Thanks for shopping, we'll be here when you need us again."
-              : order!.status === 'failed'
+          {order!.status === 'delivered' ? <ThanksNote /> : <Text className="mt-4 text-center text-[13.5px] font-medium text-gray-500">
+            {order!.status === 'failed'
                 ? "This order couldn't be delivered — see the details above."
                 : "We'll keep this updated as your order moves along."}
-          </Text>
+          </Text>}
         </ScrollView>
       )}
+      {(isTrip ? legs.length > 0 && legs.every((l) => l.status === 'delivered') : order?.status === 'delivered')
+        ? <DeliveredFooter items={isTrip ? legs.flatMap((l) => l.order_items) : order!.order_items} onDone={() => navigation.navigate('Cart', {})} /> : null}
 
       {/* Anchored dropdown off the header 3-dot: Cancel (only while the
           order/trip is still cancellable) + Support. Overlay tap dismisses;

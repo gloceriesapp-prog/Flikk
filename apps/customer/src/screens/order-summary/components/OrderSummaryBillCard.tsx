@@ -1,38 +1,34 @@
 import { Text, View } from 'react-native';
+import { RupeePrice } from '../../../components/RupeePrice';
+import { IconlyReceipt } from '../../../components/icons/IconlyReceipt';
+import { GILROY } from '../../../theme/fonts';
 import type { OrderSummary } from '../data';
 import { OrderSummaryBillRow } from './OrderSummaryBillRow';
-import { formatOrderPrice } from '../utils/formatOrderPrice';
 
+// Laid out like the cart's Bill details card, so the receipt reads the same
+// way the customer saw it before paying.
 export function OrderSummaryBillCard({ summary }: { summary: OrderSummary }) {
   return (
-    <View className="overflow-hidden rounded-3xl bg-white">
-      <View className="gap-3 p-5">
-        <Text accessibilityRole="header" className="mb-1 text-[18px] font-bold text-ink">Bill breakdown</Text>
-        <OrderSummaryBillRow label="Total MRP" value={summary.totalMrp === null ? 'Not recorded' : formatOrderPrice(summary.totalMrp)} />
-        <View className="flex-row items-center justify-between gap-3">
-          <Text className="text-[13px] font-semibold text-success">Our discount</Text>
-          <Text className="text-[13px] font-semibold text-success">{summary.productDiscount === null ? 'Not recorded' : `−${formatOrderPrice(summary.productDiscount)}`}</Text>
-        </View>
-        <OrderSummaryBillRow label="Our price" value={formatOrderPrice(summary.ourPrice)} />
-        {summary.discount > 0 && (
-          <View className="flex-row items-center justify-between rounded-xl bg-[#EDF8F2] px-3 py-2.5">
-            <Text className="text-[13px] font-semibold text-success">Offer discount</Text>
-            <Text className="text-[13px] font-bold text-success">−{formatOrderPrice(summary.discount)}</Text>
-          </View>
-        )}
-        <View className="gap-3 border-t border-ink/5 pt-3">
-          <OrderSummaryBillRow label="Item total" value={formatOrderPrice(summary.itemTotal)} bold />
-          <OrderSummaryBillRow label="Delivery fee" value={summary.deliveryFee === 0 ? 'Free' : formatOrderPrice(summary.deliveryFee)} />
-          <OrderSummaryBillRow label="Handling fee" value={formatOrderPrice(summary.handlingFee)} />
-          {summary.tipAmount > 0 && <OrderSummaryBillRow label="Tip for your rider" value={formatOrderPrice(summary.tipAmount)} />}
-        </View>
+    <View className="gap-4 rounded-3xl bg-white px-5 py-5">
+      <View className="flex-row items-center gap-2">
+        <IconlyReceipt size={20} color="#101C10" />
+        <Text accessibilityRole="header" className="text-[16px] font-semibold text-ink">Bill details</Text>
       </View>
-      <View className="flex-row items-center justify-between gap-3 border-t border-ink/5 px-5 py-4">
-        <View className="flex-1">
-          <Text className="text-[14px] font-semibold text-ink">Order total</Text>
-          <Text className="mt-1 text-[11px] text-ink/50">{summary.paymentLabel}</Text>
-        </View>
-        <Text className="text-[24px] font-bold tracking-[-0.6px] text-ink">{formatOrderPrice(summary.total)}</Text>
+      <View className="gap-3">
+        <OrderSummaryBillRow label="Total MRP" value={summary.totalMrp ?? 'Not recorded'} />
+        <OrderSummaryBillRow label="Our discount" value={summary.productDiscount ?? 'Not recorded'} discount={summary.productDiscount !== null} />
+        <OrderSummaryBillRow label="Our price" value={summary.ourPrice} />
+        {summary.discount > 0 && <OrderSummaryBillRow label="Coupon discount" value={summary.discount} discount />}
+      </View>
+      <View className="gap-3 border-t border-gray-100 pt-4">
+        <OrderSummaryBillRow label="Item total" value={summary.itemTotal} />
+        <OrderSummaryBillRow label="Delivery fee" value={summary.deliveryFee} showFree />
+        <OrderSummaryBillRow label="Handling fee" value={summary.handlingFee} showFree />
+        {summary.tipAmount > 0 && <OrderSummaryBillRow label="Tip for your rider" value={summary.tipAmount} />}
+      </View>
+      <View className="flex-row items-center justify-between gap-3 border-t border-gray-100 pt-4">
+        <Text className="flex-1 text-[16px] font-semibold text-black">Grand Total</Text>
+        <RupeePrice amount={summary.total.toFixed(2)} size={18} style={{ fontFamily: GILROY.semibold }} color="#000000" />
       </View>
     </View>
   );
