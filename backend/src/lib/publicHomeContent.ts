@@ -25,7 +25,7 @@ export function publicHomeContent(value: unknown): {
           (categoryCardStyle === 'standard' || categoryCardStyle === 'photo')) {
         categoryCardStyles.set(legacySection.id, categoryCardStyle);
       }
-      if (typeof legacySection.id === 'string' && ['intro', 'everyday', 'village', 'both'].includes(freshPlacement as string)) {
+      if (typeof legacySection.id === 'string' && ['intro', 'everyday', 'fruits', 'village', 'both'].includes(freshPlacement as string)) {
         freshSectionPlacements.set(legacySection.id, freshPlacement as FreshPlacement);
       }
       return legacySection;

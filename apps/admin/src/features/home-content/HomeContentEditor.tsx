@@ -8,6 +8,7 @@ import {
   createFestivalSections,
   TAB_KEYS,
   DEFAULT_FRESH_TABS,
+  FRESH_CHOICES,
   validateContent,
   type HomeContentDocument,
   type HomeContentKey,
@@ -313,11 +314,11 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
           {tab === 'fresh' && (
             <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-base font-semibold text-slate-900">Fresh choices</h2>
-              <p className="text-sm text-slate-600">Name the two choices. Select a section below to choose its destination, heading and vegetables. Publish to update the app.</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {(['everyday', 'village'] as const).map(mode => <Field key={mode} label={mode === 'everyday' ? 'Market choice title' : 'Village choice title'}>
-                  <input className={inputClass} maxLength={24} value={(draft.freshTabs ?? DEFAULT_FRESH_TABS)[mode]}
-                    onChange={event => setDraft({ ...draft, freshTabs: { ...(draft.freshTabs ?? DEFAULT_FRESH_TABS), [mode]: event.target.value } })} />
+              <p className="text-sm text-slate-600">Name the three choices shown under Everyday Fresh. Then, for each section below, choose where it shows (above the choices, one choice, or all three), its heading and its products. Fruit favourites starts under Fruits and Your Neighbourhood Harvest under Village Fresh until you change them. Publish to update the app.</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {FRESH_CHOICES.map(mode => <Field key={mode} label={`${mode === 'everyday' ? 'Vegetables' : mode === 'fruits' ? 'Fruits' : 'Village'} choice title`}>
+                  <input className={inputClass} maxLength={24} value={(draft.freshTabs ?? DEFAULT_FRESH_TABS)[mode] ?? DEFAULT_FRESH_TABS[mode]}
+                    onChange={event => setDraft({ ...draft, freshTabs: { ...DEFAULT_FRESH_TABS, ...draft.freshTabs, [mode]: event.target.value } })} />
                 </Field>)}
               </div>
             </div>

@@ -27,6 +27,15 @@ describe('published Fresh choices', () => {
     }
     expect(() => validateContent({ ...draft, sections: [{ ...shelf, kind: 'footer' }] })).toThrow();
   });
+  it('accepts the third choice: Fruits title and fruits placement, and keeps titles distinct', () => {
+    const fruitShelf = { ...shelf, id: 'mango-season', freshPlacement: 'fruits' as const };
+    const withFruits = { ...draft, freshTabs: { everyday: 'Vegetables', fruits: 'Fruits', village: 'Village Fresh' }, sections: [fruitShelf] };
+    expect(validateContent(JSON.parse(JSON.stringify(withFruits)))).toEqual(withFruits);
+    expect(publicHomeContent(withFruits).freshSectionPlacements).toEqual({ 'mango-season': 'fruits' });
+    expect(() => validateContent({ ...withFruits, freshTabs: { everyday: 'Fresh', fruits: 'FRESH', village: 'Village' } })).toThrow();
+    // Titles saved before Fruits existed stay valid.
+    expect(validateContent({ ...draft, freshTabs: { everyday: 'Veg', village: 'Village' } }).freshTabs).toEqual({ everyday: 'Veg', village: 'Village' });
+  });
   it('never fills a curated section with unselected vegetables', () => {
     const products = [productId, '00000000-0000-4000-8000-000000000002'].map(id => ({ id, name: 'Tomato', category: 'Vegetables' }));
     expect(selectContentProducts(products, shelf.selection).map(p => p.id)).toEqual([productId]);
