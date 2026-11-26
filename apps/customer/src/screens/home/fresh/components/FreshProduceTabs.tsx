@@ -20,9 +20,7 @@ function GrowerIcon({ color = '#616871' }: { color?: string }) {
 export function FreshProduceTabs({ value, onChange, titles }: { value: FreshProduceMode; onChange: (mode: FreshProduceMode) => void; titles?: FreshTabs }) {
   const options = FRESH_CHOICES.map(id => {
     const title = freshTabTitle(titles, id);
-    const words = title.split(/\s+/);
-    const middle = Math.ceil(words.length / 2);
-    return { id, title, display: words.length > 1 ? `${words.slice(0, middle).join(' ')}\n${words.slice(middle).join(' ')}` : title };
+    return { id, title };
   });
   return <View className="w-full bg-white pt-4">
     <View className="relative h-[96px] w-full flex-row">
@@ -47,14 +45,14 @@ export function FreshProduceTabs({ value, onChange, titles }: { value: FreshProd
         const active = value === option.id;
         return <Pressable key={option.id} accessibilityRole="tab" accessibilityLabel={option.title}
           accessibilityState={{ selected: active }} onPress={() => onChange(option.id)} className="h-[96px] min-w-0 flex-1 justify-center pt-2">
-          <View className="w-full flex-row items-center justify-center gap-2 px-3">
+          {/* Icon centred on top, title centred underneath. */}
+          <View className="w-full items-center justify-center gap-1.5 px-2">
             <View className="h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: active ? '#D8EBCF' : '#F4F5F2' }}>
               {option.id === 'village' ? <GrowerIcon color={active ? '#557746' : '#616871'} />
                 : <AppIcon icon={option.id === 'fruits' ? Apple01Icon : CarrotIcon} size={24} color={active ? '#557746' : '#616871'} />}
             </View>
-            <View className="min-w-0 shrink">
-              <Text numberOfLines={2} className="text-[13px] font-semibold leading-[17px]" style={{ color: active ? '#327044' : '#454B54' }}>{option.display}</Text>
-            </View>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className="text-center text-[13px] font-semibold leading-[17px]"
+              style={{ color: active ? '#327044' : '#454B54' }}>{option.title}</Text>
           </View>
         </Pressable>;
       })}

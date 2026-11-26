@@ -10,7 +10,7 @@ it('has three full-width choices with accessible selection', async () => {
   expect(view.getAllByRole('tab')).toHaveLength(3);
   expect(view.getByText('Vegetables')).toBeTruthy();
   expect(view.getByText('Fruits')).toBeTruthy();
-  expect(view.getByText('Village\nFresh')).toBeTruthy();
+  expect(view.getByText('Village Fresh')).toBeTruthy();
   expect(view.queryByText('From nearby shops')).toBeNull();
   expect(view.queryByText('Choose your vegetables')).toBeNull();
   expect(view.getByRole('tab', { name: 'Vegetables', selected: true })).toBeTruthy();
@@ -59,5 +59,5 @@ it('renders published titles, using the default for a choice saved before it exi
   expect(view.getAllByRole('tab')).toHaveLength(3);
   expect(view.getByRole('tab', { name: 'Fruits' })).toBeTruthy();
   expect(view.getByRole('tab', { name: 'Local Harvest', selected: true })).toBeTruthy();
-  expect(view.getByText('Daily\nVeg')).toBeTruthy();
+  expect(view.getByText('Daily Veg')).toBeTruthy();
 });
