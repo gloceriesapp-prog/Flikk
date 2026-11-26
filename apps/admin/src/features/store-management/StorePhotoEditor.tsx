@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, Trash2 } from '@/components/icons';
+import { uploadPhoto } from '@/lib/productPhotoUpload';
 
 export function StorePhotoEditor({ url, disabled, onChange, onBusy }: {
   url: string; disabled: boolean; onChange: (url: string) => void; onBusy: (busy: boolean) => void;
@@ -15,17 +16,11 @@ export function StorePhotoEditor({ url, disabled, onChange, onBusy }: {
   async function upload(file?: File) {
     if (!file || busy) return;
     setError('');
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-      setError('Choose a JPG, PNG or WebP image under 5 MB.'); return;
-    }
     setPreview(URL.createObjectURL(file)); setBusy(true); onBusy(true);
     const abort = new AbortController(); controller.current = abort;
     try {
-      const form = new FormData(); form.append('file', file); form.append('bucket', 'store-images');
-      const response = await fetch('/api/upload', { method: 'POST', body: form, signal: abort.signal });
-      const body = await response.json();
-      if (!response.ok || typeof body.url !== 'string') throw new Error(body.error ?? 'Photo upload failed.');
-      if (!abort.signal.aborted) onChange(body.url);
+      const { url } = await uploadPhoto(file, 'store-images', abort.signal);
+      if (!abort.signal.aborted) onChange(url);
     } catch (error) {
       if (!abort.signal.aborted) setError(error instanceof Error ? error.message : 'Could not upload photo.');
     } finally {
@@ -49,7 +44,7 @@ export function StorePhotoEditor({ url, disabled, onChange, onBusy }: {
             onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void upload(file); }} />
         </label>
         {url && <button type="button" disabled={disabled || busy} onClick={() => onChange('')} className="ml-3 inline-flex items-center gap-1 text-sm text-danger disabled:opacity-50"><Trash2 size={14} />Remove</button>}
-        <p className="mt-2 text-xs text-muted">JPG, PNG or WebP · up to 5 MB. Save changes to publish.</p>
+        <p className="mt-2 text-xs text-muted">JPG, PNG or WebP. Large photos are resized automatically. Save changes to publish.</p>
         {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
       </div>
     </div>

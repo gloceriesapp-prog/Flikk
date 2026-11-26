@@ -31,6 +31,7 @@ interface HomeSection {
   display_layout: HomeProductLayout | null;
   is_custom: boolean;
   pinned_only: boolean;
+  use_premium_images: boolean;
   starts_at: string | null;
   ends_at: string | null;
   product_ids: string[];
@@ -100,7 +101,7 @@ export default function HomeSectionsPage() {
       const [sectionsRes, productsRes] = await Promise.all([fetch('/api/home-sections'), fetch('/api/products')]);
       if (!sectionsRes.ok) throw new Error((await sectionsRes.json()).error ?? 'Could not load the home sections.');
       applyServer(await sectionsRes.json());
-      if (productsRes.ok) setProducts(await productsRes.json());
+      if (productsRes.ok) setProducts((await productsRes.json() as Product[]).filter(product => !product.quickTabKey));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load the home sections.');
     } finally {
@@ -328,6 +329,14 @@ export default function HomeSectionsPage() {
                     onChange={(e) => { if (isHomeProductLayout(e.target.value)) patch(s.key, { display_layout: e.target.value }); }}>
                     {LAYOUT_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
                   </select>
+                </label>
+              )}
+
+              {(pinnable || s.key === 'festival-picks') && (
+                <label className="mt-3 flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" checked={Boolean(s.use_premium_images)} onChange={(e) => patch(s.key, { use_premium_images: e.target.checked })} className="h-4 w-4 rounded border-border" />
+                  Use premium photos on cards
+                  <span className="text-xs text-muted">(products with a Photoroom background; others keep the standard photo)</span>
                 </label>
               )}
 

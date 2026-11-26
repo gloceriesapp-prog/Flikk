@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Loader2 } from '@/components/icons';
+import { uploadPhoto } from '@/lib/productPhotoUpload';
 
 export function ProductImageUpload({
   imageUrl,
@@ -12,18 +13,23 @@ export function ProductImageUpload({
   bucket = 'product-images',
   small = false,
   onUploadingChange,
+  badge,
 }: {
   imageUrl: string | undefined;
   onChange: (url: string, bgColor: string | null) => void | Promise<void>;
-  // Gallery "add photo" tile (ProductGalleryEditor) — same upload, smaller box.
   small?: boolean;
   onUploadingChange?: (uploading: boolean) => void;
+  // Shown over the photo (cut-out status, components/inventory/usePhotoStatus).
+  badge?: React.ReactNode;
   bucket?: 'appsui' | 'banners' | 'categories' | 'festivals' | 'illustrations' | 'products' | 'stores' | 'product-images' | 'store-images' | 'category-images' | 'home-tab-images' | 'home-tab-banner-images';
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Product photos: the upload route warns when the product itself is small.
+  const [warning, setWarning] = useState<string | null>(null);
+  const [uploaded, setUploaded] = useState(false);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
@@ -33,22 +39,20 @@ export function ProductImageUpload({
     if (!file) return;
 
     setError(null);
+    setWarning(null);
     setPreview(URL.createObjectURL(file));
     setUploading(true);
     onUploadingChange?.(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('bucket', bucket);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error ?? 'Upload failed.');
-      await onChange(body.url as string, (body.bgColor as string | null) ?? null);
+      const photo = await uploadPhoto(file, bucket);
+      setWarning(photo.warning ?? null);
+      setUploaded(true);
+      await onChange(photo.url, photo.bgColor);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed — try again.');
-      setPreview(null);
     } finally {
+      setPreview(null);
       setUploading(false);
       onUploadingChange?.(false);
     }
@@ -67,13 +71,14 @@ export function ProductImageUpload({
       >
         {displayUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={displayUrl} alt="" className="h-full w-full object-cover" />
+          <img src={displayUrl} alt="" className="h-full w-full bg-[#F9FAFB] object-contain" />
         ) : (
           <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted">
             <ImagePlus size={20} />
             <span className="text-[10px] font-medium">Add photo</span>
           </span>
         )}
+        {!preview && badge}
         {uploading && (
           <span className="absolute inset-0 flex items-center justify-center bg-black/30">
             <Loader2 size={20} className="animate-spin text-white" />
@@ -82,6 +87,11 @@ export function ProductImageUpload({
         <input ref={inputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
       </button>
       {error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-danger`}>{error}</p>}
+      {warning && !error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-amber-600`}>{warning}</p>}
+      {/* Product photos are cut out and centred by the photo worker after the product is saved. */}
+      {uploaded && !error && !small && ['products', 'product-images'].includes(bucket) && (
+        <p className="mt-1 w-28 text-[10px] text-muted">Background is removed automatically a few seconds after you save.</p>
+      )}
     </div>
   );
 }

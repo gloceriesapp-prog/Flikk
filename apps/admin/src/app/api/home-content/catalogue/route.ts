@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { isHomeContentKey } from '@/lib/homeContent';
+import { withQuickTabScope } from '@/lib/supabase/quickTabScope';
 
 export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
@@ -8,6 +10,7 @@ export async function GET(request: Request) {
   if (denied) return denied;
   const params = new URL(request.url).searchParams;
   const kind = params.get('kind');
+  const tab = params.get('tab');
   const tables = { products: 'products', categories: 'sub_categories', stores: 'stores' } as const;
   if (!kind || !(kind in tables))
     return NextResponse.json({ error: 'Unknown catalogue.' }, { status: 400 });
@@ -23,19 +26,19 @@ export async function GET(request: Request) {
       : kind === 'categories'
         ? 'id, name, image_url, categories(name)'
         : 'id, name, photo_url';
-  let query = supabaseAdmin
-    .from(tables[kind as keyof typeof tables])
-    .select(columns)
-    .order('name')
-    .order('id');
-  if (ids.length) query = query.in('id', ids).limit(100);
-  else {
+  function read(scoped: boolean) {
+    let query = supabaseAdmin
+      .from(tables[kind as keyof typeof tables]).select(columns).order('name').order('id');
+    if (ids.length) return query.in('id', ids).limit(100);
     const q = (params.get('q') ?? '').slice(0, 100).replace(/[\\%_]/g, '\\$&');
     if (q) query = query.ilike('name', `%${q}%`);
-    if (kind === 'products') query = query.eq('approval_status', 'approved');
-    query = query.range(offset, offset + 29);
+    if (kind === 'products') {
+      query = query.eq('approval_status', 'approved');
+      if (scoped) query = isHomeContentKey(tab) ? query.or(`quick_tab_key.is.null,quick_tab_key.eq.${tab}`) : query.is('quick_tab_key', null);
+    }
+    return query.range(offset, offset + 29);
   }
-  const { data, error } = await query;
+  const { data, error, supportsQuickTabScope } = await withQuickTabScope(read);
   if (error) return NextResponse.json({ error: 'Could not load the catalogue.' }, { status: 503 });
   const rows = (data ?? []) as unknown as {
     id: string;
@@ -57,6 +60,7 @@ export async function GET(request: Request) {
           .join(' · '),
       })),
       nextOffset: !ids.length && rows.length === 30 ? offset + 30 : null,
+      ...(kind === 'products' && !ids.length ? { supportsQuickTabScope } : {}),
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );

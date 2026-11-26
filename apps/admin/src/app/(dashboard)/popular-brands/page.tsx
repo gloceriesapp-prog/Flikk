@@ -23,6 +23,7 @@ function BrandPlacement({ brand, brands, onSaved }: {
 }) {
   const usedPositions = new Set(brands.filter(item => item.id !== brand.id).map(item => item.popular_position));
   const firstFree = Array.from({ length: 1000 }, (_, i) => i + 1).find(slot => !usedPositions.has(slot)) ?? 1000;
+  const [name, setName] = useState(brand.name);
   const [shown, setShown] = useState(brand.popular_position !== null);
   const [position, setPosition] = useState<number>(brand.popular_position ?? firstFree);
   const [imageUrl, setImageUrl] = useState(brand.popular_image_url ?? '');
@@ -43,11 +44,19 @@ function BrandPlacement({ brand, brands, onSaved }: {
       const response = await fetch(ENDPOINT, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: brand.id, position: shown ? position : null, imageUrl: imageUrl.trim() || null, bannerUrl: bannerUrl.trim() || null }),
+        body: JSON.stringify({
+          id: brand.id,
+          ...(name === brand.name ? {} : { name }),
+          position: shown ? position : null,
+          imageUrl: imageUrl.trim() || null,
+          bannerUrl: bannerUrl.trim() || null,
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Could not save the brand.');
-      onSaved(result as Brand);
+      const saved = result as Brand;
+      setName(saved.name);
+      onSaved(saved);
       setNotice({ message: 'Brand saved.', error: false });
     } catch (error) {
       setNotice({ message: error instanceof Error ? error.message : 'Could not save the brand.', error: true });
@@ -60,6 +69,11 @@ function BrandPlacement({ brand, brands, onSaved }: {
     <form onSubmit={save} className="max-w-xl space-y-4 rounded-2xl border border-border bg-card p-5">
       <h2 className="font-semibold text-ink">{brand.name}</h2>
       <fieldset disabled={saving} className="space-y-4">
+        <label className="block space-y-1 text-sm font-medium">
+          <span>Brand name</span>
+          <input type="text" required maxLength={80} className={fieldClass}
+            value={name} onChange={event => setName(event.target.value)} />
+        </label>
         <label className="flex items-center gap-3 text-sm font-semibold">
           <input type="checkbox" checked={shown} disabled={!brand.is_active && !shown}
             onChange={event => setShown(event.target.checked)} className="h-5 w-5 accent-brand" />

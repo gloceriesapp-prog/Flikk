@@ -5,7 +5,7 @@ import { loadCheckoutAvailability } from '../lib/checkoutEligibilityService.js';
 import { Router } from 'express';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { AppError } from '../lib/errors.js';
-import { createCheckoutQuote } from '../lib/checkoutQuoteService.js';
+import { createCheckoutQuote, createGuestEstimate } from '../lib/checkoutQuoteService.js';
 import { parseTip } from '../lib/checkoutQuote.js';
 
 export const checkoutRouter = Router();
@@ -17,6 +17,18 @@ checkoutRouter.post('/quote', requireAuth, requireRole('customer'), async (req: 
     }
     res.setHeader('Cache-Control', 'no-store');
     res.json(await createCheckoutQuote(req.body.items, req.user!.id, req.body.promo_code, req.body.address_id, tip));
+  } catch (error) { next(error); }
+});
+
+// Guest cart bill (no sign-in): priced on the server for the browsing pin.
+checkoutRouter.post('/estimate', async (req, res, next) => {
+  try {
+    const { lat, lng } = req.body ?? {};
+    if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      throw new AppError(400, 'INVALID_COORDINATES', 'Choose your delivery location first.');
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(await createGuestEstimate(req.body.items, { latitude: lat, longitude: lng }));
   } catch (error) { next(error); }
 });
 

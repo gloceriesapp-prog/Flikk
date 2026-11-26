@@ -26,7 +26,12 @@ export interface HomeContentItem {
   origin: string;
   selection: ContentSelection;
 }
+export type FreshPlacement = 'intro' | 'everyday' | 'village' | 'both';
+export interface FreshTabs { everyday: string; village: string }
+export const DEFAULT_FRESH_TABS: FreshTabs;
+export function freshSectionPlacement(section: HomeContentSection, sections: HomeContentSection[]): FreshPlacement;
 export interface HomeContentSection {
+  freshPlacement?: FreshPlacement;
   id: string;
   kind: SectionKind;
   title: string;
@@ -48,6 +53,7 @@ export interface HomeContentSection {
   items: HomeContentItem[];
 }
 export interface HomeContentDocument {
+  freshTabs?: FreshTabs;
   schemaVersion: 1;
   tabTitle: string;
   headerImageUrl?: string;
@@ -55,6 +61,8 @@ export interface HomeContentDocument {
   sections: HomeContentSection[];
 }
 export interface HomeContentRecord {
+  freshTabs?: FreshTabs;
+  freshSectionPlacements?: Record<string, FreshPlacement>;
   productImagesHiddenSectionIds?: string[];
   categoryCardStyles?: Record<string, CategoryCardStyle>;
   tabKey: HomeContentKey;

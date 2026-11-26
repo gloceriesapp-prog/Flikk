@@ -54,26 +54,54 @@ interface RoutesResponse {
   routes?: { polyline?: { encodedPolyline?: unknown }; duration?: unknown; distanceMeters?: unknown }[];
 }
 
+// Customer tracking asks for the shortest road a scooter can take:
+// TWO_WHEELER (narrow lanes and shortcuts cars can't use, supported in
+// India) with Google's alternatives, keeping the shortest by distance. If no
+// two-wheeler route comes back it falls back to the car route once.
+export interface RouteOptions { travelMode?: 'DRIVE' | 'TWO_WHEELER'; shortest?: boolean }
+
+type RawRoute = NonNullable<RoutesResponse['routes']>[number];
+export function shortestRoute(routes: RawRoute[]): RawRoute | undefined {
+  const distance = (route: RawRoute) => typeof route.distanceMeters === 'number' && Number.isFinite(route.distanceMeters) ? route.distanceMeters : Infinity;
+  return routes.filter(route => typeof route?.polyline?.encodedPolyline === 'string')
+    .reduce<RawRoute | undefined>((best, route) => !best || distance(route) < distance(best) ? route : best, undefined);
+}
+
 export async function fetchRoute(
   origin: LatLng,
   dest: LatLng,
   polylineQuality: 'OVERVIEW' | 'HIGH_QUALITY' = 'OVERVIEW',
+  options: RouteOptions = {},
 ): Promise<RouteResult | null> {
-  if (!env.googleRoutesApiKey || !validPoint(origin) || !validPoint(dest)) return null;
+  const apiKey = env.googleRoutesApiKey;
+  if (!apiKey || !validPoint(origin) || !validPoint(dest)) return null;
+  const travelMode = options.travelMode ?? 'DRIVE';
+  const route = await requestRoute(apiKey, origin, dest, polylineQuality, travelMode, options.shortest === true);
+  return route ?? (travelMode === 'TWO_WHEELER' ? requestRoute(apiKey, origin, dest, polylineQuality, 'DRIVE', options.shortest === true) : null);
+}
+
+async function requestRoute(
+  apiKey: string,
+  origin: LatLng,
+  dest: LatLng,
+  polylineQuality: 'OVERVIEW' | 'HIGH_QUALITY',
+  travelMode: 'DRIVE' | 'TWO_WHEELER',
+  shortest: boolean,
+): Promise<RouteResult | null> {
   try {
     const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': env.googleRoutesApiKey,
+        'X-Goog-Api-Key': apiKey,
         'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline',
       },
       body: JSON.stringify({
         origin: { location: { latLng: origin } },
         destination: { location: { latLng: dest } },
-        travelMode: 'DRIVE',
+        travelMode,
         routingPreference: 'TRAFFIC_UNAWARE',
-        computeAlternativeRoutes: false,
+        computeAlternativeRoutes: shortest,
         polylineQuality,
         polylineEncoding: 'ENCODED_POLYLINE',
       }),
@@ -84,7 +112,8 @@ export async function fetchRoute(
       return null;
     }
     const data = await response.json() as RoutesResponse;
-    const route = Array.isArray(data.routes) ? data.routes[0] : undefined;
+    const routes = Array.isArray(data.routes) ? data.routes : [];
+    const route = shortest ? shortestRoute(routes) : routes[0];
     const encoded = route?.polyline?.encodedPolyline;
     if (typeof encoded !== 'string') return null;
     const points = decodePolyline(encoded);

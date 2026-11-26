@@ -1,8 +1,9 @@
 import { afterEach, expect, it, vi } from 'vitest';
 const rpc = vi.hoisted(() => vi.fn());
 vi.mock('../db/supabase.js', () => ({ supabase: { rpc } }));
-vi.mock('../lib/logger.js', () => ({ logger: {error:vi.fn()} }));
-import { executeClaim } from './runner.js';
+const logger = vi.hoisted(() => ({ error: vi.fn(), warn: vi.fn() }));
+vi.mock('../lib/logger.js', () => ({ logger }));
+import { ALERT_AFTER_FAILURES, executeClaim, isTransientNetworkError } from './runner.js';
 const claim = {name:'weekly',lease_token:'token',scheduled_for:'2026-09-14T03:30:00Z',attempts:2};
 afterEach(() => vi.clearAllMocks());
 it('runs with the persisted schedule time and fences completion', async () => {
@@ -43,4 +44,25 @@ it('does not overlap a queue batch locally and drains it before stopping', async
     await vi.advanceTimersByTimeAsync(30000);
     expect(consume).toHaveBeenCalledOnce();
   } finally {vi.useRealTimers();}
+});
+
+it('treats a dropped Supabase connection as a blip, other failures as errors', () => {
+  const goaway = { message: 'TypeError: fetch failed', details: 'Caused by: InformationalError: HTTP/2: "GOAWAY" frame received with code 0', code: '' };
+  expect(isTransientNetworkError(goaway)).toBe(true);
+  expect(isTransientNetworkError(new Error('Media cleanup claim failed', { cause: goaway }))).toBe(true);
+  expect(isTransientNetworkError(new Error('column products.quick_tab_key does not exist'))).toBe(false);
+  expect(isTransientNetworkError(null)).toBe(false);
+});
+it('warns on connection blips and only reports an error once they keep failing', async () => {
+  vi.useFakeTimers();
+  try {
+    const { startQueueConsumer } = await import('./runner.js');
+    const tick = vi.fn(async () => { throw new TypeError('fetch failed'); });
+    const stop = startQueueConsumer('outbox', tick);
+    for (let i = 0; i < ALERT_AFTER_FAILURES + 1 && tick.mock.calls.length <= ALERT_AFTER_FAILURES; i++) await vi.advanceTimersByTimeAsync(35000);
+    await stop();
+    expect(tick.mock.calls.length).toBeGreaterThanOrEqual(ALERT_AFTER_FAILURES);
+    expect(logger.warn).toHaveBeenCalledTimes(ALERT_AFTER_FAILURES - 1);
+    expect(logger.error).toHaveBeenCalledWith(expect.objectContaining({ failures: ALERT_AFTER_FAILURES }), 'Worker polling failed');
+  } finally { vi.useRealTimers(); }
 });

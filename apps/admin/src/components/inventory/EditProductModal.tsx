@@ -16,8 +16,11 @@ import { VegChoice } from './VegChoice';
 import { BrandPicker } from './BrandPicker';
 import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
-import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
+import { PhotoStatusBadge, usePhotoStatus } from './usePhotoStatus';
+import { PremiumImagePanel } from './PremiumImagePanel';
+import type { PresetId } from '@/lib/photoroomPresets';
+import { appendProductPhotos, swapFirstGalleryPhoto } from '@/lib/productPhotoUpload';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { ProductFlavoursEditor } from './ProductFlavoursEditor';
@@ -40,8 +43,11 @@ export function EditProductModal({
   stores,
   onClose,
   onSave,
+  premiumStart,
 }: {
   product: Product;
+  // From Add product with Premium picked: open the Premium step on that background.
+  premiumStart?: { preset: PresetId; color: string | null };
   stores: StoreOption[];
   onClose: () => void;
   // homeKeys: the Home sections to pick it in, or null when unchanged.
@@ -53,16 +59,26 @@ export function EditProductModal({
   });
   const setPlacement = useCallback((placement: CataloguePlacement) => setDraft((d) => ({ ...d, ...placement })), []);
   const [error, setError] = useState<string | null>(null);
+  // Cut-out status of the saved photos; a cleaned version replaces the old
+  // photo in the form as soon as it is ready.
+  const photoStates = usePhotoStatus(product.id, [draft.imageUrl, ...(draft.extraImageUrls ?? [])].filter((u): u is string => !!u),
+    (from, to) => setDraft((current) => ({
+      ...current,
+      imageUrl: current.imageUrl === from ? to : current.imageUrl,
+      extraImageUrls: (current.extraImageUrls ?? []).map((url) => (url === from ? to : url)),
+    })));
   const [submitting, setSubmitting] = useState(false);
   const [flavourUploading, setFlavourUploading] = useState(false);
-  const homeChoice = useHomeSectionChoice(product.id);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const photosUploading = flavourUploading || galleryUploading;
+  const homeChoice = useHomeSectionChoice(product.id, !product.quickTabKey);
 
   async function handleSave() {
-    if (flavourUploading || submitting) return;
+    if (photosUploading || submitting) return;
     const defaultVariant = draft.variants[0];
     if (!defaultVariant) return;
     // Same rule as Add: every size needs a counted stock to be orderable.
-    if (!draft.subCategoryId) {
+    if (!product.quickTabKey && !draft.subCategoryId) {
       setError('Pick where this product is listed (Category › Sub-category).');
       return;
     }
@@ -113,24 +129,34 @@ export function EditProductModal({
         </div>
 
         <div className="flex flex-col gap-4 overflow-y-auto px-6 py-5">
-          <div className="flex items-center gap-3">
-            <ProductImageUpload
-              imageUrl={draft.imageUrl}
-              onChange={(imageUrl, bgColor) => setDraft({ ...draft, imageUrl, bgColor: bgColor ?? draft.bgColor })}
-            />
-            <input
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              className={FIELD_CLASS}
-              placeholder="Product name"
-              aria-label="Product name"
-            />
-          </div>
+          <PremiumImagePanel
+            productId={product.id}
+            imageUrl={draft.imageUrl}
+            start={premiumStart}
+            onApplied={({ imageUrl, extraImageUrls }) => setDraft((current) => ({ ...current, imageUrl: imageUrl ?? undefined, extraImageUrls }))}
+          />
 
           <ProductGalleryEditor
+            coverUrl={draft.imageUrl}
+            coverFields={
+              <input
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                className={FIELD_CLASS}
+                placeholder="Product name"
+                aria-label="Product name"
+              />
+            }
             urls={draft.extraImageUrls ?? []}
             hasCover={Boolean(draft.imageUrl)}
-            onChange={(extraImageUrls) => setDraft({ ...draft, extraImageUrls })}
+            onChange={(extraImageUrls) => setDraft((current) => ({ ...current, extraImageUrls }))}
+            onSwapCover={() => setDraft((current) => {
+              const photos = swapFirstGalleryPhoto(current);
+              return photos ? { ...current, ...photos, bgColor: undefined } : current;
+            })}
+            onUpload={(photos, replaceCover) => setDraft((current) => ({ ...current, ...appendProductPhotos(current, photos, replaceCover) }))}
+            onUploadingChange={setGalleryUploading}
+            statusBadge={(url) => <PhotoStatusBadge state={photoStates.get(url)} />}
           />
 
           <input
@@ -141,7 +167,12 @@ export function EditProductModal({
             aria-label="Local name"
           />
 
-          <CataloguePicker subCategoryId={draft.subCategoryId} legacyCategory={draft.subCategoryId ? undefined : draft.category} onChange={setPlacement} />
+          {product.quickTabKey ? (
+            <label className="grid gap-1 text-sm font-medium">
+              Quick category
+              <input className={FIELD_CLASS} value={draft.category} readOnly />
+            </label>
+          ) : <CataloguePicker subCategoryId={draft.subCategoryId} legacyCategory={draft.subCategoryId ? undefined : draft.category} onChange={setPlacement} />}
 
           <BrandPicker brandId={draft.brandId} onChange={(brandId) => setDraft((d) => ({ ...d, brandId }))} />
 
@@ -182,7 +213,7 @@ export function EditProductModal({
           <ProductFlavoursEditor variants={draft.variants} options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
 
           <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
-          <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} variants={draft.variants} onVariantsChange={(variants) => setDraft({ ...draft, variants })} />
+          {!product.quickTabKey && <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} variants={draft.variants} onVariantsChange={(variants) => setDraft({ ...draft, variants })} />}
 
           {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
             <label className="flex items-center gap-2 text-sm text-ink">
@@ -202,6 +233,18 @@ export function EditProductModal({
             />
             Show price per kg / L / piece on the card (e.g. ₹63.6/kg)
           </label>
+          {!draft.preorderEnabled && <label className="flex items-start gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={draft.morningSlot ?? false}
+              onChange={(e) => setDraft({ ...draft, morningSlot: e.target.checked })}
+            />
+            <span>
+              Morning delivery slot (milk, bread, fish)
+              <span className="block text-xs text-muted">A cart of only these items from one shop can be booked for the early morning slot instead of quick delivery.</span>
+            </span>
+          </label>}
 
           {/* Same field the customer app's ProductCard reads. Optional for
               every category: left as "Not set", the product shows no
@@ -235,13 +278,13 @@ export function EditProductModal({
             ))}
           </select>
 
-          <div className="flex flex-col gap-2 border-t border-border pt-4">
+          {!product.quickTabKey && <div className="flex flex-col gap-2 border-t border-border pt-4">
             <div>
               <p className="text-sm font-medium text-ink">Show on Home</p>
               <p className="text-xs text-muted">Pick the Home sections this product should appear in. Reorder them on the &ldquo;All&rdquo; tab layout page.</p>
             </div>
             <HomeSectionChecklist choice={homeChoice} compact />
-          </div>
+          </div>}
           {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-danger">{error}</p>}
         </div>
 
@@ -256,10 +299,10 @@ export function EditProductModal({
           <button
             type="button"
             onClick={handleSave}
-            disabled={submitting || flavourUploading}
+            disabled={submitting || photosUploading}
             className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
           >
-            {flavourUploading ? 'Uploading photos…' : submitting ? 'Saving…' : 'Save'}
+            {photosUploading ? 'Uploading photos…' : submitting ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>

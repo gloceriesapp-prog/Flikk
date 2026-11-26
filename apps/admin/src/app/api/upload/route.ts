@@ -6,9 +6,14 @@ import sharp from 'sharp';
 import { storePublicImage } from '@/features/media/publicImages';
 import { publicFolder, MediaError, r2Config } from '../../../../../../packages/server-media/policy.cjs';
 import { generateProductBgColor } from '@/lib/bgColor';
-import { fitProductImage } from '@/lib/productImage';
+import { fitProductImage, productAreaIsSmall } from '@/lib/productImage';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB — generous for a product/store photo, small enough to stay fast
+// Untouched product uploads live beside the fitted photos under this fixed
+// scope (products/<scope>/...), for the cut-out pipeline (workers/image-cutout).
+const ORIGINALS_SCOPE = '0f1a2b3c-0000-4000-8000-0000000a11c0';
+const SMALL_PHOTO_WARNING = 'This photo is small and may look blurry, use a bigger one.';
 
 let activeUploads = 0;
 export async function POST(request: Request) {
@@ -43,7 +48,13 @@ export async function POST(request: Request) {
       .toBuffer();
     const asset = await storePublicImage({ folder, bytes: webpBuffer });
     const bgColor = folder === 'products' ? await generateProductBgColor(webpBuffer) : null;
-    return NextResponse.json({ ...asset, bgColor });
+    if (folder !== 'products') return NextResponse.json({ ...asset, bgColor });
+    // The original, full detail and never cropped, for the cut-out worker. The
+    // product goes live on the fitted photo now; a job is queued when it is saved.
+    const original = await storeOriginal(input).catch(() => null);
+    if (original) await supabaseAdmin.from('media_assets').update({ source_url: original }).eq('id', asset.assetId);
+    const warning = (await productAreaIsSmall(input).catch(() => false)) ? SMALL_PHOTO_WARNING : null;
+    return NextResponse.json({ ...asset, bgColor, warning });
   } catch (err) {
     if (err instanceof MediaError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
     if (err instanceof UploadBodyTooLarge) return NextResponse.json({error:'Upload must be under 6MB.'},{status:413});
@@ -51,4 +62,15 @@ export async function POST(request: Request) {
   } finally {
     activeUploads--;
   }
+}
+
+// WebP is the only stored format; quality 95 keeps the detail the cut-out
+// needs. Only an oversized photo is scaled down, to stay under 5MB.
+async function storeOriginal(input: Buffer): Promise<string> {
+  const bytes = await sharp(input, { limitInputPixels: 20_000_000, animated: false, failOn: 'warning' })
+    .timeout({ seconds: 8 }).rotate()
+    .resize(2400, 2400, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 95 }).toBuffer();
+  const { url } = await storePublicImage({ folder: 'products', scope: ORIGINALS_SCOPE, bytes });
+  return url;
 }

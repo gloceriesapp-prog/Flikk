@@ -774,8 +774,56 @@
       "sha256": "585def36af3aab210131f161118ce696fe3c65b3867a6fdf694582e0ae849125"
     },
     {
+      "file": "20261116180000_partner_product_drafts.sql",
+      "sha256": "14b434eac953822cc8578e49a1475842604fff4844851bf679025885909f312d"
+    },
+    {
       "file": "20261117010000_quick_tab_products.sql",
       "sha256": "37ab6df93563926ad532ab2f9dcd676cc62b995268491f1f630c8e6b478381e1"
+    },
+    {
+      "file": "20261120090000_product_requests.sql",
+      "sha256": "ef2774b4d9cde3c82aefd547408b97922d197444b3be82fa0e4e5c03ab8ef8ef"
+    },
+    {
+      "file": "20261121090000_product_image_jobs.sql",
+      "sha256": "b855da62482798613c28a1c4a5ec57f92d8b684b8d5be64344538e458dfda720"
+    },
+    {
+      "file": "20261121120000_product_image_jobs_extra_photos.sql",
+      "sha256": "e804a8982f1f559b11e35bfb85251242b0b0cad5477f089b1ccdfb17b93693dc"
+    },
+    {
+      "file": "20261121130000_fix_replace_product_extra_image.sql",
+      "sha256": "97af99676d4d2fdb60a7b172882eee8847367c8e4466d1291a4ad4f1f094f8f8"
+    },
+    {
+      "file": "20261121140000_product_image_cutout_url.sql",
+      "sha256": "d1ca5aac7da21a507e98ff319f362cd45f6f26831b8f3e422f57acb2c9d87475"
+    },
+    {
+      "file": "20261122090000_product_premium_images.sql",
+      "sha256": "6f75d69494fd46c4c82e35526b69b6691546ac28f64ce21e93c9933fcd74dc0f"
+    },
+    {
+      "file": "20261122100000_product_premium_text.sql",
+      "sha256": "11d97ef2c4ee7cacdcc0d8a04912031f4b012d6afe000b37685f7bc32e9f96cb"
+    },
+    {
+      "file": "20261123090000_premium_category_presets.sql",
+      "sha256": "8a0c72d1ca643cca3b3d310296aef2123db1391a18f4a051b9dab15d4385b31e"
+    },
+    {
+      "file": "20261123120000_checkout_fee_display.sql",
+      "sha256": "0bdf0b9fed0a040c2f40312d1935d41a1c78ba599915f28d6080e53c0c215702"
+    },
+    {
+      "file": "20261125090000_morning_slot.sql",
+      "sha256": "07288b523a05081e40ac7c84e5e77ed38abfbcc5a88310be46960170764843aa"
+    },
+    {
+      "file": "20261126090000_delivery_routes.sql",
+      "sha256": "38d7034d219183f51cdc575bf76477be3c6eeee99c85ea8fb9f435c56271bddb"
     }
   ]
 }

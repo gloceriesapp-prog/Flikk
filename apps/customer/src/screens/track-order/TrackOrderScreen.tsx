@@ -54,6 +54,7 @@ function TrackingDetails({ navigation, route }: Props) {
       outForDelivery={outForDelivery}
       response={riderLocation.data}
       route={riderLocation.route}
+      onOffRoute={riderLocation.reroute}
       fetchedAt={riderLocation.fetchedAt}
     />
   ) : null;

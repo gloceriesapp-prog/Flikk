@@ -12,6 +12,7 @@
 // the backend still validates its partner inputs independently.
 
 import { CATEGORY_TINT_MAP, MIST_FALLBACK, categoryAllowsCutOptions, type UnitType } from './product-options';
+import type { ProductOption } from './types';
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -37,7 +38,7 @@ export interface ProductWriteInput {
   stockStatus: StockStatus;
   imageUrl?: string | null;
   // Flavours (product_options). Absent leaves them unchanged; a list replaces them.
-  options?: { stockQuantity?: number | null; id?: string | null; name: string; imageUrl?: string | null; extraImageUrls?: string[] | null; priceOverrides?: Record<string, { price: number; originalPrice?: number }>; isAvailable?: boolean }[] | null;
+  options?: { stockQuantity?: number | null; id?: string | null; name: string; imageUrl?: string | null; extraImageUrls?: string[] | null; priceOverrides?: ProductOption['priceOverrides']; isAvailable?: boolean }[] | null;
   // Gallery photos after the cover (products.extra_image_urls). Absent leaves
   // the saved list alone; an array replaces it.
   extraImageUrls?: string[] | null;
@@ -48,6 +49,7 @@ export interface ProductWriteInput {
   waiveCommission?: boolean | null;
   // Price per kg / L / piece on the card. Absent leaves it unchanged.
   showUnitPrice?: boolean | null;
+  morningSlot?: boolean | null;
   // Chilled / room temperature offered. Absent leaves it unchanged.
   servingOptions?: string[] | null;
   // Pre-order only + its bulk minimum and days of notice. Absent leaves them unchanged.
@@ -184,7 +186,7 @@ export const MAX_PRODUCT_OPTIONS = 20;
 // The flavour list to save, or undefined to leave it untouched. Names are
 // trimmed, required, at most 60 characters and unique per product (matches
 // product_options' checks); blank rows from the form are an error, not dropped.
-export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
+export function toProductOptions(input: Pick<ProductWriteInput, 'options'> & Partial<Pick<ProductWriteInput, 'variants'>>):
   { stock_quantity?: number | null; id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; price_overrides?: Record<string, { price: number; original_price?: number }>; is_available: boolean; sort_order: number }[] | undefined {
   if (input.options == null) return undefined;
   if (!Array.isArray(input.options)) throw new Error('options must be a list.');
@@ -206,9 +208,20 @@ export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
       prices = {};
       for (const [pack, value] of Object.entries(option.priceOverrides)) {
         if (!/^(base|(g|kg|ml|l|pc):[0-9]+(\.[0-9]+)?)$/.test(pack) || (pack !== 'base' && !(Number(pack.split(':')[1]) > 0))) throw new Error(`Flavour "${name}": invalid pack.`);
-        if (!value || !Number.isFinite(value.price) || value.price <= 0 || value.price > 1000000 || Math.abs(value.price * 100 - Math.round(value.price * 100)) > 0.000001) throw new Error(`Flavour "${name}": enter a positive price with up to 2 decimal places.`);
-        if (value.originalPrice !== undefined && (!Number.isFinite(value.originalPrice) || value.originalPrice < value.price || value.originalPrice > 1000000 || Math.abs(value.originalPrice * 100 - Math.round(value.originalPrice * 100)) > 0.000001)) throw new Error(`Flavour "${name}": MRP must be at least the store price.`);
-        prices[pack] = { price: value.price, ...(value.originalPrice === undefined ? {} : { original_price: value.originalPrice }) };
+        if (!value || typeof value !== 'object' || (value.price === undefined && value.originalPrice === undefined)) throw new Error(`Flavour "${name}": enter a store price or MRP.`);
+        let price = value.price;
+        if (price === undefined) {
+          const variant = pack === 'base'
+            ? input.variants?.[0]
+            : input.variants?.find((size) => `${size.unitType}:${size.quantity}` === pack);
+          // A size can be removed after its MRP was entered in the editor.
+          if (!variant && input.variants) continue;
+          if (!variant) throw new Error(`Flavour "${name}": select a product size for this MRP.`);
+          price = sellingPrice(variant.price, variant.originalPrice);
+        }
+        if (!isFiniteNumber(price) || price <= 0 || price > 1000000 || Math.abs(price * 100 - Math.round(price * 100)) > 0.000001) throw new Error(`Flavour "${name}": enter a positive price with up to 2 decimal places.`);
+        if (value.originalPrice !== undefined && (!Number.isFinite(value.originalPrice) || value.originalPrice < price || value.originalPrice > 1000000 || Math.abs(value.originalPrice * 100 - Math.round(value.originalPrice * 100)) > 0.000001)) throw new Error(`Flavour "${name}": MRP must be at least the store price.`);
+        prices[pack] = { price, ...(value.originalPrice === undefined ? {} : { original_price: value.originalPrice }) };
       }
     }
     return { ...(option.stockQuantity === undefined ? {} : { stock_quantity: option.stockQuantity }), id: option.id ?? null, name, image_url: image, ...(extras === undefined ? {} : { extra_image_urls: extras }), ...(prices === undefined ? {} : { price_overrides: prices }), is_available: option.isAvailable !== false, sort_order: index };
@@ -225,6 +238,14 @@ export function toUnitPriceFlag(input: Pick<ProductWriteInput, 'showUnitPrice'>)
   if (input.showUnitPrice == null) return undefined;
   if (typeof input.showUnitPrice !== 'boolean') throw new Error('showUnitPrice must be true or false.');
   return { show_unit_price: input.showUnitPrice };
+}
+
+// Morning slot (migration 20261125090000): a pre-order-only product already
+// has its own slots, so it is never also a morning item.
+export function toMorningSlot(input: Pick<ProductWriteInput, 'morningSlot' | 'preorderEnabled'>): { morning_slot: boolean } | undefined {
+  if (input.morningSlot == null) return undefined;
+  if (typeof input.morningSlot !== 'boolean') throw new Error('morningSlot must be true or false.');
+  return { morning_slot: input.morningSlot && input.preorderEnabled !== true };
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

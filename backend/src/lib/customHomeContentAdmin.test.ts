@@ -14,7 +14,7 @@ beforeEach(() => {
   mocks.from.mockImplementation((table: string) => {
     let selected = ''; let inserted = false;
     const q = {
-      select: vi.fn((value: string) => { selected = value; return q; }), eq: vi.fn(() => q),
+      select: vi.fn((value: string) => { selected = value; return q; }), eq: vi.fn(() => q), or: vi.fn(() => q),
       insert: vi.fn((value: unknown) => { inserted = true; mocks.insert(value); return q; }),
       maybeSingle: vi.fn(async () => table === 'home_tabs' ? { data: mocks.exists ? { id, name: 'Local snacks', is_active: true } : null, error: null } :
         inserted ? { data: { tab_key: key, home_tab_id: id, revision: 1, content }, error: mocks.insertError } :

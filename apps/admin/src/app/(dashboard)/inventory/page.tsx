@@ -22,6 +22,8 @@ import { formatNumber } from '@/lib/format';
 import type { NewProductInput, Product, StockStatus } from '@/lib/types';
 import { fetchProducts, fetchStoreOptions, type StoreOption } from '@/lib/supabase/products';
 import { EditProductModal } from '@/components/inventory/EditProductModal';
+import type { ImageStyleChoice } from '@/components/inventory/PremiumImagePanel';
+import type { PresetId } from '@/lib/photoroomPresets';
 import { ShowOnHomeModal } from '@/components/home/ShowOnHomeModal';
 import { saveProductHomeSections } from '@/components/home/HomeSectionChecklist';
 import { toast } from '@/components/ui/Toast';
@@ -48,6 +50,8 @@ export default function InventoryPage() {
   const [category, setCategory] = useState('All');
   const [storeId, setStoreId] = useState('all');
   const [editing, setEditing] = useState<Product | null>(null);
+  // Set when a product was just added with Premium picked (EditProductModal premiumStart).
+  const [premiumStart, setPremiumStart] = useState<{ preset: PresetId; color: string | null } | undefined>();
   const [showingOnHome, setShowingOnHome] = useState<Product | null>(null);
   const [adding, setAdding] = useState(false);
   const [fixingPhotos, setFixingPhotos] = useState(false);
@@ -56,6 +60,12 @@ export default function InventoryPage() {
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
+
+  // Products whose new photo is being cleaned by the cut-out worker
+  // (workers/image-cutout): productId -> when we started waiting.
+  const [cleaning, setCleaning] = useState<Map<string, number>>(new Map());
+  // How the clean-up ended, kept on the card after "Cleaning photo…" goes.
+  const [cleaned, setCleaned] = useState<Map<string, 'done' | 'review'>>(new Map());
 
   const loadData = useCallback(async () => {
     setLoadError(null);
@@ -81,6 +91,47 @@ export default function InventoryPage() {
     Promise.resolve().then(loadData);
   }, [loadData]);
 
+  // While photos are being cleaned, check every 4s; swap in the cleaned photo
+  // as soon as its job finishes. Give up quietly after 2 minutes (worker off).
+  useEffect(() => {
+    if (cleaning.size === 0) return;
+    const timer = setInterval(async () => {
+      const waiting = cleaning;
+      const res = await fetch(`/api/product-images/status?ids=${[...waiting.keys()].join(',')}`).catch(() => null);
+      const jobs = res?.ok ? ((await res.json()) as { productId: string; status: string; reason: string | null }[]) : [];
+      const byId = new Map(jobs.map((job) => [job.productId, job]));
+      const finished: string[] = [];
+      const outcomes: [string, 'done' | 'review'][] = [];
+      for (const [id, since] of waiting) {
+        const job = byId.get(id);
+        const open = !job || job.status === 'queued' || job.status === 'processing';
+        if (!open) {
+          finished.push(id);
+          if (job?.status === 'done') outcomes.push([id, 'done']);
+          if (job?.status === 'needs_review') outcomes.push([id, 'review']);
+          if (job?.status === 'needs_review') toast.error('Photo needs a look', `${job.reason ?? 'Check it'} — see Photos to review.`);
+        } else if (Date.now() - since > 120_000) {
+          finished.push(id);
+          toast.error('Photo still waiting', 'The photo clean-up worker is not running. It will be cleaned when it starts.');
+        }
+      }
+      if (finished.length === 0) return;
+      if (outcomes.length) setCleaned((current) => new Map([...current, ...outcomes]));
+      setCleaning((current) => {
+        const next = new Map(current);
+        finished.forEach((id) => next.delete(id));
+        return next;
+      });
+      await loadData();
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [cleaning, loadData]);
+
+  function watchPhoto(productId: string) {
+    setCleaned((current) => { const next = new Map(current); next.delete(productId); return next; });
+    setCleaning((current) => new Map(current).set(productId, Date.now()));
+  }
+
   const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category)))], [products]);
 
   // Store options carry district alongside name — a founder picking a store
@@ -104,6 +155,7 @@ export default function InventoryPage() {
   const storeCountByName = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of products) {
+      if (p.quickTabKey) continue;
       const key = p.name.toLowerCase();
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
@@ -113,7 +165,7 @@ export default function InventoryPage() {
   function dedupeCheapest(list: Product[]): Product[] {
     const cheapestByName = new Map<string, Product>();
     for (const p of list) {
-      const key = p.name.toLowerCase();
+      const key = p.quickTabKey ? p.id : p.name.toLowerCase();
       const current = cheapestByName.get(key);
       if (!current || p.price < current.price) cheapestByName.set(key, p);
     }
@@ -134,6 +186,10 @@ export default function InventoryPage() {
   })();
 
   async function handleSave(updated: Product, homeKeys: string[] | null) {
+    // A new main or extra photo is queued for cut-out; watch the card for it.
+    const before = products.find((p) => p.id === updated.id);
+    const photoChanged = (!!updated.imageUrl && before?.imageUrl !== updated.imageUrl)
+      || (updated.extraImageUrls ?? []).some((url) => !(before?.extraImageUrls ?? []).includes(url));
     const res = await fetch(`/api/products/${updated.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -146,6 +202,8 @@ export default function InventoryPage() {
     if (homeKeys) await saveProductHomeSections(updated.id, homeKeys);
     await loadData();
     setEditing(null);
+    setPremiumStart(undefined);
+    if (photoChanged) watchPhoto(updated.id);
   }
 
   async function handleApproval(id: string, approve: boolean) {
@@ -189,7 +247,7 @@ export default function InventoryPage() {
     }
   }
 
-  async function handleAdd(newProduct: NewProductInput, homeKeys: string[]) {
+  async function handleAdd(newProduct: NewProductInput, homeKeys: string[], imageStyle: ImageStyleChoice) {
     const res = await fetch('/api/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -202,6 +260,11 @@ export default function InventoryPage() {
     const created = (await res.json()) as Product;
     await loadData();
     setAdding(false);
+    if (created.imageUrl || (created.extraImageUrls ?? []).length > 0) watchPhoto(created.id);
+    if (imageStyle.style === 'premium' && created.imageUrl) {
+      setPremiumStart({ preset: imageStyle.preset, color: imageStyle.color });
+      setEditing(created);
+    }
     // The product exists now; a failed pick must not look like a failed add.
     if (homeKeys.length > 0) {
       try {
@@ -331,10 +394,17 @@ export default function InventoryPage() {
                 same 4:4.5 frame, #F9FAFB background, thin border and rounded
                 corners, photo filling the frame (the app's 'cover'), so what
                 you see here is what shoppers see. No photo: icon placeholder. */}
-            <div className="aspect-[4/4.5] w-[76px] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+            <div className="relative aspect-[4/4.5] w-[76px] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+              {cleaning.has(product.id) ? (
+                <span className="absolute inset-x-0 bottom-0 z-10 bg-ink/75 py-0.5 text-center text-[9px] font-semibold text-white">Cleaning photo…</span>
+              ) : cleaned.get(product.id) === 'done' ? (
+                <span className="absolute inset-x-0 bottom-0 z-10 bg-[#16A34A]/90 py-0.5 text-center text-[9px] font-semibold text-white">✓ Cleaned</span>
+              ) : cleaned.get(product.id) === 'review' ? (
+                <span className="absolute inset-x-0 bottom-0 z-10 bg-amber-500/90 py-0.5 text-center text-[9px] font-semibold text-white">Needs review</span>
+              ) : null}
               {product.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                <img src={product.imageUrl} alt={product.name} className="h-full w-full object-contain" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
                   <ImageIcon size={22} className="text-muted" />
@@ -412,7 +482,8 @@ export default function InventoryPage() {
                   {product.originalPrice && product.originalPrice > product.price && (
                     <span className="text-xs text-muted line-through tabular-nums">{formatNumber(product.originalPrice)}</span>
                   )}
-                  {storeId === 'all' && (storeCountByName.get(product.name.toLowerCase()) ?? 1) > 1 && (
+                  {product.quickTabKey && <span className="text-[11px] font-medium text-muted">Quick category product</span>}
+                  {!product.quickTabKey && storeId === 'all' && (storeCountByName.get(product.name.toLowerCase()) ?? 1) > 1 && (
                     <span className="text-[11px] font-medium text-muted">
                       cheapest of {storeCountByName.get(product.name.toLowerCase())} stores
                     </span>
@@ -427,7 +498,7 @@ export default function InventoryPage() {
                       {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
                     </span>
                   )}
-                  <button
+                  {!product.quickTabKey && <button
                     type="button"
                     onClick={() => setShowingOnHome(product)}
                     className="flex h-[30px] w-[30px] items-center justify-center rounded-[10px] border border-border text-ink-soft hover:bg-accent hover:text-ink"
@@ -435,7 +506,7 @@ export default function InventoryPage() {
                     title="Show on home"
                   >
                     <Home size={13} />
-                  </button>
+                  </button>}
                   <button
                     type="button"
                     onClick={() => setEditing(product)}
@@ -476,7 +547,7 @@ export default function InventoryPage() {
       </div>
 
       {showingOnHome && <ShowOnHomeModal product={showingOnHome} onClose={() => setShowingOnHome(null)} />}
-      {editing && <EditProductModal product={editing} stores={stores} onClose={() => setEditing(null)} onSave={handleSave} />}
+      {editing && <EditProductModal product={editing} stores={stores} onClose={() => { setEditing(null); setPremiumStart(undefined); }} onSave={handleSave} premiumStart={premiumStart} />}
       {adding && (
         <AddProductModal stores={stores} existingProducts={products} onClose={() => setAdding(false)} onAdd={handleAdd} />
       )}

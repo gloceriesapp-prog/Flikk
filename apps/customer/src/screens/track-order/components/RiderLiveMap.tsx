@@ -102,9 +102,11 @@ interface Props {
   response: RiderLocationResponse | undefined;
   fetchedAt: number;
   route?: DeliveryRoutePoint[] | null;
+  // Called while a fresh rider fix is off the road route (rate-limited by caller).
+  onOffRoute?: () => void;
 }
 
-export function RiderLiveMap({ outForDelivery, response, fetchedAt, route }: Props) {
+export function RiderLiveMap({ outForDelivery, response, fetchedAt, route, onOffRoute }: Props) {
   const [now, setNow] = useState(() => Date.now());
   const [mapFailed, setMapFailed] = useState(false);
   const [mapReady, setMapReady] = useState(false);

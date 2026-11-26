@@ -732,12 +732,12 @@ partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
     // storeId always comes from the caller's own store, never req.body —
     // a store owner can only ever create a product for themselves, even if
     // the request body carries a different storeId.
-    const { photoAssetIds, subCategoryId, catalogueItemId } = req.body;
-    const hasSubmission = photoAssetIds !== undefined || subCategoryId !== undefined || catalogueItemId !== undefined;
+    const { photoAssetIds, categoryId, subCategoryId, catalogueItemId } = req.body;
+    const hasSubmission = photoAssetIds !== undefined || categoryId !== undefined || subCategoryId !== undefined || catalogueItemId !== undefined;
     const input: Partial<ProductInput> = hasSubmission
-      ? { storeId, name: req.body.name, category: 'Catalogue', stockStatus: req.body.stockStatus, variants: req.body.variants }
+      ? { storeId, name: req.body.name ?? '', category: 'Catalogue', stockStatus: req.body.stockStatus, variants: req.body.variants }
       : { ...req.body, storeId };
-    validateProductInput(input);
+    validateProductInput(input, { allowUnnamed: hasSubmission });
 
     // A store owner's own product never goes live on its own — see this
     // router's own note at the top and backend/src/routes/stores.ts's
@@ -751,8 +751,9 @@ partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
     if (hasSubmission) {
       const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
       const isUuid = (value: unknown): value is string => typeof value === 'string' && uuid.test(value);
-      if (!isUuid(subCategoryId) || (catalogueItemId != null && !isUuid(catalogueItemId))) {
-        throw new AppError(400, 'INVALID_CATEGORY', 'Select a category and subcategory.');
+      if ((categoryId != null && !isUuid(categoryId)) || (subCategoryId != null && !isUuid(subCategoryId))
+        || (catalogueItemId != null && (!isUuid(catalogueItemId) || !subCategoryId))) {
+        throw new AppError(400, 'INVALID_CATEGORY', 'Select an available category or clear the selection.');
       }
       if (!Array.isArray(photoAssetIds) || photoAssetIds.length < 1 || photoAssetIds.length > 5 || !photoAssetIds.every(isUuid)) {
         throw new AppError(400, 'INVALID_PHOTOS', 'Take between one and five product photos.');
@@ -760,14 +761,20 @@ partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
       if (input.name.trim().length > 200) {
         throw new AppError(400, 'INVALID_PRODUCT', 'Use a name of 200 characters or less.');
       }
-      if (input.variants.some((variant) => variant.stockQuantity == null)) {
-        throw new AppError(400, 'INVALID_PRODUCT', 'Enter stock for every size.');
+      for (const [index, variant] of input.variants.entries()) {
+        if (variant.originalPrice == null) continue;
+        if (variant.originalPrice < variant.price) {
+          throw new AppError(400, 'INVALID_PRODUCT', 'MRP must be at least the store price for each size.');
+        }
+        // Keep explicitly entered MRP even when it equals the price.
+        variants[index]!.original_price = variant.originalPrice;
+        if (index === 0) fields.original_price = variant.originalPrice;
       }
       const { data, error } = await supabase.rpc('save_partner_catalogue_submission', {
         p_store: storeId,
-        p_fields: fields,
+        p_fields: { ...fields, category_id: categoryId ?? null },
         p_variants: variants,
-        p_sub_category: subCategoryId,
+        p_sub_category: subCategoryId ?? null,
         p_catalogue_item: catalogueItemId ?? null,
         p_photos: photoAssetIds,
       });

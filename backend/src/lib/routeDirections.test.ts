@@ -42,6 +42,26 @@ describe('fetchRoute', () => {
   it('handles network failure', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('provider failure'))); expect(await fetchRoute(origin, destination)).toBeNull();
   });
+  it('asks for two-wheeler alternatives and keeps the shortest road', async () => {
+    const short = '_p~iF~ps|U'; const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ routes: [
+      { polyline: { encodedPolyline: encoded }, distanceMeters: 2400 },
+      { polyline: { encodedPolyline: short }, distanceMeters: 1800 },
+      { polyline: {}, distanceMeters: 100 },
+    ] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await fetchRoute(origin, destination, 'HIGH_QUALITY', { travelMode: 'TWO_WHEELER', shortest: true }))
+      .toMatchObject({ points: decodePolyline(short), distanceM: 1800 });
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toMatchObject({ travelMode: 'TWO_WHEELER', computeAlternativeRoutes: true });
+  });
+  it('falls back to the car route once when no two-wheeler route comes back', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ routes: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ routes: [{ polyline: { encodedPolyline: encoded }, distanceMeters: 2000 }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await fetchRoute(origin, destination, 'HIGH_QUALITY', { travelMode: 'TWO_WHEELER', shortest: true })).toMatchObject({ distanceM: 2000 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({ travelMode: 'DRIVE' });
+  });
   it('rejects invalid ETA/distance values', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ routes: [{ polyline: { encodedPolyline: encoded }, duration: '-4s', distanceMeters: Infinity }] }) }));
     expect(await fetchRoute(origin, destination)).toMatchObject({ durationSec: null, distanceM: null });

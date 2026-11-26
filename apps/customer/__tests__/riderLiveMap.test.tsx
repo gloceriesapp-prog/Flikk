@@ -48,6 +48,7 @@ it('shows only pins before dispatch, then a rider -> customer line without the s
   const pickup = { lat: 12.95, lng: 77.58 };
   const route = [{ latitude: 12.95, longitude: 77.58 }, { latitude: 12.97, longitude: 77.59 }];
   const response = { ...base, pickup };
+  const onOffRoute = jest.fn();
   const view = await render(<RiderLiveMap outForDelivery={false} response={response} route={route} fetchedAt={Date.now()} />);
   expect(view.getByLabelText('Gloceries')).toBeTruthy();
   expect(view.getByLabelText('Delivery address')).toBeTruthy();
@@ -78,6 +79,7 @@ it('starts the road line at the scooter, keeps progress, and falls back to dashe
   const turn = { latitude: 12.97, longitude: 77.585 };
   const destination = { latitude: 12.975, longitude: 77.585 };
   const route = [{ latitude: pickup.lat, longitude: pickup.lng }, turn, destination];
+  const onOffRoute = jest.fn();
   const at = (latitude: number, longitude: number) => (
     <RiderLiveMap
       outForDelivery

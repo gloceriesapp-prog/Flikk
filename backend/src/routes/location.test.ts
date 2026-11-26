@@ -4,7 +4,7 @@ import type { NextFunction, Request, Response } from 'express';
 const reverse = vi.hoisted(() => vi.fn());
 vi.mock('../lib/reverseGeocode.js', () => ({ reverseGeocode: reverse }));
 vi.mock('../customer-experience/mapsBudget.js', () => ({ mapsBudget: () => (_req: Request, _res: Response, next: NextFunction) => next() }));
-import { locationRouter } from './location.js';
+import { locationRouter, providerJson } from './location.js';
 
 afterEach(() => vi.clearAllMocks());
 // Exercise the asynchronous handler without opening a real listening socket.
@@ -30,4 +30,11 @@ it('returns an actual address for the exact requested pin', async () => {
   expect(reverse).toHaveBeenCalledWith(13.2743, 74.7597);
   expect(json).toHaveBeenCalledWith(result);
   expect(next).not.toHaveBeenCalled();
+});
+
+it('reads an empty provider reply (Mappls "no matches", HTTP 204) as no results, not a crash', async () => {
+  await expect(providerJson(new Response(null, { status: 204 }))).resolves.toBeNull();
+  await expect(providerJson(new Response('  ', { status: 200 }))).resolves.toBeNull();
+  await expect(providerJson(new Response('{"suggestedLocations":[]}'))).resolves.toEqual({ suggestedLocations: [] });
+  await expect(providerJson(new Response('<html>busy</html>'))).rejects.toMatchObject({ status: 503, code: 'LOCATION_PROVIDER_UNAVAILABLE' });
 });

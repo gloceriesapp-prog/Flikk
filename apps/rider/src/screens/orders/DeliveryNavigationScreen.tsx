@@ -201,6 +201,7 @@ export function DeliveryNavigationScreen({
       ====================================================== */}
 
       <DeliveryMapView
+        orderId={order.id}
         destination={order.customerCoords}
         destinationKind="customer"
         fullScreen

@@ -93,6 +93,7 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
   return (
     <View className="flex-1 bg-ink">
       <DeliveryMapView
+        orderId={order.id}
         destination={order.storeCoords}
         destinationKind="store"
         fullScreen

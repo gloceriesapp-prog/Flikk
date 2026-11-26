@@ -3,7 +3,7 @@ import { resolveStoreAccess } from '../stores/access.js';
 import { logger } from '../lib/logger.js';
 import { deliveryStores } from '../customer-experience/browse.js';
 import { receiptItems, withReceiptAddress } from '../customer-experience/receipt.js';
-import { HISTORY_SELECT } from '../history/customerHistory.js';
+import { HISTORY_SELECT, PLACED_ORDER_FILTER } from '../history/customerHistory.js';
 import { checkoutAttemptIdentity, findCheckoutAttempt, commitCheckoutAttempt } from '../lib/checkoutAttempts.js';
 // The highest-risk endpoints in the backend. Source: specs/00-foundation/api-conventions.md
 import { Router } from 'express';
@@ -28,7 +28,7 @@ import { notifyStoresOfDelivery } from '../orders/deliveredPush.js';
 import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
 import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
-import { reorderByRank } from '../lib/buyItAgain.js';
+import { recentOrderProductIds, reorderByRank } from '../lib/buyItAgain.js';
 import { notifyRiderOrderPacked, triggerDispatch } from '../lib/riderDispatch.js';
 import { assertPaymentMethodAvailable } from '../payments/availability.js';
 import { applyCustomerPrices } from '../lib/customerPrice.js';
@@ -155,7 +155,7 @@ ordersRouter.get('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       // migrations/015_create_trip_orders_fn.sql's own note — the real
       // combined charge lives only on trips.total).
       .select(HISTORY_SELECT)
-      .eq('customer_id', req.user!.id)
+      .eq('customer_id', req.user!.id).or(PLACED_ORDER_FILTER)
       .order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(20);
     if (error) throw error;
     res.json(data);
@@ -207,6 +207,37 @@ ordersRouter.get('/buy-it-again', requireAuth, requireRole('customer'), async (r
     if (productsErr) throw productsErr;
 
     res.json(applyCustomerPrices(reorderByRank(rankedProductIds, products ?? [])));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /orders/reorder-items — the Re-order tab (apps/customer's
+// screens/reorder/): live products from this customer's most recent placed
+// orders (delivered, on the way and scheduled; not cancelled or failed),
+// newest first, from shops that deliver to the pin. Pre-order products stay
+// in (the app books their slot as usual). Out-of-stock products stay too, so
+// the customer sees why they can't re-order. Before GET /:id, same reason as
+// buy-it-again.
+const REORDER_ORDER_LIMIT = 40;
+const REORDER_ITEM_LIMIT = 40;
+
+ordersRouter.get('/reorder-items', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
+  try {
+    res.set('Cache-Control', 'private, no-store');
+    const storeIds = await deliveryStores(req.query);
+    if (!storeIds.length) return res.json([]);
+    const { data: orders, error: ordersError } = await supabase.from('orders').select('placed_at, order_items(product_id)')
+      .eq('customer_id', req.user!.id).not('status', 'in', '(cancelled,failed)').or(PLACED_ORDER_FILTER)
+      .order('placed_at', { ascending: false }).limit(REORDER_ORDER_LIMIT);
+    if (ordersError) throw ordersError;
+    const productIds = recentOrderProductIds(orders ?? [], REORDER_ITEM_LIMIT);
+    if (productIds.length === 0) return res.json([]);
+    const { data: products, error: productsError } = await supabase.from('products').select(PRODUCT_WITH_VARIANTS_SELECT)
+      .in('id', productIds).in('store_id', storeIds).is('quick_tab_key', null)
+      .eq('approval_status', 'approved').eq('stores.is_active', true);
+    if (productsError) throw productsError;
+    res.json(applyCustomerPrices(reorderByRank(productIds, products ?? [])));
   } catch (err) {
     next(err);
   }

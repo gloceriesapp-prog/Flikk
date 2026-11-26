@@ -17,11 +17,6 @@ import { AppImage as Image } from '../../components/AppImage';
 // route param) — same reasoning as OrderDetailScreen reading its order
 // from useOrdersStore: avoids pushing a whole product object (and its
 // callbacks) through navigation params.
-//
-// Sizes are added from a fixed picker (standardSizeOptions in
-// ../catalog/data.ts), never typed free-hand — a customer ordering this
-// product later picks from these exact same labels, so keeping shop
-// owners off a fixed list is what makes size-matching possible at all.
 
 import * as ImagePicker from 'expo-image-picker';
 import { compressImageToTarget } from '../../media/compressImage';
@@ -41,6 +36,7 @@ import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { useCatalogStore } from '../../store/useCatalogStore';
 import {
   hasUncountedVariant,
+  packSizeError,
   standardSizeOptions,
   withStockCount,
   withStockToggle,
@@ -63,7 +59,6 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [name, setName] = useState(product?.name ?? '');
   const [draft, setDraft] = useState<ProductVariant[]>(product?.variants ?? []);
-  const [sizePickerOpen, setSizePickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -113,9 +108,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }
 
   function addVariant(label: string) {
+    if (addedLabels.has(label)) return;
     Haptics.selectionAsync();
     setDraft((prev) => [...prev, { id: `new-${label}-${Date.now()}`, label, price: 0, isInStock: true }]);
-    setSizePickerOpen(false);
   }
 
   function removeVariant(variantId: string) {
@@ -141,7 +136,12 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }
 
   async function handleSave() {
-    if (!validVariantPrices(draft)) { Alert.alert("Check prices", "Enter a positive price for every size. MRP must be at least the selling price."); return; }
+    const sizeError = packSizeError(draft);
+    if (sizeError) {
+      Alert.alert('Check pack sizes', sizeError);
+      return;
+    }
+    if (!validVariantPrices(draft)) { Alert.alert("Check prices", "Enter a store price or MRP for every size. MRP must be at least the store price."); return; }
     // Customers can only order counted packs — a size without a count
     // would stay unorderable, so ask for it before saving.
     if (hasUncountedVariant(draft)) {
@@ -267,12 +267,15 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             </View>
           </View>
 
-          {draft.map((variant) => (
+          {draft.map((variant, index) => (
             <ProductVariantCard
               key={variant.id}
               variant={variant}
+              index={index}
               canRemove={draft.length > 1}
               onToggleStock={(isInStock) => setVariantStock(variant.id, isInStock)}
+              onChangeSize={(label) => setDraft((previous) => previous.map((item) =>
+                item.id === variant.id ? { ...item, label } : item))}
               onChangePrice={(text) => setVariantPrice(variant.id, text)}
               onChangeMrp={(text) => setVariantMrp(variant.id, text)}
               onChangeQuantity={(text) => setVariantQuantity(variant.id, text)}
@@ -282,8 +285,6 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
           <AddSizeButton
             availableSizes={availableSizes}
-            isOpen={sizePickerOpen}
-            onToggleOpen={() => setSizePickerOpen((open) => !open)}
             onPickSize={addVariant}
           />
         </View>

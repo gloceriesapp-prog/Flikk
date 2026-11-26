@@ -86,6 +86,7 @@ function fromRow(row: ProductRow): PartnerProduct {
 
 export interface AddProductInput {
   name: string;
+  categoryId?: string;
   subCategoryId: string;
   catalogueItemId?: string;
   photoAssetIds: string[];
@@ -187,13 +188,14 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
     set((state) => ({ products: state.products.filter((p) => p.id !== productId) }));
   },
 
-  addProduct: async ({ name, subCategoryId, catalogueItemId, photoAssetIds, variants }) => {
+  addProduct: async ({ name, categoryId, subCategoryId, catalogueItemId, photoAssetIds, variants }) => {
     const epoch = getSessionEpoch();
-    if (isDuplicateProductName(get().products, name)) return false;
+    if (name.trim() && isDuplicateProductName(get().products, name)) return false;
 
     const body = {
       name: name.trim(),
-      subCategoryId,
+      categoryId: categoryId || null,
+      subCategoryId: subCategoryId || null,
       catalogueItemId,
       photoAssetIds,
       stockStatus: summarizeVariants(variants).isInStock ? ('in_stock' as const) : ('out_of_stock' as const),
@@ -202,7 +204,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
     const row = await apiRequest<ProductRow>('/partner/products', { method: 'POST', body });
     if (!isCurrentSession(epoch)) throw new Error('Account changed. Please reopen inventory.');
     sequence += 1; inFlight = null; set({ loading: false });
-    set((state) => ({ products: [fromRow(row), ...state.products] }));
+    set((state) => ({ products: [fromRow(row), ...state.products.filter((product) => product.id !== row.id)] }));
     return true;
   },
 };

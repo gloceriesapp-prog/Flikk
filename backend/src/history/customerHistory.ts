@@ -5,6 +5,9 @@ import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth
 import { AppError } from '../lib/errors.js';
 import { encodeCursor, readPage } from '../lib/cursorPagination.js';
 export const customerHistoryRouter = Router();
+// An online order exists before its payment so UPI can open; until the payment
+// is captured it is not a real order to the customer (same rule as the store queue).
+export const PLACED_ORDER_FILTER = 'payment_method.eq.cod,provider_payment_id.not.is.null';
 // trips!orders_trip_id_fkey: orders and trips are linked both ways (orders.trip_id
 // and trips.cancel_origin_order_id, migration 109), so an unnamed trips(...)
 // embed is ambiguous (PostgREST PGRST201) and the whole query fails.
@@ -40,7 +43,7 @@ customerHistoryRouter.get('/history', requireAuth, requireRole('customer'), asyn
       const batch = selected.slice(offset, offset + 20);
       const filter = batch.map(h => `${h.is_trip ? 'trip_id' : 'id'}.eq.${h.entity_id}`).join(',');
       const { data: legs, error: legError } = await supabase.from('orders').select(HISTORY_SELECT)
-        .eq('customer_id', req.user!.id).or(filter).order('placed_at', { ascending: false }).order('id', { ascending: false });
+        .eq('customer_id', req.user!.id).or(filter).or(PLACED_ORDER_FILTER).order('placed_at', { ascending: false }).order('id', { ascending: false });
       if (legError) throw legError;
       orders.push(...(legs ?? []).map(leg => ({ ...leg, order_items: receiptItems(leg.order_items) })));
     }
@@ -59,7 +62,7 @@ customerHistoryRouter.get('/history-status', requireAuth, requireRole('customer'
       throw new AppError(400, 'INVALID_ORDERS', 'Choose up to 100 valid orders.');
     const { data, error } = await supabase.from('orders')
       .select('id, status, placed_at, packed_at, picked_up_at, delivered_at, estimated_delivery_minutes, estimated_delivery_at, live_revision')
-      .eq('customer_id', req.user!.id).in('id', [...new Set(ids)]);
+      .eq('customer_id', req.user!.id).or(PLACED_ORDER_FILTER).in('id', [...new Set(ids)]);
     if (error) throw error;
     res.set('Cache-Control', 'private, no-store'); res.json(data ?? []);
   } catch (error) { next(error); }

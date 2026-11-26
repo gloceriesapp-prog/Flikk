@@ -1,3 +1,5 @@
+import { legRoute, type Leg } from '../tracking/legRoutes.js';
+import { destinationOf, isBeforePickup, pickupOf, readRider, riderLocationView } from '../tracking/riderLocation.js';
 import { validateRiderProfileChanges, isOwnedRiderDocument } from '../lib/riderProfileChanges.js';
 import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // Source: specs/03-rider-app/api.md — assignments/earnings scoped to the caller only.
@@ -270,6 +272,47 @@ riderRouter.get('/route', (req, _res, next) => {
       // when routing is unavailable; the app then keeps its straight-line
       // distance/avg-speed estimate.
       durationMin: route?.durationSec != null ? Math.max(1, Math.round(route.durationSec / 60)) : null,
+      distanceKm: route?.distanceM != null ? Math.round(route.distanceM / 100) / 10 : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /rider/orders/:id/route — the same saved road route the customer's
+// track screen draws (tracking/legRoutes.ts), so both apps show one line:
+// rider -> store before pickup, rider -> customer after. ?leg=pickup|drop
+// asks for one leg explicitly (pickup map vs drop map); otherwise the
+// order's current leg. Each leg costs one Google call; reopening the map is
+// free, and a rider who leaves the road is re-routed on the server for both
+// apps (version goes up).
+riderRouter.get('/orders/:id/route', async (req: AuthedRequest, res, next) => {
+  try {
+    const id = String(req.params.id);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
+    const { data: order, error } = await supabase.from('orders')
+      .select('id,status,picked_up_at,delivery_address_at_order,addresses(latitude,longitude),stores(lat,lng)')
+      .eq('id', id).eq('rider_id', req.user!.id).maybeSingle();
+    if (error) throw error;
+    if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
+    const requested = req.query.leg === 'pickup' || req.query.leg === 'drop' ? req.query.leg as Leg : null;
+    const leg: Leg = requested ?? (isBeforePickup(order.status) ? 'pickup' : 'drop');
+    const none = { leg, version: null, polyline: [], durationMin: null, distanceKm: null };
+    res.set('Cache-Control', 'private, no-store');
+    if (!isBeforePickup(order.status) && order.status !== 'out_for_delivery') return res.json(none);
+    const store = pickupOf(order.stores as never);
+    const target = leg === 'pickup' ? store : destinationOf(order as never);
+    if (!target) return res.json(none);
+    const rider = riderLocationView(await readRider(req.user!.id), null);
+    const fresh = rider && !rider.stale ? rider : null;
+    const origin = fresh ?? (leg === 'drop' ? store : null);
+    const route = await legRoute(order.id, leg,
+      origin ? { latitude: origin.lat, longitude: origin.lng } : null,
+      { latitude: target.lat, longitude: target.lng },
+      fresh ? { point: { latitude: fresh.lat, longitude: fresh.lng }, at: fresh.updated_at } : null);
+    res.json({
+      leg, version: route?.version ?? null, polyline: route?.points ?? [],
+      durationMin: route?.durationS != null ? Math.max(1, Math.round(route.durationS / 60)) : null,
       distanceKm: route?.distanceM != null ? Math.round(route.distanceM / 100) / 10 : null,
     });
   } catch (err) {

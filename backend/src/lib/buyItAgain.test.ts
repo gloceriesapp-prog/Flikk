@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rankRepeatPurchases, reorderByRank } from './buyItAgain.js';
+import { rankRepeatPurchases, recentOrderProductIds, reorderByRank } from './buyItAgain.js';
 
 describe('rankRepeatPurchases', () => {
   it('ranks a product bought more times above one bought once, even if the single purchase is more recent', () => {
@@ -50,5 +50,19 @@ describe('reorderByRank', () => {
   it('drops a ranked id with no matching row instead of leaving a hole', () => {
     const rows = [{ id: 'atta', name: 'Atta' }];
     expect(reorderByRank(['atta', 'discontinued-product'], rows)).toEqual([{ id: 'atta', name: 'Atta' }]);
+  });
+});
+
+describe('recentOrderProductIds', () => {
+  it('keeps newest-order-first, each product once, up to the limit', () => {
+    const orders = [
+      { order_items: [{ product_id: 'milk' }, { product_id: 'bread' }] },
+      { order_items: [{ product_id: 'bread' }, { product_id: null }, { product_id: 'fish' }] },
+      { order_items: null },
+      { order_items: [{ product_id: 'eggs' }] },
+    ];
+    expect(recentOrderProductIds(orders, 10)).toEqual(['milk', 'bread', 'fish', 'eggs']);
+    expect(recentOrderProductIds(orders, 2)).toEqual(['milk', 'bread']);
+    expect(recentOrderProductIds([], 5)).toEqual([]);
   });
 });

@@ -189,6 +189,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
     return (
       <View className="flex-1 bg-white">
         <DeliveryMapView
+          orderId={order.id}
           destination={order.customerCoords}
           destinationKind="customer"
           fullScreen

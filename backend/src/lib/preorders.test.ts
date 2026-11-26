@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { priceCheckoutItems, type CheckoutProduct } from './checkoutItems.js';
-import { daysAhead, formatDeliveryWindow, parsePreorder, preorderWindow } from './preorders.js';
+import { daysAhead, formatDeliveryWindow, isMorningCart, isMorningSlot, parsePreorder, preorderWindow } from './preorders.js';
 
 const idli: CheckoutProduct = { id: '00000000-0000-4000-8000-0000000000a1', store_id: 'shop', is_in_stock: true, price: 40, unit: '4 pcs',
   preorder_enabled: true, preorder_min_qty: 10, preorder_lead_days: 1, product_variants: [] };
@@ -57,5 +57,23 @@ describe('pre-order delivery window', () => {
     expect(parsePreorder(undefined)).toBeNull();
     expect(() => parsePreorder({ date: '7 Nov', slot_id: slot.id })).toThrow(/delivery day/);
     expect(() => parsePreorder({ date: '2026-11-07', slot_id: 'x' })).toThrow(/delivery day/);
+  });
+});
+
+describe('morning slot', () => {
+  const bread: CheckoutProduct = { ...milk, id: '00000000-0000-4000-8000-0000000000a4', morning_slot: true };
+  const fish: CheckoutProduct = { ...bread, id: '00000000-0000-4000-8000-0000000000a5' };
+  it('offers only carts of morning products from one shop', () => {
+    expect(isMorningCart(priceCheckoutItems([line(bread, 1), line(fish, 2)], [bread, fish]))).toBe(true);
+    expect(isMorningCart(priceCheckoutItems([line(bread, 1), line(milk, 1)], [bread, milk]))).toBe(false);
+    expect(isMorningCart(priceCheckoutItems([line(bread, 1), line({ ...fish, store_id: 'other' }, 1)], [bread, { ...fish, store_id: 'other' }]))).toBe(false);
+    expect(isMorningCart(priceCheckoutItems([line(idli, 10)], [{ ...idli, morning_slot: true }]))).toBe(false);
+    expect(isMorningCart([])).toBe(false);
+  });
+  it('counts only slots ending by 10 AM, bookable for tomorrow with no notice', () => {
+    expect(isMorningSlot(slot)).toBe(true);
+    expect(isMorningSlot({ ...slot, starts_minute: 720, ends_minute: 840 })).toBe(false);
+    expect(preorderWindow({ date: '2026-11-07', slot_id: slot.id }, slot, 0, now).deliver_from).toBe('2026-11-07T01:30:00.000Z');
+    expect(() => preorderWindow({ date: '2026-11-06', slot_id: slot.id }, slot, 0, now)).toThrow(/too soon/);
   });
 });
