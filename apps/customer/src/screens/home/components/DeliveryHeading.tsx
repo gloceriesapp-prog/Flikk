@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { HighDemandBadge } from './HighDemandBadge';
+import type { HeaderDeliveryStatus } from './headerDeliveryStatus';
+import { HighDemandBadge, RainNearbyBadge } from './HighDemandBadge';
 import { GILROY } from '../../../theme/fonts';
 
 // Shared across Home/category header mounts; a new app launch resets it.
@@ -10,14 +11,16 @@ let introPlayed = false;
 const HOLD_MS = 1500;
 const COLLAPSE_MS = 420;
 
-export function DeliveryHeading({ minutes, light, highDemand = false }: { minutes: number; light: boolean; highDemand?: boolean }) {
+export function DeliveryHeading({ minutes, light, highDemand = false, rainNearby = false, status = 'normal' }: { minutes: number; light: boolean; highDemand?: boolean; rainNearby?: boolean; status?: HeaderDeliveryStatus }) {
   const [introComplete, setIntroComplete] = useState(introPlayed);
   const [estimateWidth, setEstimateWidth] = useState(0);
   const measureEstimate = useCallback((width: number) => setEstimateWidth(Math.ceil(width)), []);
   const finishIntro = useCallback(() => setIntroComplete(true), []);
+  if (status === 'on_hold' || status === 'unavailable') return <Text accessibilityRole="header" style={[styles.text, { color: light ? '#000000' : '#FFFFFF' }]}>{status === 'on_hold' ? 'Delivery on hold' : 'Currently unavailable'}</Text>;
   return <View style={styles.heading}>
     <View style={[styles.estimate, { width: introComplete && estimateWidth > 0 ? estimateWidth : '100%' }]}><DeliveryEstimate minutes={minutes} light={light} onIntroComplete={finishIntro} onFullWidth={measureEstimate} /></View>
     {highDemand && introComplete && estimateWidth > 0 && <HighDemandBadge />}
+    {rainNearby && introComplete && estimateWidth > 0 && <RainNearbyBadge />}
   </View>;
 }
 
@@ -99,9 +102,8 @@ function DeliveryEstimate({ minutes, light, onIntroComplete, onFullWidth }: { mi
 }
 
 const styles = StyleSheet.create({
-  // One line always: the ETA keeps its size and the badge sits beside it,
-  // shrinking (label truncates) on narrow phones instead of wrapping below.
-  heading: { flexDirection: 'row', alignItems: 'center', columnGap: 6, width: '100%' },
+  // Keep ETA typography intact; badges wrap when both cannot fit on a small phone.
+  heading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 4, width: '100%' },
   estimate: { flexShrink: 0, maxWidth: '100%' },
   container: { width: '100%', minHeight: 28 },
   text: { fontFamily: GILROY.extrabold, fontSize: 22, lineHeight: 28, includeFontPadding: false },

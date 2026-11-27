@@ -14,7 +14,8 @@ import { useHomeReady } from './loading/useHomeReady';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeCategoryTabs } from './components/HomeCategoryTabs';
 import { HomeCategoryContent } from './category-page/HomeCategoryContent';
-import { ALL_TAB } from './data/categoryTabs';
+import { ALL_TAB, PREORDER_TAB } from './data/categoryTabs';
+import { PreorderTabContent } from './preorders/PreorderTabContent';
 import type { RemoteHomeTab } from './data/useHomeTabs';
 import { usePublishHeaderScroll } from './top-header/topHeaderScroll';
 import { UnavailableZoneScreen } from './unavailable-zone/UnavailableZoneScreen';
@@ -23,6 +24,9 @@ import { ABOVE_FOLD_ITEM_COUNT, useAllTabSectionItems, type HomeSectionItem } fr
 import { useHomeTabs } from './data/useHomeTabs';
 import { useNearestStore } from './useNearestStore';
 import { useWarmHomeBrowse } from './loading/useWarmHomeBrowse';
+import { isUdupiTab, useHomeModeStore } from './mode-switch/useHomeModeStore';
+import { RegionalTab } from './regional/RegionalTab';
+import { colorForTab, HOME_BLUE, PREORDER_COLOR, UDUPI_COLOR, useHomeHeaderThemeStore } from './header-theme/homeHeaderTheme';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -32,20 +36,30 @@ const renderSection = ({ item }: { item: HomeSectionItem }) => item.node;
 
 // Its own component so the section feeds only subscribe once Home is actually
 // serviceable (HomeScreen returns early before this otherwise), as before.
-function HomeSectionList({ header, onSelectCategory, onScroll, activeTab }: {
+function HomeSectionList({ header, onSelectCategory, onScroll, activeTab, preorder, udupi, udupiTab }: {
   header: ReactElement;
   onSelectCategory: (id: string) => void;
   onScroll: ScrollHandlerProcessed;
   // A header category tab shows that category's content in place of All.
   activeTab?: RemoteHomeTab;
+  // Udupi mode (header switch): the admin's regional content only.
+  // The built-in Pre-order tab is picked.
+  preorder: boolean;
+  udupi: boolean;
+  // The admin's "Udupi" Home tab; without one, the regional content.
+  udupiTab?: RemoteHomeTab;
 }) {
   const allItems = useAllTabSectionItems(onSelectCategory);
-  const sectionItems = activeTab
+  const sectionItems = udupi
+    ? [{ key: 'udupi', node: udupiTab ? <HomeCategoryContent key={udupiTab.id} tab={udupiTab} /> : <RegionalTab /> }]
+    : preorder
+    ? [{ key: 'preorder', node: <PreorderTabContent /> }]
+    : activeTab
     ? [{ key: activeTab.id, node: <HomeCategoryContent key={activeTab.id} tab={activeTab} /> }]
     : allItems;
   const listRef = useRef<Animated.FlatList<HomeSectionItem>>(null);
   // A new tab starts from its top, under the expanded header.
-  useEffect(() => { listRef.current?.scrollToOffset({ offset: 0, animated: false }); }, [activeTab?.id]);
+  useEffect(() => { listRef.current?.scrollToOffset({ offset: 0, animated: false }); }, [activeTab?.id, preorder, udupi]);
   return (
     // Virtualized: each Home section is one list item, so only those near the
     // viewport stay mounted (windowSize 5 = two screens either side) instead
@@ -89,8 +103,10 @@ export function HomeScreen({ navigation }: Props) {
   const isFocused = useIsFocused();
   const { data: realTabs = [] } = useHomeTabs();
   const [activeTabId, setActiveTabId] = useState(ALL_TAB.id);
+  const udupi = useHomeModeStore((state) => state.mode === 'udupi');
   // A tab admin removes falls back to All.
   const activeTab = realTabs.find((tab) => tab.id === activeTabId);
+  const preorder = activeTabId === PREORDER_TAB.id;
   const openingCategory = useRef(false);
   useFocusEffect(useCallback(() => { openingCategory.current = false; }, []));
   const openCategory = useCallback((tabId: string) => {
@@ -110,6 +126,13 @@ export function HomeScreen({ navigation }: Props) {
   const homeReady = useHomeReady(isServiceable && !!storeId);
 
   const { scrollY, scrollHandler } = useHomeBrowseScroll();
+  // Header colour follows what is shown: Udupi, the picked tab, or All.
+  const headerColor = udupi ? UDUPI_COLOR : preorder ? PREORDER_COLOR : activeTab ? colorForTab(activeTab.name) : HOME_BLUE;
+  const setHeaderColor = useHomeHeaderThemeStore((state) => state.setColor);
+  useEffect(() => {
+    setHeaderColor(headerColor);
+    return () => setHeaderColor(null);
+  }, [headerColor, setHeaderColor]);
   // The shared top header (HomeNavigationShell) folds with this scroll.
   usePublishHeaderScroll(scrollY);
 
@@ -139,11 +162,15 @@ export function HomeScreen({ navigation }: Props) {
         onSelectCategory={openCategory}
         onScroll={scrollHandler}
         activeTab={activeTab}
+        preorder={preorder}
+        udupi={udupi}
+        udupiTab={realTabs.find(isUdupiTab)}
         header={
           // Blue header + search live in the shared shell header above;
-          // only the category row is Home's own, pinned on scroll.
+          // only the category row is Home's own, pinned on scroll. Udupi
+          // mode has no categories to switch between.
           <View className="bg-white">
-            <HomeCategoryTabs activeId={activeTab?.id ?? ALL_TAB.id} onSelect={setActiveTabId} />
+            {!udupi && <HomeCategoryTabs activeId={preorder ? PREORDER_TAB.id : activeTab?.id ?? ALL_TAB.id} onSelect={setActiveTabId} scrollY={scrollY} />}
           </View>
         }
       />

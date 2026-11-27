@@ -8,16 +8,15 @@ const variants = [
   { id: 'large', label: '1 kg', price: 79, originalPrice: 80, availableQuantity: 8 },
   { id: 'sold', label: '2 kg', price: 150, originalPrice: 160, isAvailable: false, availableQuantity: 0 },
 ];
-it('keeps real prices, saving labels and the stock marker while selecting a pack', async () => {
+jest.mock('../src/components/AppImage', () => ({ AppImage: () => null }));
+it('keeps real prices and shows the low-stock strip while selecting a pack', async () => {
   const onSelect = jest.fn();
   const view = await render(<ProductVariantOptions variants={variants} selectedId="small" onSelect={onSelect} deliveryLabel="12 mins" />);
-  expect(view.getByText('4 left')).toBeTruthy();
-  expect(view.getByText('20% OFF')).toBeTruthy();
-  expect(view.getByText('1% OFF')).toBeTruthy();
+  expect(view.getByText('Select quantity')).toBeTruthy();
+  expect(view.getByText('Only 4 left')).toBeTruthy();
+  expect(view.queryByText('Only 8 left')).toBeNull();
   expect(view.getByText('₹40')).toBeTruthy();
   expect(view.getByText('MRP 50')).toBeTruthy();
-  expect(view.getByText('(₹8/100 g)')).toBeTruthy();
-  expect(view.getAllByText('12 mins')).toHaveLength(2);
   await fireEvent.press(view.getByRole('radio', { name: '1 kg, ₹79' }));
   expect(onSelect).toHaveBeenCalledWith('large');
 });

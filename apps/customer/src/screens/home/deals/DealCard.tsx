@@ -153,7 +153,7 @@ export function DealCard({ product }: { product: Product }) {
         </View>
       </Pressable>
 
-      <FlavourPickerSheet product={product} visible={isPickerOpen} onClose={() => setIsPickerOpen(false)} isAvailable={availability.isAvailable} availabilityLabel={availability.label} />
+      <FlavourPickerSheet product={product} visible={isPickerOpen} onClose={() => setIsPickerOpen(false)} isAvailable={availability.isAvailable} availabilityLabel={availability.label} onOpenDetails={() => setIsDetailOpen(true)} />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>
   );

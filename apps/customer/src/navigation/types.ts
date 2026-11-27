@@ -64,6 +64,7 @@ export type AppStackParamList = {
   Store: undefined;
   Purchase: undefined;
   Reorder: undefined;
+  PreOrder: undefined;
   Profile: undefined;
   AllBrands: undefined;
   BrandProducts: { brand: import('../api/brands').PopularBrand };

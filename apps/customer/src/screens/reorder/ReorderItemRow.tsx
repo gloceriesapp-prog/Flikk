@@ -82,7 +82,7 @@ export function ReorderItemRow({ product }: { product: Product }) {
         )}
       </View>
       <FlavourPickerSheet product={product} visible={pickerOpen} onClose={() => setPickerOpen(false)}
-        isAvailable={availability.isAvailable} availabilityLabel={availability.label} />
+        isAvailable={availability.isAvailable} availabilityLabel={availability.label}  onOpenDetails={() => setDetailOpen(true)} />
       <ProductDetailSheet product={product} visible={detailOpen} onClose={() => setDetailOpen(false)} />
     </>
   );

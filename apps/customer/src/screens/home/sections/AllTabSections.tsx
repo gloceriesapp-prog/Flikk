@@ -33,7 +33,6 @@ import { SeasonalSection } from '../seasonal/SeasonalSection';
 import { HomeCategoryButton, HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { HomeSectionBanner } from '../components/HomeSectionBanner';
 import { PreorderSection } from '../preorders/PreorderSection';
-import { BuyAgainSection } from '../buy-again/BuyAgainSection';
 import { NammaBrandsSection } from '../namma-brands/NammaBrandsSection';
 import { homePreviewLimit, homeProductLayout, supportsHomeBanner, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
@@ -133,7 +132,7 @@ const EMPTY_PICKS: Record<string, Product[]> = {};
 // Items rendered on first paint (HomeScreen's initialNumToRender): the welcome
 // banner plus 6 sections reliably overflow a phone viewport, so the rest mount
 // off-screen as the list fills in — no layout jump, no blank flash.
-export const ABOVE_FOLD_ITEM_COUNT = 8;
+export const ABOVE_FOLD_ITEM_COUNT = 7;
 
 // One section, memoized: React.memo skips the whole subtree (and never calls
 // its registry renderer) when its props are referentially equal, so a single
@@ -289,7 +288,6 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
         </View>
       ),
     });
-    items.push({ key: 'buy-again', node: <BuyAgainSection /> });
     for (const cfg of sections) {
       const usesPicks = cfg.custom || !!cfg.sourceCategoryId;
       const render = usesPicks ? renderPickedSection : SECTION_REGISTRY[cfg.key];

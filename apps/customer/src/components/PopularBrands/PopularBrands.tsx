@@ -1,9 +1,9 @@
 import { ScreenSkeleton } from '../loading/ScreenSkeleton';
 import { useQuery } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { fetchPopularBrands, type PopularBrand } from '../../api/brands';
-import { AppImage } from '../AppImage';
+import { BrandTile } from './BrandTile';
 
 interface Props {
   onSelect: (brand: PopularBrand) => void;
@@ -11,10 +11,11 @@ interface Props {
   previewLimit?: 5 | 10;
   titleSpacing?: number;
   alwaysShowSeeAll?: boolean;
+  // Kept for callers; every tile now uses the same white face.
   cardBackground?: 'gray' | 'white';
 }
 
-export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, titleSpacing = 8, alwaysShowSeeAll = false, cardBackground = 'gray' }: Props) {
+export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, titleSpacing = 8, alwaysShowSeeAll = false }: Props) {
   const isFocused = useIsFocused();
   const query = useQuery({
     queryKey: ['popular-brands', 'preview'],
@@ -27,6 +28,9 @@ export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, titleSpac
   });
   const brands = query.data ?? [];
   const visibleBrands = brands.slice(0, previewLimit);
+  // About four tiles across with a peek of the fifth, so the row reads as scrollable.
+  const { width } = useWindowDimensions();
+  const tileSize = Math.round((width - 32 - GAP * 3) / 4.25);
 
   if (!brands.length && !query.isPending && !query.isError) return null;
 
@@ -44,24 +48,11 @@ export function PopularBrands({ onSelect, onSeeAll, previewLimit = 10, titleSpac
         onPress={() => void query.refetch()} className="mx-5 mb-3 min-h-11 justify-center rounded-xl bg-gray-100 px-3 py-2">
         <Text className="text-sm text-ink/70">Couldn’t refresh brands. Tap to retry.</Text>
       </Pressable>}
-      <View className="flex-row flex-wrap gap-y-2 px-4">
-        {visibleBrands.map(brand => (
-          <View key={brand.id} style={styles.tile}>
-            <Pressable accessibilityRole="button" accessibilityLabel={brand.name}
-              onPress={() => onSelect(brand)}
-              style={[styles.surface, cardBackground === 'white' && styles.whiteSurface]} className="aspect-square overflow-hidden rounded-2xl active:opacity-75">
-              <AppImage source={{ uri: brand.imageUrl }} style={styles.image} contentFit="contain" />
-            </Pressable>
-          </View>
-        ))}
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: GAP, paddingBottom: 4 }}>
+        {visibleBrands.map(brand => <BrandTile key={brand.id} brand={brand} size={tileSize} onPress={() => onSelect(brand)} />)}
+      </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  tile: { width: '20%', paddingHorizontal: 4 },
-  surface: { backgroundColor: '#F3F4F6', shadowOpacity: 0, elevation: 0 },
-  whiteSurface: { backgroundColor: '#FFFFFF' },
-  image: { position: 'absolute', top: 6, right: 6, bottom: 6, left: 6, shadowOpacity: 0, elevation: 0 },
-});
+const GAP = 12;

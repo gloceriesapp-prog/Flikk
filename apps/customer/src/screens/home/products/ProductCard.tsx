@@ -107,7 +107,7 @@ const ProductCardShell = memo(function ProductCardShell({
         isAvailable={isAvailable && matchedOption?.isAvailable !== false}
         availabilityLabel={matchedOption?.isAvailable === false ? 'Out of stock' : availabilityLabel}
       />
-      <FlavourPickerSheet product={product} visible={isFlavourOpen} onClose={() => setIsFlavourOpen(false)} isAvailable={isAvailable} availabilityLabel={availabilityLabel} />
+      <FlavourPickerSheet product={product} visible={isFlavourOpen} onClose={() => setIsFlavourOpen(false)} isAvailable={isAvailable} availabilityLabel={availabilityLabel} onOpenDetails={() => setIsDetailOpen(true)} />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>
   );

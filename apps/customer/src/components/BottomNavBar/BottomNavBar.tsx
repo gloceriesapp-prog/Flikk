@@ -36,6 +36,7 @@ import { canShowShoppingCart } from '../../navigation/home/cartBarVisibility';
 // (Purchase/Categories/Store) fall back to a local always-0 value, so the
 // pill just never hides there — no behavior change for them.
 
+import { useState } from 'react';
 import { Platform, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,16 +48,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CartBar } from '../CartBar/CartBar';
 import { BOTTOM_NAV_HORIZONTAL_INSET } from './layout';
 import { BottomNavBarItem } from './BottomNavBarItem';
+import { PreOrderNavButton } from './PreOrderNavButton';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
-// Equal left/right inset that centers the pill while preserving its exact
-// former width — the old layout's total horizontal inset was
-// 20 (left) + (20 + old side-button size + gap) (right); splitting that
-// same total evenly across both sides keeps the pill exactly as wide as it
-// already was, just centered on screen instead of shifted left to leave
-// room for the removed side circle button.
-const PILL_INSET = BOTTOM_NAV_HORIZONTAL_INSET;
 // The pill's own real height (icon + label + vertical padding) — used to
 // vertically CENTER the circle button against it, not bottom-align the
 // two (see that Pressable's own comment). Same 73 the CartBar row's own
@@ -66,6 +61,11 @@ const PILL_HEIGHT = 73;
 // (was +4) per an explicit ask to sit the whole nav a little closer to
 // the screen edge.
 const PILL_BOTTOM_OFFSET = -10;
+// iOS: pill + round Pre-order button share the row, 16 pt from each edge.
+const ROW_INSET = 16;
+const SIDE_GAP = 8;
+// Pre-order tab runs to the right screen edge (no right inset).
+const PRE_ORDER_WIDTH = 108;
 
 // isLiquidGlassAvailable() alone only confirms the GlassView *component*
 // exists — expo-glass-effect's own isGlassEffectAPIAvailable() doc note
@@ -116,6 +116,10 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute();
   const activeId = ROUTE_TO_TAB_ID[route.name] ?? BOTTOM_NAV_TABS[0]?.id ?? 'home';
+  // The pill's measured height sizes the round Pre-order button to match.
+  const [pillHeight, setPillHeight] = useState(PILL_HEIGHT);
+  const measureBar = (height: number) => { setPillHeight(height); onBarHeightChange?.(height); };
+  const openPreOrder = () => navigation.navigate('PreOrder');
 
   // Always-visible fallback for screens that don't drive this (no scroll
   // tracking there yet) — keeping the hook order identical regardless of
@@ -187,25 +191,21 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
             colors={['rgba(16,28,16,0)', 'rgba(16,28,16,0.07)']}
             style={{ position: 'absolute', left: 0, right: 0, top: -12, height: 12 }}
           />
-          <View onLayout={event => onBarHeightChange?.(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-2 py-2.5">
+          <View onLayout={event => measureBar(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-2 py-2.5">
             {BOTTOM_NAV_TABS.map((tab) => (
               <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
             ))}
+            <View style={{ marginRight: -8 }}><PreOrderNavButton width={104} height={44} onPress={openPreOrder} /></View>
           </View>
         </View>
-      ) : (
-        // Equal left/right (PILL_INSET, both sides) centers the pill on
-        // screen — per an explicit ask, same overall width as before, just
-        // no longer shifted left to leave room for the removed circle
-        // button. shadowOffset {0,0} + a real shadowRadius (not a
-        // directional offset) is what gives an even halo on every side
-        // rather than just below it — per an explicit ask for a shadow
-        // "for all the side".
+      ) : (<>
+        {/* Pill on the left, round Pre-order button on the right; both
+            get an even shadow halo on every side. */}
         <View
           style={{
             position: 'absolute',
-            left: PILL_INSET,
-            right: PILL_INSET,
+            left: ROW_INSET,
+            right: PRE_ORDER_WIDTH + SIDE_GAP,
             bottom: insets.bottom + PILL_BOTTOM_OFFSET,
             shadowColor: '#000000',
             shadowOffset: { width: 0, height: 0 },
@@ -232,7 +232,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
               isInteractive
               style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.08)' }}
             >
-              <View onLayout={event => onBarHeightChange?.(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-1 py-1.5">
+              <View onLayout={event => measureBar(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-1 py-1.5">
                 {BOTTOM_NAV_TABS.map((tab) => (
                   <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
                 ))}
@@ -256,7 +256,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
                   stay light too, same reasoning as the GlassView branch's own
                   colorScheme="light" change. */}
               <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.3)' }} />
-              <View onLayout={event => onBarHeightChange?.(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-2 py-2.5">
+              <View onLayout={event => measureBar(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-2 py-2.5">
                 {BOTTOM_NAV_TABS.map((tab) => (
                   <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
                 ))}
@@ -264,7 +264,11 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
             </BlurView>
           )}
         </View>
-      )}
+        <View style={{ position: 'absolute', right: 0, bottom: insets.bottom + PILL_BOTTOM_OFFSET, shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.18, shadowRadius: 16 }}>
+          <PreOrderNavButton width={PRE_ORDER_WIDTH} height={pillHeight} onPress={openPreOrder} />
+        </View>
+      </>)}
 
       </Animated.View>
 

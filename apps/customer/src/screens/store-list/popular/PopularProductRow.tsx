@@ -145,7 +145,7 @@ export function PopularProductRow({ product, allowAdd = true, onPress }: Props) 
           </View>
         </View>
       </View>
-      <FlavourPickerSheet product={product} visible={isPickerOpen} onClose={() => setIsPickerOpen(false)} isAvailable={product.isAvailable !== false} />
+      <FlavourPickerSheet product={product} visible={isPickerOpen} onClose={() => setIsPickerOpen(false)} isAvailable={product.isAvailable !== false} onOpenDetails={() => setIsDetailOpen(true)} />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>
   );

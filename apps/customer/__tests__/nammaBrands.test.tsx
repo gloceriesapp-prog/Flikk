@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NammaBrandsSection, twoLineTitle } from '../src/screens/home/namma-brands/NammaBrandsSection';
+import { NammaBrandsSection, pillParts, twoLineTitle } from '../src/screens/home/namma-brands/NammaBrandsSection';
 import { fetchNammaBrands, type NammaBrandCard } from '../src/api/brands';
 
 const mockNavigate = jest.fn();
@@ -25,7 +25,7 @@ afterEach(() => client.clear());
 
 it('hides the whole block with fewer than 3 cards', async () => {
   jest.mocked(fetchNammaBrands).mockResolvedValue({ enabled: true, headerImageUrl: null, cards: [card(1), card(2)] });
-  const view = await render(<NammaBrandsSection enabled />, { wrapper: Wrapper });
+  const view = await render(<NammaBrandsSection enabled demo={false} />, { wrapper: Wrapper });
   await waitFor(() => expect(fetchNammaBrands).toHaveBeenCalled());
   await waitFor(() => expect(view.toJSON()).toBeNull());
 });
@@ -38,7 +38,7 @@ it('renders nothing (not even a skeleton) when switched off', async () => {
 
 it('shows the brand cards, and a tap opens that brand', async () => {
   jest.mocked(fetchNammaBrands).mockResolvedValue({ enabled: true, headerImageUrl: null, cards: [card(1), card(2), card(3)] });
-  await render(<NammaBrandsSection enabled />, { wrapper: Wrapper });
+  await render(<NammaBrandsSection enabled demo={false} />, { wrapper: Wrapper });
   await screen.findByText('Brand\n2');
   await fireEvent.press(screen.getByTestId('namma-card-b2'));
   expect(mockNavigate).toHaveBeenCalledWith('BrandProducts', { brand: card(2).brand });
@@ -49,4 +49,18 @@ it('puts every title on two lines, split near the middle', () => {
   expect(twoLineTitle('Karavali Coconut Oil')).toBe('Karavali\nCoconut Oil');
   expect(twoLineTitle('  Udupi   Snacks ')).toBe('Udupi\nSnacks');
   expect(twoLineTitle('Nandini')).toBe('Nandini');
+});
+
+it('splits the offer pill into a lead and a bold value', () => {
+  expect(pillParts('Upto 20% Off')).toEqual({ lead: 'Up to', value: '20% OFF' });
+  expect(pillParts('Starting from ₹35')).toEqual({ lead: 'Starting at', value: '₹35' });
+  expect(pillParts('New')).toEqual({ lead: '', value: 'New' });
+  expect(pillParts('  ')).toBeNull();
+});
+
+it('shows the 5-card dummy bento in demo mode without fetching', async () => {
+  await render(<NammaBrandsSection enabled demo />, { wrapper: Wrapper });
+  expect(screen.getByTestId('namma-demo-beauty')).toBeTruthy();
+  expect(screen.getByText('₹180')).toBeTruthy();
+  expect(fetchNammaBrands).not.toHaveBeenCalled();
 });

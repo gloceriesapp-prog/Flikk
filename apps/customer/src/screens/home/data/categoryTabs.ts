@@ -4,6 +4,7 @@
 
 import {
   Bread01Icon,
+  Calendar03Icon,
   CarrotIcon,
   FishIcon,
   KitchenUtensilsIcon,
@@ -21,6 +22,8 @@ export interface Category {
 }
 
 export const ALL_TAB: Category = { id: 'all', label: 'All', icon: ShoppingBasket01Icon };
+// Always last in Home's header row: book-ahead products (preorders/).
+export const PREORDER_TAB: Category = { id: 'preorder', label: 'Pre-order', icon: Calendar03Icon };
 
 // Tab labels are the admin's own home_tabs.name (Home Categories screen) —
 // no hardcoded renames here, so what admin types is what customers see.
