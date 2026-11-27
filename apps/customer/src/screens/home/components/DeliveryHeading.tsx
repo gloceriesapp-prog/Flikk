@@ -16,7 +16,7 @@ export function DeliveryHeading({ minutes, light, highDemand = false, rainNearby
   const [estimateWidth, setEstimateWidth] = useState(0);
   const measureEstimate = useCallback((width: number) => setEstimateWidth(Math.ceil(width)), []);
   const finishIntro = useCallback(() => setIntroComplete(true), []);
-  if (status === 'on_hold' || status === 'unavailable') return <Text accessibilityRole="header" style={[status === 'on_hold' ? styles.text : styles.status, { color: light ? '#000000' : '#FFFFFF' }]}>{status === 'on_hold' ? 'Delivery on hold' : 'Currently unavailable'}</Text>;
+  if (status === 'on_hold' || status === 'unavailable') return <Text accessibilityRole="header" style={[styles.text, { color: light ? '#000000' : '#FFFFFF' }]}>{status === 'on_hold' ? 'Delivery on hold' : 'Currently unavailable'}</Text>;
   return <View style={styles.heading}>
     <View style={[styles.estimate, { width: introComplete && estimateWidth > 0 ? estimateWidth : '100%' }]}><DeliveryEstimate minutes={minutes} light={light} onIntroComplete={finishIntro} onFullWidth={measureEstimate} /></View>
     {highDemand && introComplete && estimateWidth > 0 && <HighDemandBadge />}
@@ -104,7 +104,6 @@ function DeliveryEstimate({ minutes, light, onIntroComplete, onFullWidth }: { mi
 const styles = StyleSheet.create({
   // Keep ETA typography intact; badges wrap when both cannot fit on a small phone.
   heading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 4, width: '100%' },
-  status: { fontFamily: GILROY.extrabold, fontSize: 18, lineHeight: 25, includeFontPadding: false },
   estimate: { flexShrink: 0, maxWidth: '100%' },
   container: { width: '100%', minHeight: 28 },
   text: { fontFamily: GILROY.extrabold, fontSize: 22, lineHeight: 28, includeFontPadding: false },
