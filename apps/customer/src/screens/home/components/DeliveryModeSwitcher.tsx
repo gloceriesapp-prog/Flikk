@@ -20,6 +20,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
+import { useCopy } from '../../../api/appConfig';
+import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
 import { useHomeReveal } from './HomeReveal';
 
 const styles = StyleSheet.create({
@@ -41,6 +43,9 @@ export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { l
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
   const reveal = useHomeReveal();
+  const highDemand = useCopy('home.highDemand.enabled') === 'true';
+  const rain = useCopy('home.rain.enabled') === 'true';
+  const closed = useIsOutsideOperatingHours();
   const iconColor = light ? colors.ink : '#FFFFFFCC';
 
   return (
@@ -77,14 +82,14 @@ export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { l
       >
         <AppIcon icon={UserIcon} size={22} color={iconColor} strokeWidth={1.8} />
       </Pressable>
-      <Pressable
+      {!closed && (highDemand || rain) && <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Cart summary"
+        accessibilityLabel="Delivery update"
         className="h-11 w-11 items-center justify-center active:opacity-70"
         onPress={reveal}
       >
         <AppIcon icon={SparklesIcon} size={19} color={iconColor} strokeWidth={1.8} />
-      </Pressable>
+      </Pressable>}
     </GlassView>
   );
 }

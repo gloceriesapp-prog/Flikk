@@ -31,14 +31,15 @@ it('only shows confirmed conditions, combines them, and hides each update after 
   await view.rerender(<HomeHeaderNotice isClosed />);
   expect(view.queryByText(/Rain nearby/)).toBeNull();
 });
-it('reopens the text summary on tap and restarts the four-second timeout', async () => {
+it('reopens the current delivery notice on tap and restarts the four-second timeout', async () => {
+  mockCopy['home.highDemand.enabled'] = 'true';
   const view = await render(<HomeRevealSurface><Trigger /><HomeHeaderNotice /></HomeRevealSurface>);
   await fireEvent.press(view.getByText('Reveal'));
-  expect(view.getByText('Your cart is empty. Add your favourites to get started.')).toBeTruthy();
+  expect(view.getByText('High demand nearby. Delivery may take a little longer.')).toBeTruthy();
   await act(() => jest.advanceTimersByTime(3000));
   await fireEvent.press(view.getByText('Reveal'));
   await act(() => jest.advanceTimersByTime(3000));
-  expect(view.getByText(/Your cart is empty/)).toBeTruthy();
+  expect(view.getByText(/High demand nearby/)).toBeTruthy();
   await act(() => jest.advanceTimersByTime(1000));
-  expect(view.queryByText(/Your cart is empty/)).toBeNull();
+  expect(view.queryByText(/High demand nearby/)).toBeNull();
 });

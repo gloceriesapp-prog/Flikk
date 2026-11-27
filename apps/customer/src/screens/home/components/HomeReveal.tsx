@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { useCopy } from '../../../api/appConfig';
-import { selectCartTotalQuantity, useCartStore } from '../../../store/useCartStore';
 
 const HOLD_MS = 4000;
 const HomeRevealContext = createContext({ reveal: () => {}, visible: false });
@@ -24,10 +23,7 @@ export function HomeHeaderNotice({ isClosed = false }: { isClosed?: boolean }) {
     const timeout = setTimeout(() => setDismissedCondition(condition), HOLD_MS);
     return () => clearTimeout(timeout);
   }, [condition]);
-  const count = useCartStore(selectCartTotalQuantity);
-  const message = visible
-    ? count > 0 ? `${count} ${count === 1 ? 'item' : 'items'} in your cart. Ready when you are.` : 'Your cart is empty. Add your favourites to get started.'
-    : condition !== dismissedCondition ? condition : '';
+  const message = visible || condition !== dismissedCondition ? condition : '';
   if (!message) return null;
 
   return (
