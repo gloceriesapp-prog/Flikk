@@ -1,7 +1,7 @@
 import { supabase } from '../db/supabase.js';
 import { logger } from '../lib/logger.js';
 import { RazorpayError, refundRequestKey } from './razorpayClient.js';
-import { createOrAdoptRefund, isDefinitiveRejection, LEGACY_REFUND_NOTE, listRefunds, refundSource } from './refundPayment.js';
+import { createOrAdoptRefund, isDefinitiveRejection, LEGACY_REFUND_NOTE, listRefunds, providerRefundKey, refundSource } from './refundPayment.js';
 
 export interface OrderRefundJob {
   id: string;
@@ -30,10 +30,10 @@ export async function processOrderRefund(job: OrderRefundJob): Promise<void> {
       return;
     }
     const refundId = refundRequestKey(job.request_key);
-    const existing = await listRefunds(source.paymentId);
+    const existing = await listRefunds(source);
     const completed = existing.filter(r => r.status === 'completed').reduce((sum, r) => sum + r.amount, 0);
     const reserved = existing.filter(r => r.status !== 'failed').reduce((sum, r) => sum + r.amount, 0);
-    let own = existing.find(r => r.requestKey === refundId);
+    let own = existing.find(r => r.requestKey === providerRefundKey(source, refundId));
     if (completed >= Number(job.target_paise)) {
       await save(job, { status: 'completed', provider_refund_id: job.provider_refund_id ?? own?.id ?? existing.find(r => r.status === 'completed')?.id, release: true });
       return;
@@ -49,7 +49,7 @@ export async function processOrderRefund(job: OrderRefundJob): Promise<void> {
       // Freeze before provider call; lost responses retry the same id/body.
       if (!await save(job, { request_paise: amount }))
         return;
-      own = await createOrAdoptRefund(source.paymentId, refundId, amount, 'Gloceries order refund');
+      own = await createOrAdoptRefund(source, refundId, amount, 'Gloceries order refund');
     }
     const finished = own?.status === 'completed' && completed + (existing.some(r => r.id === own!.id) ? 0 : own.amount) >= Number(job.target_paise);
     await save(job, { status: own?.status === 'failed' ? 'failed' : finished ? 'completed' : 'processing', provider_refund_id: own?.id ?? job.provider_refund_id,

@@ -13,11 +13,12 @@ export async function verifyPayment(req: AuthedRequest, res: Response, next: Nex
     if (error) throw error;
     if (!record) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
     if (record.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', 'Not your checkout.');
-    if (record.payment_provider !== 'razorpay') throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'This checkout used an earlier payment system. Contact support.');
+    if (record.payment_provider !== 'razorpay' && record.payment_provider !== 'cashfree') throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'This checkout used an earlier payment system. Contact support.');
     const order = await recoverProviderOrder(target, Number(record.total));
     if (!order) throw new AppError(409, 'PAYMENT_RECONCILING', 'Payment is being confirmed. Please retry shortly.');
     const fields = [req.body.razorpay_order_id, req.body.razorpay_payment_id, req.body.razorpay_signature];
-    if (fields.some(value => value !== undefined)) {
+    // Cashfree returns no client signature: only the server read below counts.
+    if (record.payment_provider === 'razorpay' && fields.some(value => value !== undefined)) {
       if (!fields.every(value => typeof value === 'string') || fields[0] !== order.id || !verifyCheckoutSignature(order.id, fields[1]!, fields[2]!))
         throw new AppError(401, 'INVALID_PAYMENT_SIGNATURE', 'Payment signature verification failed.');
       const paise = await validateCapturedPayment(target.target, fields[1]!, order.id);
