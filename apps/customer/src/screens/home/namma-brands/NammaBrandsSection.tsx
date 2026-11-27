@@ -183,16 +183,16 @@ function HeroCard({ hero, width, height }: { hero: NammaHeroCard; width: number;
   );
 }
 
-// Two-tone pill hanging from the card's top edge: a soft blue lead and a
-// solid brand-blue value. Keeps its height without a pill so titles line up.
+// One blue rounded offer pill, centred on the card's top edge.
 function OfferPill({ pill, height = PILL_HEIGHT }: { pill: string; height?: number }) {
   const parts = pillParts(pill);
   if (!parts) return <View style={{ height }} />;
-  const textStyle = height === PILL_HEIGHT ? undefined : { fontSize: Math.min(10.5, height * 0.525), lineHeight: height };
+  const percentage = parts.lead === 'Up to' ? /^(\d+(?:\.\d+)?%)\s*OFF$/i.exec(parts.value) : null;
+  const label = percentage ? `Save up to ${percentage[1]}` : [parts.lead, parts.value].filter(Boolean).join(' ');
   return (
-    <View className="flex-row items-center overflow-hidden rounded-b-[10px]" style={{ height }}>
-      {parts.lead ? <Text numberOfLines={1} className="h-full bg-[#EAF1FF] pl-2 pr-1.5 text-[10px] font-bold leading-[20px] text-[#155DFC]" style={textStyle}>{parts.lead}</Text> : null}
-      <Text numberOfLines={1} className="h-full bg-[#155DFC] px-2 text-[10.5px] font-black leading-[20px] text-white" style={textStyle}>{parts.value}</Text>
+    <View className="items-center justify-center overflow-hidden rounded-full bg-[#155DFC] px-2" style={{ height, maxWidth: '100%' }}>
+      <Text numberOfLines={1} className="font-extrabold text-white"
+        style={{ fontSize: Math.min(10.5, height * 0.525), lineHeight: height, includeFontPadding: false }}>{label}</Text>
     </View>
   );
 }
