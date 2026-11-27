@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { useCopy } from '../../../api/appConfig';
 
@@ -7,7 +8,7 @@ const HOLD_MS = 4000;
 const HomeRevealContext = createContext({ reveal: () => {}, visible: false });
 export const useHomeReveal = () => useContext(HomeRevealContext).reveal;
 
-/** One text-only notice above the delivery estimate. Real condition flags only. */
+/** Full-width delivery notice above the estimate, driven by real condition flags. */
 export function HomeHeaderNotice({ isClosed = false }: { isClosed?: boolean }) {
   const { visible } = useContext(HomeRevealContext);
   const highDemand = useCopy('home.highDemand.enabled') === 'true';
@@ -28,9 +29,16 @@ export function HomeHeaderNotice({ isClosed = false }: { isClosed?: boolean }) {
 
   return (
     <Animated.View entering={FadeIn.duration(180).reduceMotion(ReduceMotion.System)}
-      exiting={FadeOut.duration(140).reduceMotion(ReduceMotion.System)} style={{ marginHorizontal: 16, marginTop: 6, marginBottom: 4 }}>
-      <View accessibilityLiveRegion="polite" accessibilityRole="text" style={{ borderRadius: 12, backgroundColor: '#EAF2FF', paddingHorizontal: 12, paddingVertical: 10 }}>
-        <Text style={{ fontFamily: 'Gilroy-Medium', fontSize: 13, lineHeight: 18, color: '#234B83' }}>{message}</Text>
+      exiting={FadeOut.duration(140).reduceMotion(ReduceMotion.System)} style={{ width: '100%', marginTop: 6, marginBottom: 4 }}>
+      <View accessibilityLiveRegion="polite" accessibilityRole="text" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#EAF2FF', paddingHorizontal: 16, paddingVertical: 10 }}>
+        <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#D7E5FF', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#155DFC', alignItems: 'center', justifyContent: 'center' }}>
+            <Svg width={21} height={21} viewBox="0 0 24 24" fill="none" accessible={false}>
+              <Path d={rain ? 'M6 15a4 4 0 0 1-.6-7.95A6 6 0 0 1 17 6a4.5 4.5 0 0 1 1 8.9M8 17l-1 3m6-3-1 3m6-3-1 3' : 'M4 17l6-6 4 4 6-9m-6 0h6v6'} stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </View>
+        </View>
+        <Text style={{ flex: 1, fontFamily: 'Gilroy-Medium', fontSize: 13, lineHeight: 18, color: '#234B83' }}>{message}</Text>
       </View>
     </Animated.View>
   );
