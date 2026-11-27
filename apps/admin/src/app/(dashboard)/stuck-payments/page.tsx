@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/format';
-import { RAZORPAY_DASHBOARD_URL } from '@/lib/types';
+import { paymentProviderLabel, providerDashboardUrl } from '@/lib/types';
 
 interface StuckCheckout {
   kind: 'order' | 'trip';
@@ -36,6 +36,7 @@ interface StuckRefund {
 
 interface PaymentIncident {
   id: string;
+  paymentProvider?: string;
   kind: 'order' | 'trip';
   targetId: string;
   providerOrderId: string;
@@ -134,7 +135,7 @@ export default function StuckPaymentsPage() {
         <>
           <div className="rounded-3xl border border-amber-300 bg-card p-5">
             <h2 className="mb-1 text-sm font-semibold text-ink">Payment incidents requiring review ({data.incidents.length})</h2>
-            <p className="mb-4 text-xs text-muted">These captures were kept separate from the order payment. Check the original payment and refund history in Razorpay before resolving; this action records your review and does not send money.</p>
+            <p className="mb-4 text-xs text-muted">These captures were kept separate from the order payment. Check the original payment and refund history in that gateway (Razorpay or Cashfree) before resolving; this action records your review and does not send money.</p>
             {data.incidents.length === 0 ? <p className="text-sm text-muted">No unresolved incidents.</p> : data.incidents.map((incident) => (
               <div key={incident.id} className="flex flex-col gap-3 border-b border-border py-3 last:border-0">
                 <div className="flex flex-wrap justify-between gap-3">
@@ -143,7 +144,7 @@ export default function StuckPaymentsPage() {
                     <p>Payment: {incident.paymentId} · {age(incident.since)}</p>
                     <p>Original payment: {incident.canonicalPaymentId ?? 'not settled'} · {incident.kind} {incident.targetId}</p>
                   </div>
-                  <a href={RAZORPAY_DASHBOARD_URL} target="_blank" rel="noreferrer" className="text-sm font-semibold text-ink underline">Review in Razorpay</a>
+                  <a href={providerDashboardUrl(incident.paymentProvider ?? 'razorpay')!} target="_blank" rel="noreferrer" className="text-sm font-semibold text-ink underline">Review in {paymentProviderLabel(incident.paymentProvider ?? 'razorpay')}</a>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <input aria-label={`Resolution reference for ${incident.paymentId}`} placeholder="Investigation or refund reference" maxLength={64}

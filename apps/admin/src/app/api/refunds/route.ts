@@ -2,7 +2,7 @@
 // anything other than 'none'. Ordered by what needs a human first:
 // manual_required (legacy-provider payment the system can't refund through
 // the original provider), failed, processing, completed. Admin only reads
-// here; the backend refund worker is the only place that calls Razorpay.
+// here; the backend refund worker is the only place that calls the gateway (Razorpay or Cashfree).
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';

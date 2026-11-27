@@ -844,6 +844,10 @@
     {
       "file": "20261128090000_cashfree_gateway.sql",
       "sha256": "2fc9e0745cc4d2f57aaa8ae50144e05b86be613ca387d0805e84062f03b50c01"
+    },
+    {
+      "file": "20261128100000_payment_gateway_admin.sql",
+      "sha256": "4a59c66c076934b4b877d3942ca30936ccce0b53b08feaaefce3058c89013ae6"
     }
   ]
 }

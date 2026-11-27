@@ -25,6 +25,8 @@ export interface Order {
   commissionAmount: number;
   orderNumber: string;
   paymentMethod: string | null;
+  // Gateway that took (or would take) an online payment: razorpay | cashfree.
+  paymentProvider?: string | null;
   refundStatus: string | null;
   // orders.cancel_reason: cancel reason (cancelled) or delivery-failure code (failed).
   cancelReason: string | null;
@@ -629,14 +631,19 @@ export type NewHomeTabTileInput = Omit<HomeTabTile, 'id'>;
 export type NewHomeTabBannerInput = Omit<HomeTabBanner, 'id'>;
 
 // Provider ownership is immutable: historic payments remain with the account
-// that collected them. New checkouts use Razorpay; unknown rows fail closed.
+// that collected them. New checkouts use the admin-selected gateway
+// (Razorpay or Cashfree); unknown rows fail closed.
 export type PaymentProvider = 'razorpay' | 'cashfree' | 'unknown';
 export type RefundStatus = 'none' | 'processing' | 'completed' | 'failed' | 'manual_required';
 
 export const RAZORPAY_DASHBOARD_URL = 'https://dashboard.razorpay.com/app/payments';
+export const CASHFREE_DASHBOARD_URL = 'https://merchant.cashfree.com/merchants/pg/summary/overview';
+export function providerDashboardUrl(provider: unknown): string | null {
+  return provider === 'razorpay' ? RAZORPAY_DASHBOARD_URL : provider === 'cashfree' ? CASHFREE_DASHBOARD_URL : null;
+}
 
 export function paymentProviderLabel(provider: unknown): string {
   if (provider === 'razorpay') return 'Razorpay';
-  if (provider === 'cashfree') return 'Previous provider (Cashfree)';
+  if (provider === 'cashfree') return 'Cashfree';
   return 'Unknown provider — review required';
 }

@@ -36,7 +36,10 @@ export function OrderTransactionsTable({ orders }: { orders: Order[] }) {
                 <td className="py-3 pr-4 font-medium text-ink">{order.id}</td>
                 <td className="py-3 pr-4 text-ink-soft">{order.storeName}</td>
                 <td className="py-3 pr-4 text-ink-soft">{order.placedAt}</td>
-                <td className="py-3 pr-4 tabular-nums text-ink-soft">{formatCurrency(order.amount)}</td>
+                <td className="py-3 pr-4 tabular-nums text-ink-soft">
+                  {formatCurrency(order.amount)}
+                  <p className="text-xs text-muted">{order.paymentMethod === 'cod' ? 'Cash on delivery' : order.paymentProvider === 'cashfree' ? 'Cashfree' : order.paymentProvider === 'razorpay' ? 'Razorpay' : ''}</p>
+                </td>
                 <td className={clsx('py-3 pr-4 font-semibold tabular-nums', earned ? 'text-success' : 'text-ink')}>
                   {formatCurrency(commission)}
                 </td>

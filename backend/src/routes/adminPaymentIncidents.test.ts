@@ -36,6 +36,6 @@ it('reports state conflicts without exposing database details', async () => {
 });
 it('labels original providers and unknown records without relabelling old money', () => {
   expect(paymentProviderLabel('razorpay')).toBe('Razorpay');
-  expect(paymentProviderLabel('cashfree')).toContain('Previous provider');
+  expect(paymentProviderLabel('cashfree')).toBe('Cashfree');
   expect(paymentProviderLabel(null)).toContain('Unknown provider');
 });

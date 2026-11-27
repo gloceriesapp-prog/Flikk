@@ -16,7 +16,7 @@ import { ExternalLink, RotateCcw } from '@/components/icons';
 import clsx from 'clsx';
 import type { RefundOrder } from '@/app/api/refunds/route';
 import type { TripRefundRow } from '@/app/api/refunds/trips/route';
-import { RAZORPAY_DASHBOARD_URL, paymentProviderLabel } from '@/lib/types';
+import { paymentProviderLabel, providerDashboardUrl } from '@/lib/types';
 import { cancelReasonLabel } from '@/lib/orders/cancelReasons';
 import { formatDateTime } from '@/lib/format';
 
@@ -158,12 +158,12 @@ export default function RefundsPage() {
                     <p className="font-semibold capitalize text-ink">
                       {paymentProviderLabel(refund.paymentProvider)}
                     </p>
-                    {refund.providerOrderId && refund.paymentProvider === 'razorpay' ? (
+                    {refund.providerOrderId && providerDashboardUrl(refund.paymentProvider) ? (
                       <a
-                        href={RAZORPAY_DASHBOARD_URL}
+                        href={providerDashboardUrl(refund.paymentProvider)!}
                         target="_blank"
                         rel="noreferrer"
-                        title="Open Razorpay dashboard — search Payments by this order id"
+                        title={`Open the ${paymentProviderLabel(refund.paymentProvider)} dashboard — search by this order id`}
                         className="inline-flex items-center gap-1 font-mono hover:text-ink"
                       >
                         {refund.providerOrderId}
