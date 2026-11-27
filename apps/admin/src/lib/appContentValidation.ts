@@ -41,8 +41,8 @@ export const COPY_MAX_KEYS = 300;
 // Every key the customer app reads, with its shipped default — the single
 // registry in packages/home-content/copyKeys.js (customer useCopy reads the
 // same file). The editor lists all of them; an empty value = app default.
-export const REGISTERED_COPY_KEYS: { key: string; hint: string; defaultValue: string; image: boolean; toggle: boolean }[] =
-  Object.entries(COPY_KEYS).map(([key, info]) => ({ key, hint: info.hint, defaultValue: info.default, image: info.kind === 'image', toggle: info.kind === 'toggle' }));
+export const REGISTERED_COPY_KEYS: { key: string; hint: string; defaultValue: string; image: boolean; toggle: boolean; label?: string; options?: { value: string; label: string }[] }[] =
+  Object.entries(COPY_KEYS).map(([key, info]) => ({ key, hint: info.hint, defaultValue: info.default, image: info.kind === 'image', toggle: info.kind === 'toggle', label: info.label, options: info.options }));
 
 const HTTPS_URL = /^https:\/\/\S+$/;
 const PHONE = /^\+[1-9][0-9]{7,14}$/;
@@ -94,6 +94,8 @@ export function validateAppContentInput(body: unknown) {
     if (value.length > COPY_VALUE_MAX) throw new Error(`Value for "${key}" must be ${COPY_VALUE_MAX} characters or fewer.`);
     if (COPY_KEYS[key]?.kind === 'image' && value.trim() && !HTTPS_URL.test(value.trim())) throw new Error(`"${key}" must be an https:// image link.`);
     if (COPY_KEYS[key]?.kind === 'toggle' && !['', 'true', 'false'].includes(value)) throw new Error(`"${key}" must be true or false.`);
+    const choices = COPY_KEYS[key]?.options;
+    if (choices && value !== '' && !choices.some(choice => choice.value === value)) throw new Error(`"${key}" must be one of: ${choices.map(choice => choice.value).join(', ')}.`);
     copy[key] = COPY_KEYS[key]?.kind === 'image' ? value.trim() : value;
   }
   if (new TextEncoder().encode(JSON.stringify(copy)).length >= 60000) throw new Error('UI copy is too large.');

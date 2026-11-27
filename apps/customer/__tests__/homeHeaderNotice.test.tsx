@@ -43,3 +43,12 @@ it('reopens the current delivery notice on tap and restarts the four-second time
   await act(() => jest.advanceTimersByTime(1000));
   expect(view.queryByText(/High demand nearby/)).toBeNull();
 });
+
+it.each(['on_hold', 'unavailable'])('suppresses condition notices when delivery status is %s', async status => {
+  mockCopy['home.highDemand.enabled'] = 'true';
+  mockCopy['home.rain.enabled'] = 'true';
+  mockCopy['home.delivery.status'] = status;
+  const view = await render(<HomeRevealSurface><Trigger /><HomeHeaderNotice /></HomeRevealSurface>);
+  await fireEvent.press(view.getByText('Reveal'));
+  expect(view.queryByText(/Delivery may|Deliveries may/)).toBeNull();
+});

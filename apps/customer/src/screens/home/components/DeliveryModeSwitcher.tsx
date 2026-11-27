@@ -1,3 +1,4 @@
+import { useHeaderDeliveryStatus } from './headerDeliveryStatus';
 // Right side of the header row, next to LocationSelector — one pill
 // (GlassView, real iOS 26 Liquid Glass via expo-glass-effect, falls back
 // to a plain translucent View on Android/web since the library's own
@@ -46,6 +47,7 @@ export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { l
   const highDemand = useCopy('home.highDemand.enabled') === 'true';
   const rain = useCopy('home.rain.enabled') === 'true';
   const closed = useIsOutsideOperatingHours();
+  const status = useHeaderDeliveryStatus();
   const iconColor = light ? colors.ink : '#FFFFFFCC';
 
   return (
@@ -82,7 +84,7 @@ export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { l
       >
         <AppIcon icon={UserIcon} size={22} color={iconColor} strokeWidth={1.8} />
       </Pressable>
-      {!closed && (highDemand || rain) && <Pressable
+      {!closed && status === 'normal' && (highDemand || rain) && <Pressable
         accessibilityRole="button"
         accessibilityLabel="Delivery update"
         className="h-11 w-11 items-center justify-center active:opacity-70"

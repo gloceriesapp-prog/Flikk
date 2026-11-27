@@ -1,4 +1,5 @@
 import { useCopy } from '../../../api/appConfig';
+import { useHeaderDeliveryStatus } from './headerDeliveryStatus';
 import { DeliveryHeading } from './DeliveryHeading';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 // Reads the saved delivery address from useLocationStore (see
@@ -42,6 +43,8 @@ interface Props {
 }
 
 export function LocationSelector({ onPress, isClosed = false, light = false }: Props) {
+  const status = useHeaderDeliveryStatus();
+  const rainNearby = useCopy('home.rain.enabled') === 'true';
   const highDemand = useCopy('home.highDemand.enabled') === 'true';
   const estimatedMinutes = useDeliveryEstimateMinutes();
   const reopen = useReopenLabel();
@@ -57,7 +60,7 @@ export function LocationSelector({ onPress, isClosed = false, light = false }: P
     <Pressable onPress={onPress} className="w-full">
       {isClosed ? <Text className={`text-[18px] font-extrabold ${primaryText}`}>
         {`Opens ${reopen.time} ${reopen.day}`}
-      </Text> : <DeliveryHeading minutes={estimatedMinutes} light={light} highDemand={highDemand} />}
+      </Text> : <DeliveryHeading minutes={estimatedMinutes} light={light} highDemand={highDemand} rainNearby={rainNearby} status={status} />}
       <View className="flex-row items-center gap-0.5">
         <Text className={`shrink text-lg font-semibold ${primaryText}`} numberOfLines={1}>
           {isClosed ? 'Closed for now' : label}

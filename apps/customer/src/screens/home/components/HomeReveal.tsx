@@ -1,3 +1,4 @@
+import { useHeaderDeliveryStatus } from './headerDeliveryStatus';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -16,7 +17,8 @@ export function HomeHeaderNotice({ isClosed = false }: { isClosed?: boolean }) {
   const demandText = useCopy('home.deliveryNotice.highDemand');
   const rainText = useCopy('home.deliveryNotice.rain');
   const combinedText = useCopy('home.deliveryNotice.rainAndDemand');
-  const condition = isClosed ? '' : rain && highDemand ? combinedText : rain ? rainText : highDemand ? demandText : '';
+  const status = useHeaderDeliveryStatus();
+  const condition = isClosed || status !== 'normal' ? '' : rain && highDemand ? combinedText : rain ? rainText : highDemand ? demandText : '';
   const [dismissedCondition, setDismissedCondition] = useState('');
   useEffect(() => {
     setDismissedCondition('');

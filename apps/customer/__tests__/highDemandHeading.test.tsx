@@ -48,3 +48,24 @@ it('waits for successful intro completion, keeps full minutes, and responds to t
   expect(view.getByLabelText('High demand')).toBeTruthy();
   expect(view.getByLabelText('Delivery in 31 minutes')).toBeTruthy();
 });
+
+it('shows both condition badges without replacing the estimate', async () => {
+  const view = await render(<DeliveryHeading minutes={25} light highDemand rainNearby />);
+  for (const [text, width] of [['Gloceries ', 100], ['in 25 min', 85], ['In 25 minutes', 150]] as const) {
+    await fireEvent(view.getAllByText(text, { includeHiddenElements: true })[0], 'layout', { nativeEvent: { layout: { width } } });
+  }
+  await fireEvent(view.getByTestId('home-delivery-heading'), 'layout', { nativeEvent: { layout: { width: 230 } } });
+  expect(view.getByLabelText('Delivery in 25 minutes')).toBeTruthy();
+  expect(view.getByLabelText('High demand')).toBeTruthy();
+  expect(view.getByLabelText('Rain nearby')).toBeTruthy();
+});
+it.each([['on_hold', 'Delivery on hold'], ['unavailable', 'Currently unavailable']] as const)('replaces the estimate for %s and restores it when cleared', async (status, label) => {
+  const view = await render(<DeliveryHeading minutes={25} light highDemand rainNearby status={status} />);
+  expect(view.getByText(label)).toBeTruthy();
+  expect(view.queryByLabelText('Delivery in 25 minutes')).toBeNull();
+  expect(view.queryByLabelText('High demand')).toBeNull();
+  expect(view.queryByLabelText('Rain nearby')).toBeNull();
+  await view.rerender(<DeliveryHeading minutes={25} light />);
+  expect(view.queryByText(label)).toBeNull();
+  expect(view.getByLabelText('Delivery in 25 minutes')).toBeTruthy();
+});

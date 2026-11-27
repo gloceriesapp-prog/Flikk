@@ -225,10 +225,19 @@ export default function AppContentPage() {
                   {registered?.image && (
                     <ProductImageUpload imageUrl={row.value || undefined} onChange={(url) => updateRow(row.id, { value: url })} bucket="banners" />
                   )}
-                  {registered?.toggle ? (
+                  {registered?.options ? (
+                    <label className="flex flex-1 flex-col gap-2">
+                      <span className="text-sm font-semibold">{registered.label ?? row.key}</span>
+                      <select value={row.value || registered.defaultValue}
+                        aria-label={registered.label ?? `Value for ${row.key}`}
+                        onChange={(e) => updateRow(row.id, { value: e.target.value })} className={INPUT}>
+                        {registered.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </label>
+                  ) : registered?.toggle ? (
                     <label className="flex flex-1 items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
-                      <span className="text-sm font-semibold">High demand indicator</span>
-                      <input type="checkbox" role="switch" aria-label="High demand indicator"
+                      <span className="text-sm font-semibold">{registered.label ?? row.key}</span>
+                      <input type="checkbox" role="switch" aria-label={registered.label ?? row.key}
                         checked={row.value === 'true'}
                         onChange={(e) => updateRow(row.id, { value: String(e.target.checked) })}
                         className="peer sr-only" />
