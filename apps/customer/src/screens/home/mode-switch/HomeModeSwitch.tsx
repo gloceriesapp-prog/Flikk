@@ -40,9 +40,9 @@ function ModeTab({ label, active, onPress, tint }: {
           <AnimatedPath d={path} animatedProps={fillProps} />
         </Svg>}
       </Animated.View>
-      <Animated.View pointerEvents="none" className="absolute inset-0 rounded-[18px] bg-white/15" style={inactiveStyle} />
+      <Animated.View pointerEvents="none" className="absolute left-0 right-0 h-[36px] rounded-[12px] bg-white/15" style={[{ bottom: 6 }, inactiveStyle]} />
       <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" className="absolute inset-0 items-center justify-center">
-        <Animated.Text className="text-[19px] font-bold" style={[{ letterSpacing: -0.4 }, labelStyle]}>{label}</Animated.Text>
+        <Animated.Text className="text-[13px] font-semibold" style={[{ letterSpacing: -0.4 }, labelStyle]}>{label}</Animated.Text>
       </View>
     </Pressable>
   );
