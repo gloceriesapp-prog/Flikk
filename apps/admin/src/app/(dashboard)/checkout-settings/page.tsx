@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from '@/components/ui/Toast';
+import { PaymentGatewayCard } from './PaymentGatewayCard';
 
 const inputClass = 'w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10';
 
@@ -110,7 +111,7 @@ export default function CheckoutSettingsPage() {
               </label>
               <p className="text-xs text-muted">
                 A switched-off method disappears from the customer app and new orders with it are refused. Payments already started still settle and refund normally.
-                Online payment also needs the Razorpay keys on the server; the server can force either method off with COD_DISABLED / ONLINE_PAYMENTS_DISABLED.
+                Online payment also needs the gateway keys on the server; the server can force either method off with COD_DISABLED / ONLINE_PAYMENTS_DISABLED.
               </p>
             </div>
             <h2 className="mb-3 mt-6 text-sm font-semibold text-ink">Minimum order value</h2>
@@ -125,6 +126,8 @@ export default function CheckoutSettingsPage() {
               </button>
             </div>
           </div>
+
+          <PaymentGatewayCard />
 
           <div className="card p-5">
             <h2 className="mb-3 text-sm font-semibold text-ink">Recent changes</h2>

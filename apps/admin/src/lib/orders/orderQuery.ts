@@ -44,7 +44,7 @@ function nextDay(day: string): string {
 }
 
 export const ORDER_LIST_SELECT =
-  'id, order_number, store_id, customer_id, status, total, commission_amount, rider_id, trip_id, payment_method, refund_status, cancel_reason, cancelled_by, placed_at, packed_at, picked_up_at, delivered_at, stores(name, zones(name))';
+  'id, order_number, store_id, customer_id, status, total, commission_amount, rider_id, trip_id, payment_method, payment_provider, refund_status, cancel_reason, cancelled_by, placed_at, packed_at, picked_up_at, delivered_at, stores(name, zones(name))';
 
 // Customers matching a name/phone search, resolved first so the order query
 // can filter on customer_id (orders has no customer name column).
@@ -102,6 +102,7 @@ export interface OrderListRow {
   rider_id: string | null;
   trip_id: string | null;
   payment_method: string | null;
+  payment_provider: string | null;
   refund_status: string | null;
   cancel_reason: string | null;
   cancelled_by: string | null;
@@ -129,6 +130,7 @@ export function mapOrderRow(row: OrderListRow, customers: Map<string, { name: st
     minutesSinceStatusChange: Math.round((now - new Date(statusChangedAt).getTime()) / 60000),
     commissionAmount: Number(row.commission_amount),
     paymentMethod: row.payment_method,
+    paymentProvider: row.payment_provider,
     refundStatus: row.refund_status,
     cancelReason: row.cancel_reason,
     cancelledBy: row.cancelled_by,

@@ -59,7 +59,7 @@ export async function GET(request: Request) {
         .limit(100),
       supabaseAdmin
         .from('checkout_payment_incidents')
-        .select('id,kind,target_id,provider_order_id,payment_id,canonical_payment_id,amount_paise,currency,reason,created_at')
+        .select('id,payment_provider,kind,target_id,provider_order_id,payment_id,canonical_payment_id,amount_paise,currency,reason,created_at')
         .eq('status', 'manual_required')
         .order('created_at', { ascending: true })
         .limit(100),
@@ -144,7 +144,7 @@ export async function GET(request: Request) {
     ].sort((a, b) => a.since.localeCompare(b.since));
 
     return NextResponse.json({ minutes, checkouts, refunds, incidents: (incidentsRes.data ?? []).map((row) => ({
-      id: row.id, kind: row.kind, targetId: row.target_id, providerOrderId: row.provider_order_id,
+      id: row.id, paymentProvider: row.payment_provider, kind: row.kind, targetId: row.target_id, providerOrderId: row.provider_order_id,
       paymentId: row.payment_id, canonicalPaymentId: row.canonical_payment_id,
       amount: Number(row.amount_paise) / 100, currency: row.currency, reason: row.reason, since: row.created_at,
     })) });
