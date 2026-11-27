@@ -15,6 +15,7 @@ import { verifyPayment } from './verifyPayment.js';
 import { requirePaymentsConfigured } from './razorpayClient.js';
 import { getPaymentAvailability, requireOnlinePaymentsOpen } from './availability.js';
 import { handleWebhook } from './webhook.js';
+import { handleCashfreeWebhook } from './cashfreeWebhook.js';
 import { abandonCheckout } from './abandonCheckout.js';
 import { getPaymentPreference, savePaymentPreference, selectPaymentPreference } from './preference.js';
 
@@ -61,3 +62,4 @@ paymentsRouter.post('/upi-intent', requireAuth, requireRole('customer'), require
 // Format check works without PG keys; name lookup needs verification creds.
 paymentsRouter.post('/verify', requireAuth, requireRole('customer'), requirePaymentsConfigured, verifyPayment);
 paymentsRouter.post('/webhook', handleWebhook);
+paymentsRouter.post('/cashfree/webhook', handleCashfreeWebhook);

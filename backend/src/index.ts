@@ -155,10 +155,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// /payments/webhook needs the raw body for signature verification, so it's
+// /payments/webhook and /payments/cashfree/webhook need the raw body for signature verification, so they're
 // mounted before the generic json() parser with its own raw-capture.
 app.use(
-  '/payments/webhook',
+  ['/payments/webhook', '/payments/cashfree/webhook'],
   webhookAdmission, concurrentAdmission(32), uploadBodyDeadline,
   express.json({
     verify: (req, _res, buf) => {

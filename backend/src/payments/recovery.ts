@@ -6,6 +6,8 @@ import { checkoutReceipt, createProviderOrder as createRazorpayOrder, findProvid
 import { settleCheckoutPayment } from './settleCheckoutPayment.js';
 import type { OrderIdBody } from './types.js';
 import { isValidUpiIntentUrl } from './upiIntentUrl.js';
+import { reconcileCashfree, recoverCashfreeOrder } from './cashfreeCheckout.js';
+import type { PaymentProviderName } from './provider.js';
 
 export function paymentTarget(input: OrderIdBody) {
   if (Boolean(input.orderId) === Boolean(input.tripId)) throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'Choose exactly one order or trip.');
@@ -22,9 +24,9 @@ export interface PaymentSession {
   upi_resume_allowed?: boolean;
   upi_resume_verified_at?: string;
 }
-export async function claimPayment(target: Target, customerId: string, mode: 'order') {
+export async function claimPayment(target: Target, customerId: string, mode: 'order', provider: PaymentProviderName = 'razorpay') {
   const { data, error } = await supabase.rpc('claim_checkout_payment', {
-    p_customer_id: customerId, p_kind: target.kind, p_target_id: target.id, p_mode: mode, p_provider: 'razorpay',
+    p_customer_id: customerId, p_kind: target.kind, p_target_id: target.id, p_mode: mode, p_provider: provider,
   });
   if (error?.code === 'P0410') throw new AppError(409, 'PAYMENT_NOT_PAYABLE', 'This checkout is paid, expired or cancelled. Check your order status.');
   if (error?.code === 'P0403') throw new AppError(403, 'FORBIDDEN', 'Not your checkout.');
@@ -52,10 +54,21 @@ async function attachProviderOrder(target: Target, order: RazorpayOrder, total: 
   if (error) throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment records need support review.');
   return order;
 }
-export async function recoverProviderOrder(target: Target, total: number) {
+export async function recoverProviderOrder(target: Target, total: number): Promise<{ id: string; amount: number } | undefined> {
   const { data: session, error } = await supabase.from('checkout_payment_sessions').select('provider_order_id,payment_provider').eq('kind', target.kind).eq('target_id', target.id).maybeSingle();
   if (error) throw error;
   if (!session) return undefined; // Never reinterpret a historic provider's checkout.
+  if (session.payment_provider === 'cashfree') return recoverCashfreeOrder(target, total);
+  return recoverRazorpayOrder(target, total, session);
+}
+async function recoverRazorpayOrder(target: Target, total: number, known?: { provider_order_id: string | null; payment_provider: string }) {
+  let session = known;
+  if (!session) {
+    const { data, error } = await supabase.from('checkout_payment_sessions').select('provider_order_id,payment_provider').eq('kind', target.kind).eq('target_id', target.id).maybeSingle();
+    if (error) throw error;
+    if (!data) return undefined;
+    session = data;
+  }
   if (session.payment_provider !== 'razorpay') throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'This checkout used an earlier payment system. Contact support.');
   const order = session.provider_order_id ? await getProviderOrder(session.provider_order_id) : await findProviderOrder(checkoutReceipt(target.id));
   if (!order) return undefined;
@@ -66,16 +79,21 @@ export async function recoverProviderOrder(target: Target, total: number) {
 export async function ensureProviderOrder(target: Target, customerId: string): Promise<RazorpayOrder> {
   const claim = await claimPayment(target, customerId, 'order');
   if (claim.session.payment_provider !== 'razorpay') throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'This checkout used an earlier payment system. Contact support.');
-  const recovered = await recoverProviderOrder(target, claim.total);
+  return razorpayOrderFor(target, claim.total, claim.claimed);
+}
+// Recover by receipt, else create once while this request holds the first
+// claim. Also the Cashfree fallback path (gateway.ts) after a provider switch.
+export async function razorpayOrderFor(target: Target, total: number, claimed: boolean): Promise<RazorpayOrder> {
+  const recovered = await recoverRazorpayOrder(target, total);
   if (recovered) return recovered;
-  if (!claim.claimed) throw new AppError(409, 'PAYMENT_RECONCILING', 'We are checking your previous payment request. Please retry shortly without starting another checkout.');
+  if (!claimed) throw new AppError(409, 'PAYMENT_RECONCILING', 'We are checking your previous payment request. Please retry shortly without starting another checkout.');
   const { data: leg, error } = await supabase.from('orders').select('reservation_expires_at').eq(target.kind === 'trip' ? 'trip_id' : 'id', target.id).limit(1).maybeSingle();
   if (error) throw error;
   const deadline = Date.parse(leg?.reservation_expires_at ?? '');
   if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new AppError(409, 'PAYMENT_NOT_PAYABLE', 'This checkout has expired.');
   const notes: Record<string,string> = target.kind === 'trip' ? { gloceries_trip_id: target.id } : { gloceries_order_id: target.id };
-  const order = checkProviderOrder(target, await createRazorpayOrder({ receipt: checkoutReceipt(target.id), amountPaise: toPaise(claim.total), notes }), claim.total);
-  return attachProviderOrder(target, order, claim.total);
+  const order = checkProviderOrder(target, await createRazorpayOrder({ receipt: checkoutReceipt(target.id), amountPaise: toPaise(total), notes }), total);
+  return attachProviderOrder(target, order, total);
 }
 export interface ReconciledPayment { state: 'paid' | 'cancelled' | 'pending' | 'unpaid'; canResumeUpiIntent: boolean; }
 // The same provider snapshot determines status and whether reopening the SAME
@@ -83,6 +101,7 @@ export interface ReconciledPayment { state: 'paid' | 'cancelled' | 'pending' | '
 export async function reconcileProviderSnapshot(target: Target, providerOrderId: string, total: number, openIsPending = true): Promise<ReconciledPayment> {
   const { data: session, error } = await supabase.from('checkout_payment_sessions').select('provider_order_id,payment_provider,upi_state,upi_payment_id,upi_link').eq('kind', target.kind).eq('target_id', target.id).maybeSingle();
   if (error) throw error;
+  if (session?.payment_provider === 'cashfree' && session.provider_order_id === providerOrderId) return reconcileCashfree(target, providerOrderId, total, openIsPending);
   if (session?.payment_provider !== 'razorpay' || session.provider_order_id !== providerOrderId)
     throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment could not be verified. Contact support.');
   const order = await getProviderOrder(providerOrderId);

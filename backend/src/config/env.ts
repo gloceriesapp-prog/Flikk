@@ -16,6 +16,17 @@ if (razorpayKeyId && !razorpayKeyId.startsWith(`rzp_${razorpayEnv}_`)) {
   throw new Error('RAZORPAY_KEY_ID must match RAZORPAY_ENV (rzp_test_ or rzp_live_).');
 }
 
+// Cashfree uses different hosts for sandbox and production, and sandbox App
+// IDs start with TEST. Refuse a mismatch so a typo cannot charge live money.
+const cashfreeAppId = process.env.CASHFREE_APP_ID?.trim() || undefined;
+const cashfreeEnv = process.env.CASHFREE_ENV?.trim().toLowerCase() || 'sandbox';
+if (cashfreeEnv !== 'sandbox' && cashfreeEnv !== 'production') {
+  throw new Error('CASHFREE_ENV must be sandbox or production.');
+}
+if (cashfreeAppId && cashfreeAppId.startsWith('TEST') !== (cashfreeEnv === 'sandbox')) {
+  throw new Error('CASHFREE_APP_ID must match CASHFREE_ENV (TEST... App IDs are sandbox only).');
+}
+
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('PORT must be an integer between 1 and 65535.');
@@ -63,6 +74,11 @@ export const env = {
   razorpayEnv: razorpayEnv as 'test' | 'live',
   // Enable only after this merchant's S2S intent API accepts email omission.
   razorpayUpiEmailOptional: process.env.RAZORPAY_UPI_EMAIL_OPTIONAL === 'true',
+  // Optional second gateway (payments/cashfreeClient.ts). Webhooks are signed
+  // with the API secret; Cashfree has no separate webhook secret.
+  cashfreeAppId,
+  cashfreeSecretKey: process.env.CASHFREE_SECRET_KEY?.trim() || undefined,
+  cashfreeEnv: cashfreeEnv as 'sandbox' | 'production',
   codDisabled: process.env.COD_DISABLED === 'true',
   onlinePaymentsDisabled: process.env.ONLINE_PAYMENTS_DISABLED === 'true',
   publicApiUrl: process.env.PUBLIC_API_URL?.replace(/\/+$/, '') || undefined,
@@ -96,3 +112,6 @@ export const env = {
 };
 
 export const paymentsConfigured = Boolean(env.razorpayKeyId && env.razorpayKeySecret && env.razorpayWebhookSecret);
+// Razorpay stays the default and the fallback; Cashfree is only ever chosen
+// on top of a working Razorpay setup (payments/gateway.ts).
+export const cashfreeConfigured = Boolean(paymentsConfigured && env.cashfreeAppId && env.cashfreeSecretKey);

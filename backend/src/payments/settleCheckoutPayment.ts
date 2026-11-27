@@ -15,10 +15,10 @@ import { supabase } from '../db/supabase.js';
 // settle_checkout_payment (migration 20261010090000) RAISEs if it does not
 // equal the order/trip's own stored total, so a caller bug can never settle
 // an order against a payment for the wrong amount.
-export async function settleCheckoutPayment(target: { orderId?: string; tripId?: string }, paymentId: string, expectedPaise: number, currency: string, providerOrderId: string): Promise<boolean> {
+export async function settleCheckoutPayment(target: { orderId?: string; tripId?: string }, paymentId: string, expectedPaise: number, currency: string, providerOrderId: string, provider: 'razorpay' | 'cashfree' = 'razorpay'): Promise<boolean> {
   const { data, error } = await supabase.rpc('settle_checkout_payment', {
     p_order_id: target.orderId ?? null, p_trip_id: target.tripId ?? null, p_payment_id: paymentId,
-    p_expected_paise: expectedPaise, p_currency: currency, p_provider_order_id: providerOrderId, p_provider: 'razorpay',
+    p_expected_paise: expectedPaise, p_currency: currency, p_provider_order_id: providerOrderId, p_provider: provider,
   });
   if (error) {
     if (error.code === 'P0001' && error.message === 'Payment conflict' && providerOrderId) {

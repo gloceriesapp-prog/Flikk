@@ -58,6 +58,9 @@ RAZORPAY_KEY_ID=                 # rzp_test_... or rzp_live_...
 RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=         # separate secret, configured on the webhook
 RAZORPAY_ENV=test                # test | live, must match key prefix
+CASHFREE_APP_ID=                 # optional second gateway, see "Cashfree"
+CASHFREE_SECRET_KEY=
+CASHFREE_ENV=sandbox             # sandbox | production, must match App ID
 ```
 
 Missing credentials disable new online checkout. COD can remain available.
@@ -73,6 +76,53 @@ refund status events. Verify the signature with the webhook secret over the
 unmodified raw request body. Razorpay does not use the previous provider's
 base64 signature/timestamp headers. Provider retries and out-of-order events
 must be safe; events alone cannot override a contradictory provider payment.
+
+## Cashfree (second gateway)
+
+Cashfree runs beside Razorpay with the same business rules; only the provider
+adapter differs. Modules: `cashfreeClient.ts` (REST, API version
+`2025-01-01`), `cashfreeCheckout.ts` (create/recover/reconcile),
+`cashfreeWebhook.ts`, `gateway.ts` (selection + fallback), `provider.ts`
+(the shared provider contract). Migration `20261128090000_cashfree_gateway.sql`
+widens the SQL money functions to both providers.
+
+- **Selection.** Admin setting `platform_settings.payment_gateway`:
+  `razorpay` (default) | `cashfree` | `split` with `payment_gateway_split_pct`.
+  Split uses a stable hash of the checkout id. Only app builds that send
+  `provider:'auto', supports:['razorpay','cashfree']` can get Cashfree; old
+  builds (`provider:'razorpay'`) always get Razorpay. The first claim fixes a
+  checkout's provider.
+- **Order creation.** From persisted data only: amount (INR), our order id
+  `gl_<checkout hex>` (also the Razorpay receipt), customer phone, email only
+  when the customer saved a real one. The app receives only
+  `paymentSessionId`. A duplicate create (409) adopts the existing order.
+- **Fallback.** If Cashfree order creation fails (provider error or missing
+  phone), `switch_checkout_provider` moves the checkout to Razorpay once.
+  It refuses after a provider order is attached or after one fallback, and
+  the app never held a Cashfree session for it, so nothing can be charged twice.
+- **Verification.** Paid only after a server read: order `gl_...` with our tag
+  and amount, a `SUCCESS` payment with the same order, INR and exact paise,
+  then `settle_checkout_payment(..., 'cashfree')`. Webhooks
+  (`POST /payments/cashfree/webhook`) are verified as
+  base64(HMAC-SHA256(x-webhook-timestamp + raw body, CASHFREE_SECRET_KEY)),
+  with a 5-minute replay window, and only trigger that same read. Duplicates and
+  late events are idempotent in SQL.
+- **Recovery / expiry / cancel** use the same entry points
+  (`recoverProviderOrder`, `reconcileProvider`), which dispatch by the
+  session's provider.
+- **Refunds** always go to the provider that took the payment
+  (`refundSource`): Cashfree refunds use `POST /orders/{id}/refunds` with a
+  deterministic alphanumeric `refund_id`; Razorpay payments always refund via
+  Razorpay. Statuses: SUCCESS = completed; CANCELLED/REJECTED = failed; others
+  are still processing.
+- **Fees.** Cashfree's payment read does not return fees; they appear in
+  settlement reports (and the optional `PAYMENT_CHARGES_WEBHOOK`). Not stored.
+- **Payouts** are unchanged (manual; Easy Split is a later task).
+
+Dashboard webhook: `https://<api-domain>/payments/cashfree/webhook`, version
+2025-01-01, events payment success / failed / user dropped, refund status
+(auto refund optional). Removal plan for Razorpay:
+[docs/payments/razorpay-removal.md](../docs/payments/razorpay-removal.md).
 
 ## Existing payments and historical schema
 

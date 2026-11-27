@@ -1,6 +1,6 @@
 import { supabase } from '../db/supabase.js';
 import { RazorpayError, refundRequestKey } from './razorpayClient.js';
-import { createOrAdoptRefund, isDefinitiveRejection, LEGACY_REFUND_NOTE, listRefunds, refundProgress, refundSource } from './refundPayment.js';
+import { createOrAdoptRefund, isDefinitiveRejection, LEGACY_REFUND_NOTE, listRefunds, providerRefundKey, refundProgress, refundSource } from './refundPayment.js';
 import { logger } from '../lib/logger.js';
 export { refundProgress };
 export interface TripRefundJob {
@@ -35,9 +35,9 @@ export async function processTripRefund(job: TripRefundJob): Promise<void> {
             return;
         }
         const refundId = refundRequestKey(job.id);
-        const existing = await listRefunds(source.paymentId);
+        const existing = await listRefunds(source);
         const progress = refundProgress(existing, Number(job.target_paise));
-        const own = existing.find(r => r.requestKey === refundId);
+        const own = existing.find(r => r.requestKey === providerRefundKey(source, refundId));
         let status = progress.settled ? 'completed' : own?.status === 'failed' ? 'failed' : 'processing';
         let providerId = own?.id ?? job.provider_refund_id;
         if (!progress.settled && status !== 'failed' && !own && (job.request_paise || progress.remaining > 0)) {
@@ -46,7 +46,7 @@ export async function processTripRefund(job: TripRefundJob): Promise<void> {
             const amount = Number(job.request_paise ?? progress.remaining);
             if (!await save(job, { request_paise: amount }))
                 return;
-            const refund = await createOrAdoptRefund(source.paymentId, refundId, amount, 'Gloceries trip refund');
+            const refund = await createOrAdoptRefund(source, refundId, amount, 'Gloceries trip refund');
             providerId = refund.id;
             status = refund.status === 'failed' ? 'failed' : 'processing';
             // Confirm all partial refunds, including earlier shop refunds, before
