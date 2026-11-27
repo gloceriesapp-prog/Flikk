@@ -24,6 +24,7 @@ function ModeTab({ label, active, onPress, tint }: {
   }, [active, selected]);
   const activeStyle = useAnimatedStyle(() => ({ opacity: selected.value }));
   const inactiveStyle = useAnimatedStyle(() => ({ opacity: 1 - selected.value }));
+  const labelStyle = useAnimatedStyle(() => ({ color: interpolateColor(selected.value, [0, 1], ['#FFFFFFD9', '#FFFFFF']) }));
   const fillProps = useAnimatedProps(() => ({ fill: tint.value }));
   // Tangent cubic corners keep the 18px crown and 14px concave foot smooth.
   const path = `M${-CORNER} ${TAB_HEIGHT}C-6.268 46 0 39.732 0 32V18C0 8.059 8.059 0 18 0H${width - 18}C${width - 8.059} 0 ${width} 8.059 ${width} 18V32C${width} 39.732 ${width + 6.268} 46 ${width + CORNER} 46Z`;
@@ -39,10 +40,9 @@ function ModeTab({ label, active, onPress, tint }: {
           <AnimatedPath d={path} animatedProps={fillProps} />
         </Svg>}
       </Animated.View>
-      <Animated.View pointerEvents="none" className="absolute left-0 right-0 h-[36px] rounded-[12px] bg-white/15" style={[{ bottom: 6 }, inactiveStyle]} />
+      <Animated.View pointerEvents="none" className="absolute inset-0 rounded-[18px] bg-white/15" style={inactiveStyle} />
       <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" className="absolute inset-0 items-center justify-center">
-        <Animated.Text className="absolute text-[19px] font-semibold text-white" style={[{ letterSpacing: -0.4 }, activeStyle]}>{label}</Animated.Text>
-        <Animated.Text className="absolute text-[13px] font-semibold uppercase text-white/85" style={[{ letterSpacing: 2.6 }, inactiveStyle]}>{label}</Animated.Text>
+        <Animated.Text className="text-[19px] font-bold" style={[{ letterSpacing: -0.4 }, labelStyle]}>{label}</Animated.Text>
       </View>
     </Pressable>
   );
