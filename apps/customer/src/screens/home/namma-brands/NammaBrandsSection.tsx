@@ -1,5 +1,5 @@
 // Namma Brands (Home, All tab, above the welcome card): a light-blue rounded
-// card, inset 16 pt from the screen edges, with the admin's header image and up to six local-brand cards
+// card, inset 10 pt from the screen edges, with the admin's header image and up to six local-brand cards
 // (3 per row). Each card shows the brand name and 1-2 product photos.
 // Each white card leads with its offer pill ("Up to | 20% OFF"), then the
 // brand name, then the photos sitting on the card's foot.
@@ -20,9 +20,9 @@ import { welcomeBannerRatio } from '../welcome-banner/HomeWelcomeBanner';
 export const NAMMA_BG = '#D0E0FD';
 export const MIN_CARDS = 3;
 // Inset from the screen edges, and the block's own inner padding.
-const MARGIN = 16;
-const SIDE = 12;
-const GAP = 10;
+const MARGIN = 10;
+const SIDE = 10;
+const GAP = 8;
 const RADIUS = 20;
 const COLUMNS = 3;
 const DEFAULT_HEADER = 'https://images.gloceries.com/appsui/Namma.png';
@@ -139,7 +139,7 @@ export function NammaBrandsBento({ headerImageUrl, hero, cards }: { headerImageU
       <AppImage source={{ uri: headerImageUrl }} style={{ width: '100%', aspectRatio: 3 }} resizeMode="contain" accessibilityLabel="Namma Brands" />
       <View className="mt-2 flex-row" style={{ gap: GAP, paddingHorizontal: SIDE }}>
         <HeroCard hero={hero} width={cardWidth} height={cardHeight * 2 + GAP} />
-        <View className="flex-1 flex-row flex-wrap" style={{ gap: GAP }}>
+        <View className="flex-row flex-wrap" style={{ width: cardWidth * 2 + GAP, gap: GAP }}>
           {cards.slice(0, 4).map((card) => (
             <View key={card.id} accessibilityLabel={`${card.title.replace('\n', ' ')}, ${card.pill}`} testID={`namma-demo-${card.id}`}
               className="items-center overflow-hidden rounded-[18px] border border-[#E6ECF7] bg-white" style={{ width: cardWidth, height: cardHeight }}>
