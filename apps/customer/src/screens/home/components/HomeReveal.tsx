@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import Animated, { Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useCopy } from '../../../api/appConfig';
 
 const HOLD_MS = 4000;
@@ -25,12 +25,32 @@ export function HomeHeaderNotice({ isClosed = false }: { isClosed?: boolean }) {
     return () => clearTimeout(timeout);
   }, [condition]);
   const message = visible || condition !== dismissedCondition ? condition : '';
-  if (!message) return null;
+  // Keep the last message mounted while its measured height collapses. Animating
+  // layout height moves the estimate and the rest of the screen together.
+  const lastMessage = useRef('');
+  useEffect(() => { if (message) lastMessage.current = message; }, [message]);
+  const [noticeHeight, setNoticeHeight] = useState(60);
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = withTiming(message ? 1 : 0, {
+      duration: 260, easing: Easing.out(Easing.cubic), reduceMotion: ReduceMotion.System,
+    });
+  }, [message, progress]);
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: (noticeHeight + 10) * progress.value,
+    opacity: progress.value,
+  }));
 
   return (
-    <Animated.View entering={FadeIn.duration(180).reduceMotion(ReduceMotion.System)}
-      exiting={FadeOut.duration(140).reduceMotion(ReduceMotion.System)} style={{ width: '100%', marginTop: 6, marginBottom: 4 }}>
-      <View accessibilityLiveRegion="polite" accessibilityRole="text" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#EAF2FF', paddingHorizontal: 16, paddingVertical: 10 }}>
+    <Animated.View pointerEvents="none" accessibilityElementsHidden={!message}
+      importantForAccessibility={message ? 'auto' : 'no-hide-descendants'}
+      style={[{ width: '100%', overflow: 'hidden' }, animatedStyle]}>
+      <View accessibilityLiveRegion="polite" accessibilityRole="text" onLayout={event => {
+        const height = event.nativeEvent?.layout?.height;
+        if (height != null && Number.isFinite(height) && height > 0) {
+          setNoticeHeight(previous => Math.abs(previous - height) < 0.5 ? previous : height);
+        }
+      }} style={{ position: 'absolute', top: 6, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#EAF2FF', paddingHorizontal: 16, paddingVertical: 10 }}>
         <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#D7E5FF', alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#155DFC', alignItems: 'center', justifyContent: 'center' }}>
             <Svg width={21} height={21} viewBox="0 0 24 24" fill="none" accessible={false}>
@@ -38,7 +58,7 @@ export function HomeHeaderNotice({ isClosed = false }: { isClosed?: boolean }) {
             </Svg>
           </View>
         </View>
-        <Text style={{ flex: 1, fontFamily: 'Gilroy-Medium', fontSize: 13, lineHeight: 18, color: '#234B83' }}>{message}</Text>
+        <Text style={{ flex: 1, fontFamily: 'Gilroy-Medium', fontSize: 13, lineHeight: 18, color: '#234B83' }}>{message || lastMessage.current}</Text>
       </View>
     </Animated.View>
   );
