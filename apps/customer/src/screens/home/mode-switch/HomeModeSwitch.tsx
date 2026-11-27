@@ -58,6 +58,7 @@ export function HomeModeSwitch({ scrollY }: { scrollY: SharedValue<number> }) {
   const stripStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(scrollY.value, [0, COLLAPSE_DISTANCE], [deep.value, tint.value]),
   }));
+  const joinStyle = useAnimatedStyle(() => ({ backgroundColor: tint.value }));
   const foldStyle = useAnimatedStyle(() => {
     const progress = interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [0, 1], Extrapolation.CLAMP);
     return { height: (1 - progress) * rowHeight, opacity: 1 - progress };
@@ -75,6 +76,8 @@ export function HomeModeSwitch({ scrollY }: { scrollY: SharedValue<number> }) {
             <ModeTab key={item.id} label={item.label} active={mode === item.id} onPress={() => setMode(item.id)} tint={tint} />
           ))}
         </View>
+        {/* Cover the SVG/clip edge with the same solid colour as the header. */}
+        <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 1 }, joinStyle]} />
       </Animated.View>
     </Animated.View>
   );
