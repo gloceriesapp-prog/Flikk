@@ -16,7 +16,7 @@ export function DeliveryHeading({ minutes, light, highDemand = false, rainNearby
   const [estimateWidth, setEstimateWidth] = useState(0);
   const measureEstimate = useCallback((width: number) => setEstimateWidth(Math.ceil(width)), []);
   const finishIntro = useCallback(() => setIntroComplete(true), []);
-  if (status === 'on_hold' || status === 'unavailable') return <Text accessibilityRole="header" style={[styles.status, { color: light ? '#000000' : '#FFFFFF' }]}>{status === 'on_hold' ? 'Delivery on hold' : 'Currently unavailable'}</Text>;
+  if (status === 'on_hold' || status === 'unavailable') return <Text accessibilityRole="header" style={[status === 'on_hold' ? styles.text : styles.status, { color: light ? '#000000' : '#FFFFFF' }]}>{status === 'on_hold' ? 'Delivery on hold' : 'Currently unavailable'}</Text>;
   return <View style={styles.heading}>
     <View style={[styles.estimate, { width: introComplete && estimateWidth > 0 ? estimateWidth : '100%' }]}><DeliveryEstimate minutes={minutes} light={light} onIntroComplete={finishIntro} onFullWidth={measureEstimate} /></View>
     {highDemand && introComplete && estimateWidth > 0 && <HighDemandBadge />}
