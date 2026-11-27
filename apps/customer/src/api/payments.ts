@@ -53,9 +53,26 @@ export interface RazorpayPaymentResult {
   razorpay_signature: string;
 }
 
-// Backend reconciles and returns the same provider order on retries.
-export function createPaymentOrder(target: PaymentTarget): Promise<RazorpayOrder> {
-  return apiRequest('/payments/create-order', { method: 'POST', body: { ...target, provider: 'razorpay' } });
+// Cashfree: the app only ever receives the payment session id. Paid status
+// still comes only from the server (verifyPayment / recovery).
+export interface CashfreeOrder {
+  provider: 'cashfree';
+  providerOrderId: string;
+  paymentSessionId: string;
+  amount: number;
+  amountPaise: number;
+  currency: 'INR';
+  environment: 'sandbox' | 'production';
+  expiresAt: string;
+}
+export type PaymentOrder = RazorpayOrder | CashfreeOrder;
+
+// Backend reconciles and returns the same provider order on retries. A build
+// with Cashfree's native module lets the server pick the gateway (admin
+// setting); without it the server only ever answers Razorpay.
+export function createPaymentOrder(target: PaymentTarget, supportsCashfree = false): Promise<PaymentOrder> {
+  return apiRequest('/payments/create-order', { method: 'POST', body: supportsCashfree
+    ? { ...target, provider: 'auto', supports: ['razorpay', 'cashfree'] } : { ...target, provider: 'razorpay' } });
 }
 
 export interface RazorpayUpiIntent {
