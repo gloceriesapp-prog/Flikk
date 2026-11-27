@@ -41,9 +41,12 @@ it('does not acknowledge when the server read fails, so Cashfree retries', async
   m.reconcile.mockRejectedValue(new Error('provider down'));
   const { next, res } = await run(success); expect(next).toHaveBeenCalled(); expect(res.status).not.toHaveBeenCalled();
 });
-it('refund events only wake the durable refund jobs', async () => {
-  await run({ type: 'REFUND_STATUS_WEBHOOK', data: { refund: { cf_payment_id: 5114910000, refund_status: 'SUCCESS' } } });
+it('refund events only wake the durable refund job of that checkout', async () => {
+  await run({ type: 'REFUND_STATUS_WEBHOOK', data: { refund: { order_id: cfOrderId, cf_payment_id: 1479874797067441664, refund_status: 'SUCCESS' } } });
   expect(update).toHaveBeenCalledWith({ next_attempt_at: expect.any(String) });
   for (const [patch] of update.mock.calls) expect(patch).not.toHaveProperty('refund_status');
-  expect(m.from).toHaveBeenCalledWith('order_refund_jobs'); expect(m.from).toHaveBeenCalledWith('trip_refunds');
+  expect(m.from).toHaveBeenCalledWith('order_refund_jobs'); expect(m.from).not.toHaveBeenCalledWith('trip_refunds');
+  update.mockClear(); m.session.value = null;
+  await run({ type: 'REFUND_STATUS_WEBHOOK', data: { refund: { order_id: cfOrderId } } });
+  expect(update).not.toHaveBeenCalled();
 });

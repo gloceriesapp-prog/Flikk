@@ -7,7 +7,7 @@ import { cashfreeConfigured } from '../config/env.js';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
-import { CASHFREE_ORDER_ID, CASHFREE_PAYMENT_ID, verifyCashfreeWebhook } from './cashfreeClient.js';
+import { CASHFREE_ORDER_ID, verifyCashfreeWebhook } from './cashfreeClient.js';
 import { reconcileCashfree } from './cashfreeCheckout.js';
 import { paymentTarget } from './recovery.js';
 
@@ -17,7 +17,7 @@ const REFUND_EVENTS = new Set(['REFUND_STATUS_WEBHOOK', 'AUTO_REFUND_STATUS_WEBH
 interface CfEvent {
   type?: string;
   data?: { order?: { order_id?: string }; payment?: { cf_payment_id?: string | number };
-    refund?: { order_id?: string; cf_payment_id?: string | number }; auto_refund?: { cf_payment_id?: string | number } };
+    refund?: { order_id?: string }; auto_refund?: { order_id?: string } };
 }
 
 export async function handleCashfreeWebhook(req: Request, res: Response, next: NextFunction) {
@@ -46,14 +46,21 @@ export async function handleCashfreeWebhook(req: Request, res: Response, next: N
       }
     }
     if (REFUND_EVENTS.has(type)) {
-      const paymentId = String(event.data?.refund?.cf_payment_id ?? event.data?.auto_refund?.cf_payment_id ?? '');
-      if (CASHFREE_PAYMENT_ID.test(paymentId)) {
-        // Wake the durable refund jobs; their leased worker re-reads every
-        // provider refund before publishing a customer-visible result.
-        const nextAttemptAt = new Date().toISOString();
-        const results = await Promise.all(['order_refund_jobs', 'trip_refunds'].map(table =>
-          supabase.from(table).update({ next_attempt_at: nextAttemptAt }).eq('payment_id', paymentId).in('status', ['queued', 'processing'])));
-        for (const result of results) if (result.error) throw result.error;
+      // Keyed by our order id, not cf_payment_id: that is a 19-digit number
+      // which JSON.parse cannot hold exactly when Cashfree sends it unquoted.
+      const providerOrderId = event.data?.refund?.order_id ?? event.data?.auto_refund?.order_id;
+      if (providerOrderId && CASHFREE_ORDER_ID.test(providerOrderId)) {
+        const { data: session, error } = await supabase.from('checkout_payment_sessions').select('kind,target_id')
+          .eq('payment_provider', 'cashfree').eq('provider_order_id', providerOrderId).maybeSingle();
+        if (error) throw error;
+        if (session) {
+          // Wake the durable refund job; its leased worker re-reads every
+          // provider refund before publishing a customer-visible result.
+          const table = session.kind === 'trip' ? 'trip_refunds' : 'order_refund_jobs';
+          const { error: wakeError } = await supabase.from(table).update({ next_attempt_at: new Date().toISOString() })
+            .eq(session.kind === 'trip' ? 'trip_id' : 'order_id', session.target_id).in('status', ['queued', 'processing']);
+          if (wakeError) throw wakeError;
+        }
       }
     }
     res.status(200).json({ received: true });

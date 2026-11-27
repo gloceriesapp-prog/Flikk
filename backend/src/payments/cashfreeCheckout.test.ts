@@ -29,6 +29,7 @@ it.each([
   ['currency', { ...success, payment_currency: 'USD' }],
   ['order', { ...success, order_id: 'gl_ffffffffffffffffffffffffffffffff' }],
   ['payment id', { ...success, cf_payment_id: 'pay_x' }],
+  ['lossy numeric payment id', { ...success, cf_payment_id: 1479874797067441664 }],
 ])('rejects a payment whose %s does not match', async (_label, payment) => {
   m.payments.mockResolvedValue([payment]);
   await expect(reconcileCashfree(target, cfOrderId, 30)).rejects.toMatchObject({ code: 'PAYMENT_REVIEW_REQUIRED' });

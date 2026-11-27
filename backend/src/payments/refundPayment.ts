@@ -39,7 +39,7 @@ export function providerRefundKey(source: LiveSource, requestKey: string) {
 }
 export async function listRefunds(source: LiveSource): Promise<ProviderRefund[]> {
   const refunds = source.provider === 'cashfree'
-    ? (await getCfRefunds(source.providerOrderId)).filter(refund => String(refund.cf_payment_id ?? source.paymentId) === source.paymentId).map(normalizeCashfreeRefund)
+    ? (await getCfRefunds(source.providerOrderId)).filter(refund => typeof refund.cf_payment_id !== 'string' || refund.cf_payment_id === source.paymentId).map(normalizeCashfreeRefund)
     : (await getPaymentRefunds(source.paymentId)).map(normalizeRefund);
   return [...new Map(refunds.map(refund => [refund.id, refund])).values()];
 }
@@ -81,7 +81,7 @@ export async function refundSource(kind: 'order' | 'trip', targetId: string, cap
 async function cashfreeRefundSource(record: { provider_payment_id: string | null; total: number | string }, providerOrderId: string, paymentId: string): Promise<RefundSource> {
   if (!CASHFREE_ORDER_ID.test(providerOrderId) || !CASHFREE_PAYMENT_ID.test(paymentId)
     || (record.provider_payment_id && record.provider_payment_id !== paymentId)) return { provider: 'legacy' };
-  const payment = (await getCfOrderPayments(providerOrderId)).find(item => String(item.cf_payment_id) === paymentId);
+  const payment = (await getCfOrderPayments(providerOrderId)).find(item => item.cf_payment_id === paymentId);
   if (!payment || payment.order_id !== providerOrderId || payment.payment_currency !== 'INR'
     || paiseFromRupees(payment.payment_amount) !== toPaise(record.total) || payment.payment_status !== 'SUCCESS') return { provider: 'legacy' };
   return { provider: 'cashfree', paymentId, providerOrderId };

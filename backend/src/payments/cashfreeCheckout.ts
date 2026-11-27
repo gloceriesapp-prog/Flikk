@@ -52,8 +52,9 @@ export async function createCashfreeOrder(target: Target, total: number, custome
   try {
     order = await createCfOrder({ orderId, amountPaise: toPaise(total), customerId, phone, ...(email ? { email } : {}), tags, expiresAt });
   } catch (error) {
-    // 409 = this order_id already exists (an earlier lost response): adopt it.
-    if (!(error instanceof CashfreeError && error.providerStatus === 409)) throw error;
+    // 409 = this order_id already exists; 422 = same idempotency key with a
+    // different body (e.g. a changed expiry). Either way: adopt by GET.
+    if (!(error instanceof CashfreeError && (error.providerStatus === 409 || error.providerStatus === 422))) throw error;
     order = await getCfOrder(orderId);
     if (!order) throw error;
   }
@@ -67,7 +68,9 @@ export async function reconcileCashfree(target: Target, providerOrderId: string,
   const payments = await getCfOrderPayments(providerOrderId);
   const expected = toPaise(total);
   for (const payment of payments) {
-    if (!CASHFREE_PAYMENT_ID.test(String(payment.cf_payment_id)) || payment.order_id !== providerOrderId || payment.payment_currency !== 'INR' || paiseFromRupees(payment.payment_amount) !== expected)
+    // cf_payment_id must arrive as a string: a 19-digit JSON number has
+    // already lost digits, and storing it would point at the wrong payment.
+    if (typeof payment.cf_payment_id !== 'string' || !CASHFREE_PAYMENT_ID.test(payment.cf_payment_id) || payment.order_id !== providerOrderId || payment.payment_currency !== 'INR' || paiseFromRupees(payment.payment_amount) !== expected)
       throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment amount or order could not be verified. Contact support.');
   }
   const succeeded = payments.filter(payment => payment.payment_status === 'SUCCESS');
