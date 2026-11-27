@@ -61,6 +61,8 @@ it('splits the offer pill into a lead and a bold value', () => {
 it('shows the 5-card dummy bento in demo mode without fetching', async () => {
   await render(<NammaBrandsSection enabled demo />, { wrapper: Wrapper });
   expect(screen.getByTestId('namma-demo-beauty')).toBeTruthy();
+  expect(screen.getByText('Save up to 15%')).toBeTruthy();
+  expect(screen.getByText('Starting at ₹60')).toBeTruthy();
   expect(screen.getByText('₹180')).toBeTruthy();
   expect(fetchNammaBrands).not.toHaveBeenCalled();
 });

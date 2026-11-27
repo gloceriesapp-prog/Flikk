@@ -1,5 +1,5 @@
 // Namma Brands (Home, All tab, above the welcome card): a light-blue rounded
-// card, inset 16 pt from the screen edges, with the admin's header image and up to six local-brand cards
+// card, inset 10 pt from the screen edges, with the admin's header image and up to six local-brand cards
 // (3 per row). Each card shows the brand name and 1-2 product photos.
 // Each white card leads with its offer pill ("Up to | 20% OFF"), then the
 // brand name, then the photos sitting on the card's foot.
@@ -20,9 +20,9 @@ import { welcomeBannerRatio } from '../welcome-banner/HomeWelcomeBanner';
 export const NAMMA_BG = '#D0E0FD';
 export const MIN_CARDS = 3;
 // Inset from the screen edges, and the block's own inner padding.
-const MARGIN = 16;
-const SIDE = 12;
-const GAP = 10;
+const MARGIN = 10;
+const SIDE = 10;
+const GAP = 8;
 const RADIUS = 20;
 const COLUMNS = 3;
 const DEFAULT_HEADER = 'https://images.gloceries.com/appsui/Namma.png';
@@ -133,20 +133,26 @@ const DEMO_CARDS: NammaDemoCard[] = [
 export function NammaBrandsBento({ headerImageUrl, hero, cards }: { headerImageUrl: string; hero: NammaHeroCard; cards: NammaDemoCard[] }) {
   const [blockWidth, setBlockWidth] = useState<number | null>(null);
   const cardWidth = useCardWidth(blockWidth);
-  const cardHeight = PILL_HEIGHT + TITLE_HEIGHT + 4 + Math.round(cardWidth * PHOTO_AREA) + 8;
+  // Reference proportions: near-square small cards, one tall card spanning both rows.
+  const cardHeight = Math.round(cardWidth * 0.97);
+  const titleSize = Math.max(11, Math.round(cardWidth * 0.11));
+  const titleLineHeight = Math.ceil(titleSize * 1.1);
+  const titleHeight = titleLineHeight * 2 + 8;
+  const pillHeight = Math.max(15, Math.round(cardWidth * 0.15));
+  const photoHeight = Math.max(1, cardHeight - titleHeight - pillHeight - 8);
   return (
     <View onLayout={(event) => setBlockWidth(event.nativeEvent.layout.width)} style={BLOCK_STYLE}>
       <AppImage source={{ uri: headerImageUrl }} style={{ width: '100%', aspectRatio: 3 }} resizeMode="contain" accessibilityLabel="Namma Brands" />
       <View className="mt-2 flex-row" style={{ gap: GAP, paddingHorizontal: SIDE }}>
         <HeroCard hero={hero} width={cardWidth} height={cardHeight * 2 + GAP} />
-        <View className="flex-1 flex-row flex-wrap" style={{ gap: GAP }}>
+        <View className="flex-row flex-wrap" style={{ width: cardWidth * 2 + GAP, gap: GAP }}>
           {cards.slice(0, 4).map((card) => (
             <View key={card.id} accessibilityLabel={`${card.title.replace('\n', ' ')}, ${card.pill}`} testID={`namma-demo-${card.id}`}
               className="items-center overflow-hidden rounded-[18px] border border-[#E6ECF7] bg-white" style={{ width: cardWidth, height: cardHeight }}>
-              <OfferPill pill={card.pill} />
-              <Text numberOfLines={2} className="px-1.5 pt-1.5 text-center text-[14px] font-extrabold leading-[17px] tracking-[-0.2px] text-ink"
-                style={{ height: TITLE_HEIGHT + 4 }}>{card.title}</Text>
-              <CardPhotos urls={card.imageUrls} width={cardWidth} />
+              <OfferPill pill={card.pill} height={pillHeight} />
+              <Text numberOfLines={2} className="px-1.5 pt-1.5 text-center font-extrabold tracking-[-0.2px] text-ink"
+                style={{ height: titleHeight, fontSize: titleSize, lineHeight: titleLineHeight }}>{card.title}</Text>
+              <CardPhotos urls={card.imageUrls} width={cardWidth} photoHeight={photoHeight} />
             </View>
           ))}
         </View>
@@ -171,29 +177,30 @@ function HeroCard({ hero, width, height }: { hero: NammaHeroCard; width: number;
       </View>
       <Text numberOfLines={2} className="mt-1.5 text-center text-[13px] font-bold leading-[16px] text-ink">{hero.name}</Text>
       <View className="w-full flex-1 justify-end pb-2">
-        <AppImage source={{ uri: hero.imageUrl }} resizeMode="contain" accessible={false} style={{ width: '100%', height: Math.round(width * 1.1) }} />
+        <AppImage source={{ uri: hero.imageUrl }} resizeMode="contain" accessible={false} style={{ width: '100%', height: '100%', flex: 1 }} />
       </View>
     </View>
   );
 }
 
-// Two-tone pill hanging from the card's top edge: a soft blue lead and a
-// solid brand-blue value. Keeps its height without a pill so titles line up.
-function OfferPill({ pill }: { pill: string }) {
+// One blue rounded offer pill, centred on the card's top edge.
+function OfferPill({ pill, height = PILL_HEIGHT }: { pill: string; height?: number }) {
   const parts = pillParts(pill);
-  if (!parts) return <View style={{ height: PILL_HEIGHT }} />;
+  if (!parts) return <View style={{ height }} />;
+  const percentage = parts.lead === 'Up to' ? /^(\d+(?:\.\d+)?%)\s*OFF$/i.exec(parts.value) : null;
+  const label = percentage ? `Save up to ${percentage[1]}` : [parts.lead, parts.value].filter(Boolean).join(' ');
   return (
-    <View className="flex-row items-center overflow-hidden rounded-b-[10px]" style={{ height: PILL_HEIGHT }}>
-      {parts.lead ? <Text numberOfLines={1} className="h-full bg-[#EAF1FF] pl-2 pr-1.5 text-[10px] font-bold leading-[20px] text-[#155DFC]">{parts.lead}</Text> : null}
-      <Text numberOfLines={1} className="h-full bg-[#155DFC] px-2 text-[10.5px] font-black leading-[20px] text-white">{parts.value}</Text>
+    <View className="items-center justify-center overflow-hidden rounded-full bg-[#155DFC] px-2" style={{ height, maxWidth: '100%' }}>
+      <Text numberOfLines={1} className="font-extrabold text-white"
+        style={{ fontSize: Math.min(10.5, height * 0.525), lineHeight: height, includeFontPadding: false }}>{label}</Text>
     </View>
   );
 }
 
 // Product photos (720x810), contained and bottom-aligned at one height so
 // every card matches; two photos overlap slightly side by side.
-function CardPhotos({ urls, width }: { urls: string[]; width: number }) {
-  const height = Math.round(width * PHOTO_AREA);
+function CardPhotos({ urls, width, photoHeight: suppliedHeight }: { urls: string[]; width: number; photoHeight?: number }) {
+  const height = suppliedHeight ?? Math.round(width * PHOTO_AREA);
   const photoWidth = urls.length > 1 ? Math.round(width * 0.5) : Math.round(width * 0.62);
   const photoHeight = Math.round(photoWidth * 810 / 720);
   return (
