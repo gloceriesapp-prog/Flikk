@@ -23,13 +23,11 @@ interface Props {
   serverBrands?: string[];
   onLoadMore?: () => void;
   loadingMore?: boolean;
-  // Item count under the filters (null while unknown).
-  total?: number | null;
 }
 
 export function CategoryProductPane({
   products, isLoading, isError, onRetry, previewOnly, filters, onFiltersChange,
-  serverTypes, serverBrands, onLoadMore, loadingMore, showFilters = true, columns = 2, bottomPadding = 64, total,
+  serverTypes, serverBrands, onLoadMore, loadingMore, showFilters = true, columns = 2, bottomPadding = 64,
 }: Props) {
   const [panel, setPanel] = useState<FilterPanel | null>(null);
   const list = useRef<FlashListRef<Product>>(null);
@@ -45,12 +43,6 @@ export function CategoryProductPane({
     // Constrain the filter ScrollView to the product column on every width.
     <View className="flex-1 overflow-hidden bg-mist/30" style={{ minWidth: 0 }}>
       {showFilters && <CategoryFilterBar filters={filters} onOpen={setPanel} />}
-      {/* Item count for the selected option (shown once known). */}
-      {total != null ? (
-        <View className="pl-2 pr-4 pt-2" accessible accessibilityLabel={`Items: ${total}`}>
-          <Text className="text-[14px] font-semibold text-ink/60">Items: <Text className="font-bold text-ink">{total}</Text></Text>
-        </View>
-      ) : null}
       {isError && products.length > 0 && <Pressable accessibilityRole="button" onPress={onRetry} className="px-3 py-2"><Text className="text-[12px] text-[#155DFC]">Couldn’t refresh products. Tap to retry.</Text></Pressable>}
       <View className="flex-1">
         <FlashList

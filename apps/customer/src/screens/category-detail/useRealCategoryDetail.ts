@@ -10,9 +10,7 @@ export function useRealSubCategories(categoryId: string) {
     queryFn: async () => (await apiRequest<ApiSubCategory[]>(`/categories/${categoryId}/subcategories`, { auth: false }))
       .map((row): DetailSubCategory => ({ id: row.id, label: row.name, imageUrl: row.image_url ?? undefined })) });
 }
-// total: every matching product near the customer, on the first page only
-// (null/absent when the server can't count).
-interface BrowsePage { products: ApiProduct[]; nextCursor: string | null; facets: { types: string[]; brands: string[] }; total?: number | null }
+interface BrowsePage { products: ApiProduct[]; nextCursor: string | null; facets: { types: string[]; brands: string[] } }
 function useProducts(categoryId: string | undefined, subcategoryId: string | undefined, filters: ProductFilters) {
   const location = useLocationStore(s => s.location);
   return useInfiniteQuery({

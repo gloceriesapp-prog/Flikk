@@ -110,19 +110,8 @@ productBrowseRouter.get('/category', async (req, res, next) => {
     ]) : [{ data: [], error: null }, { data: { types: [], brands: [] }, error: null }];
     if (error || facets.error) throw error || facets.error;
     const rows = (data ?? []) as { id: string; score: number }[]; const selected = rows.slice(0, page.limit);
-    // Item count for the page header, first page only. null when it can't be
-    // counted (function not deployed yet): the app then counts what it loaded.
-    let total: number | null = null;
-    if (!page.after) {
-      if (!stores.length) total = 0;
-      else {
-        const counted = await supabase.rpc('count_customer_category_products', { p_stores: stores, p_category: category, p_subcategory: subcategory,
-          p_type: type, p_brand: brand, p_veg: veg, p_deals: deals });
-        total = counted.error || typeof counted.data !== 'number' ? null : counted.data;
-      }
-    }
     res.json({ products: applyCustomerPrices(await hydrateBrowse(selected, stores, PRODUCT_WITH_VARIANTS_SELECT)), facets: facets.data,
-      nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null, ...(page.after ? {} : { total }) });
+      nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null });
   } catch (error) { next(error); }
 });
 

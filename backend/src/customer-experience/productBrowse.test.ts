@@ -118,18 +118,3 @@ it('pages only the chosen brand at delivery stores and applies customer prices',
   const changed = await request('/brand/:id', { ...pin, after: result.nextCursor }, { id: brandId });
   expect(changed.next).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVALID_CURSOR' }));
 });
-
-it('category: counts every matching product on the first page only, and survives a missing count function', async () => {
-  const category = '00000000-0000-4000-8000-0000000000c1';
-  mocks.rpc.mockImplementation(async (name: string) => name === 'count_customer_category_products' ? { data: 42, error: null }
-    : name === 'customer_category_facets' ? { data: { types: [], brands: [] }, error: null } : { data: [{ id: 'p1', score: 0 }], error: null });
-  const first = await request('/category', { ...pin, category });
-  expect(mocks.rpc).toHaveBeenCalledWith('count_customer_category_products', expect.objectContaining({ p_stores: ['s1'], p_category: category, p_subcategory: null }));
-  expect(vi.mocked(first.res.json).mock.calls[0]![0]).toMatchObject({ total: 42 });
-
-  mocks.rpc.mockImplementation(async (name: string) => name === 'count_customer_category_products' ? { data: null, error: { code: 'PGRST202' } }
-    : name === 'customer_category_facets' ? { data: { types: [], brands: [] }, error: null } : { data: [{ id: 'p1', score: 0 }], error: null });
-  const missing = await request('/category', { ...pin, category });
-  expect(missing.next).not.toHaveBeenCalled();
-  expect(vi.mocked(missing.res.json).mock.calls[0]![0]).toMatchObject({ total: null });
-});
