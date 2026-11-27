@@ -60,6 +60,11 @@ export function CategoryDetailContent({
   const activeQuery = activeSubId === 'all' ? categoryProducts : subProducts;
   const products = activeQuery.data?.pages.flatMap(page => page.products) ?? [];
   const facets = activeQuery.data?.pages[0]?.facets;
+  // Server total; once every page is loaded, the loaded count is exact too.
+  const serverTotal = activeQuery.data?.pages[0]?.total;
+  const total = typeof serverTotal === 'number' ? serverTotal
+    : activeQuery.data && !activeQuery.hasNextPage ? products.length : null;
+  const activeLabel = sidebarItems.find((item) => item.id === activeSubId)?.label ?? 'All';
   const retry = () => {
     if (!isReal) return;
     void subCategories.refetch();
@@ -88,6 +93,8 @@ export function CategoryDetailContent({
           serverBrands={facets?.brands}
           onLoadMore={() => { if (activeQuery.hasNextPage && !activeQuery.isFetchingNextPage) void activeQuery.fetchNextPage(); }}
           loadingMore={activeQuery.isFetchingNextPage}
+          title={activeSubId === 'all' ? `All ${label}` : activeLabel}
+          total={total}
         />
       </View>
     </View>
