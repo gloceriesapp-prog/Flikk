@@ -64,7 +64,6 @@ export function CategoryDetailContent({
   const serverTotal = activeQuery.data?.pages[0]?.total;
   const total = typeof serverTotal === 'number' ? serverTotal
     : activeQuery.data && !activeQuery.hasNextPage ? products.length : null;
-  const activeLabel = sidebarItems.find((item) => item.id === activeSubId)?.label ?? 'All';
   const retry = () => {
     if (!isReal) return;
     void subCategories.refetch();
@@ -93,7 +92,6 @@ export function CategoryDetailContent({
           serverBrands={facets?.brands}
           onLoadMore={() => { if (activeQuery.hasNextPage && !activeQuery.isFetchingNextPage) void activeQuery.fetchNextPage(); }}
           loadingMore={activeQuery.isFetchingNextPage}
-          title={activeSubId === 'all' ? `All ${label}` : activeLabel}
           total={total}
         />
       </View>

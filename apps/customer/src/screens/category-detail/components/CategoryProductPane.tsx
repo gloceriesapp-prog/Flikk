@@ -23,15 +23,13 @@ interface Props {
   serverBrands?: string[];
   onLoadMore?: () => void;
   loadingMore?: boolean;
-  // Heading under the filters: the selected option and its item count
-  // (null while unknown).
-  title?: string;
+  // Item count under the filters (null while unknown).
   total?: number | null;
 }
 
 export function CategoryProductPane({
   products, isLoading, isError, onRetry, previewOnly, filters, onFiltersChange,
-  serverTypes, serverBrands, onLoadMore, loadingMore, showFilters = true, columns = 2, bottomPadding = 64, title, total,
+  serverTypes, serverBrands, onLoadMore, loadingMore, showFilters = true, columns = 2, bottomPadding = 64, total,
 }: Props) {
   const [panel, setPanel] = useState<FilterPanel | null>(null);
   const list = useRef<FlashListRef<Product>>(null);
@@ -47,11 +45,10 @@ export function CategoryProductPane({
     // Constrain the filter ScrollView to the product column on every width.
     <View className="flex-1 overflow-hidden bg-mist/30" style={{ minWidth: 0 }}>
       {showFilters && <CategoryFilterBar filters={filters} onOpen={setPanel} />}
-      {title ? (
-        <View className="flex-row items-baseline justify-between gap-3 pl-2 pr-4 pt-2" accessible
-          accessibilityLabel={total == null ? title : `${title}, ${total} ${total === 1 ? 'item' : 'items'}`}>
-          <Text numberOfLines={1} className="min-w-0 shrink text-[15px] font-bold text-ink">{title}</Text>
-          {total != null ? <Text className="text-[13px] font-semibold text-ink/50">{total} {total === 1 ? 'item' : 'items'}</Text> : null}
+      {/* Item count for the selected option (shown once known). */}
+      {total != null ? (
+        <View className="pl-2 pr-4 pt-2" accessible accessibilityLabel={`Items: ${total}`}>
+          <Text className="text-[14px] font-semibold text-ink/60">Items: <Text className="font-bold text-ink">{total}</Text></Text>
         </View>
       ) : null}
       {isError && products.length > 0 && <Pressable accessibilityRole="button" onPress={onRetry} className="px-3 py-2"><Text className="text-[12px] text-[#155DFC]">Couldn’t refresh products. Tap to retry.</Text></Pressable>}
