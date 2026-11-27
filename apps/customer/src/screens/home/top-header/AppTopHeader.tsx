@@ -13,7 +13,7 @@ import { CollapsibleHeaderTop } from '../components/CollapsibleHeaderTop';
 import { HeaderBackgroundGradient } from '../components/HeaderBackgroundGradient';
 import { HomeSearchBar } from '../components/HomeSearchBar';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
-import { HomeHeaderNotice } from '../components/HomeReveal';
+// import { HomeHeaderNotice } from '../components/HomeReveal';
 import { NewForYouTile } from './NewForYouTile';
 import { TopHeaderScrollContext } from './topHeaderScroll';
 
@@ -28,7 +28,9 @@ export function AppTopHeader() {
     <View className="overflow-hidden">
       <HeaderBackgroundGradient colors={gradient.colors} />
       <View className="pt-safe">
+        {/* Paused for now: notice above the delivery estimate.
         <HomeHeaderNotice isClosed={isClosed} />
+        */}
         <View className="px-6">
           <CollapsibleHeaderTop
             scrollY={scrollY}
