@@ -1,4 +1,5 @@
-import { useHeaderDeliveryStatus } from './headerDeliveryStatus';
+// Manual delivery-update reveal is paused; automatic notices remain enabled.
+// import { useHeaderDeliveryStatus } from './headerDeliveryStatus';
 // Right side of the header row, next to LocationSelector — one pill
 // (GlassView, real iOS 26 Liquid Glass via expo-glass-effect, falls back
 // to a plain translucent View on Android/web since the library's own
@@ -13,7 +14,7 @@ import { useHeaderDeliveryStatus } from './headerDeliveryStatus';
 // fallback (GlassView renders a plain View there) gets a matching
 // translucent background + soft border.
 
-import { HeartIcon, SparklesIcon, UserIcon } from '@hugeicons/core-free-icons';
+import { HeartIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { GlassView } from 'expo-glass-effect';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -21,8 +22,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
-import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
-import { useHomeReveal } from './HomeReveal';
+// import { SparklesIcon } from '@hugeicons/core-free-icons';
+// import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
+// import { useHomeReveal } from './HomeReveal';
 
 const styles = StyleSheet.create({
   pill: {
@@ -42,11 +44,11 @@ const styles = StyleSheet.create({
 export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { light?: boolean; showWishlist?: boolean }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
-  const reveal = useHomeReveal();
-  const closed = useIsOutsideOperatingHours();
-  const status = useHeaderDeliveryStatus();
-  const highDemand = status === 'high_demand' || status === 'rain_and_demand';
-  const rain = status === 'rain' || status === 'rain_and_demand';
+  // const reveal = useHomeReveal();
+  // const closed = useIsOutsideOperatingHours();
+  // const status = useHeaderDeliveryStatus();
+  // const highDemand = status === 'high_demand' || status === 'rain_and_demand';
+  // const rain = status === 'rain' || status === 'rain_and_demand';
   const iconColor = light ? colors.ink : '#FFFFFFCC';
 
   return (
@@ -83,6 +85,7 @@ export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { l
       >
         <AppIcon icon={UserIcon} size={22} color={iconColor} strokeWidth={1.8} />
       </Pressable>
+      {/* Paused: tap-to-reopen delivery notice.
       {!closed && (highDemand || rain) && <Pressable
         accessibilityRole="button"
         accessibilityLabel="Delivery update"
@@ -91,6 +94,7 @@ export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { l
       >
         <AppIcon icon={SparklesIcon} size={19} color={iconColor} strokeWidth={1.8} />
       </Pressable>}
+      */}
     </GlassView>
   );
 }
