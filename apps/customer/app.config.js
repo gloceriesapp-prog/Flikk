@@ -39,7 +39,7 @@ module.exports = {
     // renaming it would detach the EAS project (builds/updates/credentials).
     slug: 'customer',
     scheme: 'gloceries',
-    version: '1.0.5',
+    version: '1.0.6',
     // Native changes require a new runtime ID and a store build. The release
     // and OTA guards compare native inputs against the installed build commit.
     runtimeVersion: nativeRuntime.android,

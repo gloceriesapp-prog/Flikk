@@ -88,7 +88,7 @@ it('cancels through the coordinated backend operation for the same order', async
   expect(mockReplace).toHaveBeenCalledWith('PaymentRecovery', { target });
 });
 it('checks a native callback on the server before returning to reconciliation', async () => {
-  const order = { providerOrderId: 'provider-order' } as Awaited<ReturnType<typeof createPaymentOrder>>;
+  const order = { provider: 'razorpay', providerOrderId: 'provider-order' } as Awaited<ReturnType<typeof createPaymentOrder>>;
   const callback = { razorpay_payment_id: 'payment' } as Awaited<ReturnType<typeof openRazorpayCheckout>>;
   jest.mocked(createPaymentOrder).mockResolvedValue(order);
   jest.mocked(openRazorpayCheckout).mockResolvedValue(callback);
@@ -155,7 +155,7 @@ it('keeps the contact step for legacy Android servers without the optional-email
 it('recovers an unpaid iOS order without an email popup when the merchant permits it', async () => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
   jest.mocked(assertIosUpiConfigured).mockResolvedValue({ sdkId: 'google_pay', emailOptional: true });
-  const order = { providerOrderId: 'provider-order' } as Awaited<ReturnType<typeof createPaymentOrder>>;
+  const order = { provider: 'razorpay', providerOrderId: 'provider-order' } as Awaited<ReturnType<typeof createPaymentOrder>>;
   const callback = { razorpay_payment_id: 'payment' } as Awaited<ReturnType<typeof openRazorpayCheckout>>;
   jest.mocked(createPaymentOrder).mockResolvedValue(order);
   jest.mocked(openRazorpayCheckout).mockResolvedValue(callback);

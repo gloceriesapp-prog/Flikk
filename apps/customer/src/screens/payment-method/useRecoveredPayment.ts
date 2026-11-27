@@ -8,6 +8,7 @@ import { fetchAvailableWallets, fetchNetbankingBanks, type NetbankingBank, aband
 import { useAuthStore } from '../../store/useAuthStore';
 import { usePaymentReceiptEmail } from '../../payments/usePaymentReceiptEmail';
 import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
+import { hasCashfreeSdk, openCashfreeCheckout } from '../../payments/openCashfreeCheckout';
 import { prepareUpiIntent, usesDirectUpiIntent } from '../../payments/upiIntent';
 import type { PaymentMethod } from '../../payments/paymentMethod';
 import { requiresUpiReceiptEmail } from '../../payments/upiReceiptRequirement';
@@ -77,6 +78,19 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
           if (!stillOwner() || !email) return;
         }
       }
+      // A checkout on Cashfree resumes on Cashfree (same server order).
+      if (hasCashfreeSdk() && latest.state === 'unpaid') {
+        const gatewayOrder = await createPaymentOrder(target, true);
+        if (!stillOwner()) return;
+        if (gatewayOrder.provider === 'cashfree') {
+          if (gatewayOrder.amountPaise !== Math.round(Number(latest.record.total) * 100)) throw new Error('The payment amount changed. Check your order before paying.');
+          await openCashfreeCheckout(gatewayOrder, action);
+          if (!stillOwner()) return;
+          await verifyPayment(target).catch(() => ({ ok: false }));
+          if (stillOwner()) navigation.replace('PaymentRecovery', { target });
+          return;
+        }
+      }
       if (usesDirectUpiIntent(action)) {
         const session = await prepareUpiIntent(target, action);
         if (session.amountPaise !== Math.round(Number(latest.record.total) * 100)) {
@@ -101,6 +115,7 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
       }
       const order = await createPaymentOrder(target);
       if (!stillOwner()) return;
+      if (order.provider !== 'razorpay') throw new Error('Payment details could not be verified. Check your saved order before paying.');
       if (usesIosUpiCheckout(action)) {
         navigation.replace('PaymentProcessing', { target, appName: 'your UPI app', paymentMethod: action,
           amount: Number(latest.record.total), expiresAt: order.expiresAt, iosUpiOrder: order, recovered: true });

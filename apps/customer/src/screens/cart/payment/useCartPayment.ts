@@ -17,6 +17,7 @@ import { useAuthStore } from '../../../store/useAuthStore';
 import { fetchAvailableWallets, fetchNetbankingBanks, fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
 import { popularUpiApps } from '../../../payments/popularUpiApps';
 import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
+import { hasCashfreeSdk, openCashfreeCheckout } from '../../../payments/openCashfreeCheckout';
 import { usePaymentReceiptEmail } from '../../../payments/usePaymentReceiptEmail';
 import { usesIosUpiCheckout } from '../../../payments/iosUpiCheckout';
 import { requiresUpiReceiptEmail } from '../../../payments/upiReceiptRequirement';
@@ -261,6 +262,27 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
 
       const payTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
       const deliveryAddress = selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address';
+      // Builds with Cashfree's SDK let the server pick the gateway (admin
+      // setting). Razorpay answers fall through to the unchanged paths below,
+      // which recover the same server-created order.
+      if (hasCashfreeSdk()) {
+        const gatewayOrder = await createPaymentOrder(payTarget, true);
+        if (!stillOwner()) return;
+        if (gatewayOrder.provider === 'cashfree') {
+          if (gatewayOrder.amountPaise !== Math.round(confirmedAmount * 100)) throw new Error('The payment amount does not match your order.');
+          await openCashfreeCheckout(gatewayOrder, paymentMethod);
+          if (!stillOwner()) return;
+          const verified = await verifyPayment(payTarget).catch(() => ({ ok: false }));
+          if (!stillOwner()) return;
+          if (verified.ok) await goToOrderPlaced(orderSummary, 'Online payment', paymentMethod);
+          else navigation.navigate('PaymentProcessing', {
+            target: payTarget, appName: 'your payment provider', paymentMethod,
+            amount: confirmedAmount, order: orderSummary, items: orderedItems,
+            deliveryAddress, isTrip: isMultiStore, expiresAt: gatewayOrder.expiresAt,
+          });
+          return;
+        }
+      }
       if (usesDirectUpiIntent(paymentMethod)) {
         const session = await prepareUpiIntent(payTarget, paymentMethod);
         if (!stillOwner()) return;
@@ -276,6 +298,8 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       // callback is never enough to show a receipt: verify captured state.
       const providerOrder = await createPaymentOrder(payTarget);
       if (!stillOwner()) return;
+      // Old servers/builds: anything but Razorpay here needs support review.
+      if (providerOrder.provider !== 'razorpay') throw new Error('Payment details could not be verified. Check your saved order before paying.');
       if (usesIosUpiCheckout(paymentMethod)) {
         navigation.navigate('PaymentProcessing', {
           target: payTarget, appName: upiApps.find(app => paymentMethod === `upi_app:${app.id}`)?.name ?? 'your UPI app',
