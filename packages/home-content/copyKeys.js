@@ -5,7 +5,7 @@
 // kind: 'image' keys hold an https artwork URL (admin shows an uploader);
 // blank keeps the app's built-in artwork.
 export const COPY_KEYS = {
-  'home.delivery.status': { default: 'normal', label: 'Header delivery status', hint: 'Replaces the header estimate only. Checkout availability and fees are unchanged.', kind: 'select', options: [{ value: 'normal', label: 'Estimated delivery time' }, { value: 'on_hold', label: 'Delivery on hold' }, { value: 'unavailable', label: 'Currently unavailable' }] },
+  'home.delivery.status': { default: '', label: 'Header delivery status', hint: 'Choose the customer header condition here. Hold/unavailable replace the estimate; demand/rain add badges. Checkout availability and fees are unchanged.', kind: 'select', options: [{ value: 'normal', label: 'Normal delivery (estimated time)' }, { value: 'high_demand', label: 'High demand' }, { value: 'rain', label: 'Rain nearby' }, { value: 'rain_and_demand', label: 'Rain + high demand' }, { value: 'on_hold', label: 'Delivery on hold' }, { value: 'unavailable', label: 'Currently unavailable' }] },
   'home.highDemand.enabled': { default: 'false', label: 'High demand', hint: 'High demand indicator beside delivery time. Does not change delivery estimates or fees.', kind: 'toggle' },
   'home.rain.enabled': { default: 'false', label: 'Rain nearby', hint: 'Show the rain delivery notice only when rain is affecting deliveries. Does not change estimates or fees.', kind: 'toggle' },
   'home.deliveryNotice.highDemand': { default: 'High demand nearby. Delivery may take a little longer.', hint: 'Header notice while high demand is enabled. Hides after 4 seconds.' },

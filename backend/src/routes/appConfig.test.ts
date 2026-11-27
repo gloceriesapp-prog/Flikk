@@ -73,7 +73,7 @@ it('accepts explicit demand toggle states and rejects ambiguous values', () => {
 });
 
 it('accepts only supported header delivery statuses and the default reset', () => {
-  for (const value of ['', 'normal', 'on_hold', 'unavailable']) {
+  for (const value of ['', 'normal', 'high_demand', 'rain', 'rain_and_demand', 'on_hold', 'unavailable']) {
     expect(validateAppContentInput({ ...valid, copy: { 'home.delivery.status': value } }).copy['home.delivery.status']).toBe(value);
   }
   for (const value of ['hold', 'UNKNOWN', ' normal ', true]) {

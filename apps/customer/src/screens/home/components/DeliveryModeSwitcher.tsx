@@ -21,7 +21,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
-import { useCopy } from '../../../api/appConfig';
 import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
 import { useHomeReveal } from './HomeReveal';
 
@@ -44,10 +43,10 @@ export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { l
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
   const reveal = useHomeReveal();
-  const highDemand = useCopy('home.highDemand.enabled') === 'true';
-  const rain = useCopy('home.rain.enabled') === 'true';
   const closed = useIsOutsideOperatingHours();
   const status = useHeaderDeliveryStatus();
+  const highDemand = status === 'high_demand' || status === 'rain_and_demand';
+  const rain = status === 'rain' || status === 'rain_and_demand';
   const iconColor = light ? colors.ink : '#FFFFFFCC';
 
   return (
@@ -84,7 +83,7 @@ export function DeliveryModeSwitcher({ light = false, showWishlist = true }: { l
       >
         <AppIcon icon={UserIcon} size={22} color={iconColor} strokeWidth={1.8} />
       </Pressable>
-      {!closed && status === 'normal' && (highDemand || rain) && <Pressable
+      {!closed && (highDemand || rain) && <Pressable
         accessibilityRole="button"
         accessibilityLabel="Delivery update"
         className="h-11 w-11 items-center justify-center active:opacity-70"

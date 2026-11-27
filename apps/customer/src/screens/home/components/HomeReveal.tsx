@@ -12,13 +12,13 @@ export const useHomeReveal = () => useContext(HomeRevealContext).reveal;
 /** Full-width delivery notice above the estimate, driven by real condition flags. */
 export function HomeHeaderNotice({ isClosed = false }: { isClosed?: boolean }) {
   const { visible } = useContext(HomeRevealContext);
-  const highDemand = useCopy('home.highDemand.enabled') === 'true';
-  const rain = useCopy('home.rain.enabled') === 'true';
   const demandText = useCopy('home.deliveryNotice.highDemand');
   const rainText = useCopy('home.deliveryNotice.rain');
   const combinedText = useCopy('home.deliveryNotice.rainAndDemand');
   const status = useHeaderDeliveryStatus();
-  const condition = isClosed || status !== 'normal' ? '' : rain && highDemand ? combinedText : rain ? rainText : highDemand ? demandText : '';
+  const highDemand = status === 'high_demand' || status === 'rain_and_demand';
+  const rain = status === 'rain' || status === 'rain_and_demand';
+  const condition = isClosed || status === 'on_hold' || status === 'unavailable' ? '' : rain && highDemand ? combinedText : rain ? rainText : highDemand ? demandText : '';
   const [dismissedCondition, setDismissedCondition] = useState('');
   useEffect(() => {
     setDismissedCondition('');

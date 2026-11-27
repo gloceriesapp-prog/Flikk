@@ -52,3 +52,20 @@ it.each(['on_hold', 'unavailable'])('suppresses condition notices when delivery 
   await fireEvent.press(view.getByText('Reveal'));
   expect(view.queryByText(/Delivery may|Deliveries may/)).toBeNull();
 });
+
+it.each([
+  ['high_demand', 'High demand nearby. Delivery may take a little longer.'],
+  ['rain', 'Rain nearby. Deliveries may take a little longer.'],
+  ['rain_and_demand', 'Rain and high demand nearby. Delivery may take longer.'],
+])('uses the single Admin dropdown state %s without requiring old switches', async (status, message) => {
+  mockCopy['home.delivery.status'] = status;
+  const view = await render(<HomeHeaderNotice />);
+  expect(view.getByText(message)).toBeTruthy();
+});
+it('Normal delivery explicitly overrides older enabled demand/rain switches', async () => {
+  mockCopy['home.delivery.status'] = 'normal';
+  mockCopy['home.highDemand.enabled'] = 'true';
+  mockCopy['home.rain.enabled'] = 'true';
+  const view = await render(<HomeHeaderNotice />);
+  expect(view.queryByText(/Delivery may|Deliveries may/)).toBeNull();
+});
