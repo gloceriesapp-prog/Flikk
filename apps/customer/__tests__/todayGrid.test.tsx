@@ -28,15 +28,15 @@ it('picks a clean shape for any number of cards', () => {
 });
 
 it.each([[4, 'full', 4], [3, 'row', 2], [0, 'hero-only', 0]])('%i cards render the %s layout with the hero', async (n, shape, visible) => {
-  await render(<TodayGridView grid={grid(n)} onTap={jest.fn()} />);
-  expect(screen.getByText('Today on Gloceries')).toBeTruthy();
+  await render(<TodayGridView headerImageUrl="https://img/header" grid={grid(n)} onTap={jest.fn()} />);
+  expect(screen.getByLabelText('Today on Gloceries')).toBeTruthy();
   expect(screen.getByTestId(`today-grid-${shape}`)).toBeTruthy();
   expect(screen.getByTestId('today-hero')).toBeTruthy();
   expect(screen.queryAllByTestId(/^today-card-/)).toHaveLength(visible);
 });
 
 it('shows honest hero numbers: price and real MRP struck', async () => {
-  await render(<TodayGridView grid={grid(4)} onTap={jest.fn()} />);
+  await render(<TodayGridView headerImageUrl="https://img/header" grid={grid(4)} onTap={jest.fn()} />);
   expect(screen.getByText('Landed 6:40 AM')).toBeTruthy();
   expect(screen.getByText('₹180')).toBeTruthy();
   expect(screen.getByText('₹220')).toBeTruthy();
@@ -44,23 +44,29 @@ it('shows honest hero numbers: price and real MRP struck', async () => {
 
 it('taps report the card and its position', async () => {
   const onTap = jest.fn();
-  await render(<TodayGridView grid={grid(4)} onTap={onTap} />);
+  await render(<TodayGridView headerImageUrl="https://img/header" grid={grid(4)} onTap={onTap} />);
   await fireEvent.press(screen.getByTestId('today-card-breakfast-ready'));
   expect(onTap).toHaveBeenCalledWith(expect.objectContaining({ id: 'breakfast-ready' }), 3);
 });
 
 it('logs one impression per card per session', async () => {
-  const view = await render(<TodayGridView grid={grid(4)} onTap={jest.fn()} />);
-  await view.rerender(<TodayGridView grid={grid(4)} onTap={jest.fn()} />);
+  const view = await render(<TodayGridView headerImageUrl="https://img/header" grid={grid(4)} onTap={jest.fn()} />);
+  await view.rerender(<TodayGridView headerImageUrl="https://img/header" grid={grid(4)} onTap={jest.fn()} />);
   jest.advanceTimersByTime(3_500);
   const events = mockPost.mock.calls.flatMap(([batch]) => batch as { type: string; cardId: string }[]);
   expect(events.filter(e => e.type === 'impression').map(e => e.cardId)).toEqual(['todays-catch', 'milk-breakfast', 'your-usuals', 'breakfast-ready', 'tea-coffee']);
 });
 
-it('a card or hero without photos shows a placeholder, not an empty foot', async () => {
+it('a card or hero without photos gets stand-in product photos, never an empty foot', async () => {
   const g = grid(4);
-  await render(<TodayGridView grid={{ ...g, hero: { ...g.hero, imageUrls: [] }, cards: g.cards.map((c, i) => (i ? c : { ...c, imageUrls: [] })) }} onTap={jest.fn()} />);
-  expect(screen.getAllByTestId('today-photo-placeholder')).toHaveLength(2);
+  await render(<TodayGridView headerImageUrl="https://img/header" grid={{ ...g, hero: { ...g.hero, imageUrls: [] }, cards: g.cards.map((c, i) => (i ? c : { ...c, imageUrls: [] })) }} onTap={jest.fn()} />);
+  const stand = screen.getAllByTestId('today-photo').filter((n) => String(n.props.source?.uri).startsWith('https://images.gloceries.com/products/'));
+  expect(stand).toHaveLength(3); // hero: 1, first card: 2
+});
+
+it('small cards show the title only; the line stays on the hero', async () => {
+  await render(<TodayGridView headerImageUrl="https://img/header" grid={grid(4)} onTap={jest.fn()} />);
+  expect(screen.getAllByText('line')).toHaveLength(1);
 });
 
 it('skeleton keeps the same layout', async () => {

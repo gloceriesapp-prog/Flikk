@@ -11,6 +11,8 @@ export const BLOCK_RADIUS = 20;
 export const BORDER = '#E6ECF7';
 export const TITLE_COLOR = '#101828';
 export const LINE_COLOR = '#667085';
+// Tag pill: fixed size on every card.
+export const TAG_HEIGHT = 22;
 
 export type GridShape = 'full' | 'row' | 'hero-only';
 // Pure: how many cards to show and in which shape (never an odd gap).
@@ -23,8 +25,7 @@ export function gridShape(cardCount: number): { shape: GridShape; cards: number 
 export function gridMetrics(screenWidth: number) {
   const column = Math.floor((screenWidth - MARGIN * 2 - SIDE * 2 - GAP * 2) / 3);
   const cardHeight = Math.round(column * 0.97);
-  const pillHeight = Math.max(15, Math.round(column * 0.15));
   // 2x1: one taller row, so the hero's title, price and photo still fit.
-  return { column, cardHeight, pillHeight, heroHeight: cardHeight * 2 + GAP, rowHeight: Math.round(cardHeight * 1.5), wide: column * 2 + GAP,
+  return { column, cardHeight, heroHeight: cardHeight * 2 + GAP, rowHeight: Math.round(cardHeight * 1.5), wide: column * 2 + GAP,
     inner: screenWidth - MARGIN * 2 - SIDE * 2 };
 }

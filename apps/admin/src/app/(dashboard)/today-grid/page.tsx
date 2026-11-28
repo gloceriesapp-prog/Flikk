@@ -5,6 +5,7 @@
 // from packages/today-grid, the same engine the customer endpoint runs.
 import { useState } from 'react';
 import { CardsTab } from '@/features/today-grid/CardsTab';
+import { HeaderImageCard } from '@/features/today-grid/HeaderImageCard';
 import { ModifiersTab } from '@/features/today-grid/ModifiersTab';
 import { SlotsTab } from '@/features/today-grid/SlotsTab';
 import { VersionsPanel } from '@/features/today-grid/VersionsPanel';
@@ -38,6 +39,7 @@ export default function TodayGridPage() {
         <button type="button" disabled={grid.busy || grid.draftIsLive} onClick={() => void grid.publish()} className="rounded-[10px] bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-40">Publish</button>
       </div>
       {grid.error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{grid.error}</p>}
+      <HeaderImageCard />
       {showVersions && <div className="card p-4"><VersionsPanel versions={loaded.versions} busy={grid.busy} onRestore={(id) => void grid.restore(id)} /></div>}
       <div role="tablist" className="flex gap-1 border-b border-border">
         {TABS.map((t) => (

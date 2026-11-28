@@ -15,11 +15,13 @@ import { useCardTap } from './useCardTap';
 import { useTodayGrid } from './useTodayGrid';
 
 export const HEADER_IMAGE_KEY = 'home.todayGrid.headerImageUrl';
+// Built-in header artwork until admin uploads one.
+export const DEFAULT_HEADER_IMAGE = 'https://images.gloceries.com/appsui/Namma.png';
 
 export function TodayGridSection() {
   const { data, isPending, isError } = useTodayGrid();
   const schedule = useScheduleGrid(isError);
-  const headerImageUrl = useCopyImage(HEADER_IMAGE_KEY, '') || null;
+  const headerImageUrl = useCopyImage(HEADER_IMAGE_KEY, DEFAULT_HEADER_IMAGE);
   const grid = isError ? schedule : data;
   const slot = grid?.slot ?? '';
   const heroId = grid?.hero?.id ?? '';
