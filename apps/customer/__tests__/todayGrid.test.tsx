@@ -113,3 +113,12 @@ it('header keeps the image’s own shape (no banner clamp), ignoring broken size
   expect(headerRatio(800, 800)).toBe(1);
   expect(headerRatio(0, 400)).toBeNull();
 });
+
+it('every card title sits on two balanced lines', () => {
+  const { twoLineTitle } = jest.requireActual('../src/screens/home/today-grid/layout') as typeof import('../src/screens/home/today-grid/layout');
+  expect(twoLineTitle('Snack Time')).toBe('Snack\nTime');
+  expect(twoLineTitle('Milk & Breakfast')).toBe('Milk &\nBreakfast');
+  expect(twoLineTitle("Today's Catch")).toBe("Today's\nCatch");
+  expect(twoLineTitle('Late Night Snacks')).toBe('Late Night\nSnacks');
+  expect(twoLineTitle('Offers')).toBe('Offers');
+});

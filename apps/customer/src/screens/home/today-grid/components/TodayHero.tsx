@@ -3,7 +3,7 @@ import { AccessibilityInfo, Animated, Easing, Pressable, Text, View } from 'reac
 import { AppImage } from '../../../../components/AppImage';
 import type { GridCard, ProductPeek } from '../api';
 import { photosFor } from '../fallbackPhotos';
-import { BORDER, RADIUS, TAG_LEAD_BG, TAG_VALUE_BG, TAG_VALUE_TEXT, titleMetrics } from '../layout';
+import { BORDER, RADIUS, TAG_LEAD_BG, TAG_VALUE_BG, TAG_VALUE_TEXT, titleMetrics, twoLineTitle } from '../layout';
 import { CardTag } from './CardTag';
 
 export const ROTATE_MS = 3000;
@@ -29,7 +29,7 @@ export function TodayHero({ hero, width, height, onPress }: { hero: GridCard; wi
       <CardTag label={hero.tag} />
       {/* Same title size and two-line box as the other cards. */}
       <Text numberOfLines={2} className="mt-1.5 px-1.5 text-center font-semibold tracking-[-0.2px] text-ink"
-        style={{ fontSize: title.size, lineHeight: title.line, height: title.height }}>{hero.title}</Text>
+        style={{ fontSize: title.size, lineHeight: title.line, height: title.height }}>{twoLineTitle(hero.title)}</Text>
       <View className="w-full flex-1 overflow-hidden">
         <Animated.View className="h-full flex-row" style={{ width: width * track.length, transform: [{ translateX: x }] }} testID="today-hero-track">
           {track.map((slide) => <HeroSlide key={slide.key} slide={slide} width={width} />)}

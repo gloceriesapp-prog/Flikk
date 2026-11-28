@@ -42,3 +42,14 @@ export function titleMetrics(cardWidth: number) {
   const line = Math.ceil(size * 1.12);
   return { size, line, height: line * 2 };
 }
+
+// Every card title on two lines: split at the space that leaves the two
+// lines closest in length ("Snack Time" -> "Snack" / "Time", "Milk &
+// Breakfast" -> "Milk &" / "Breakfast"). One word stays as it is.
+export function twoLineTitle(title: string): string {
+  const text = title.trim().replace(/\s+/g, ' ');
+  const spaces = [...text.matchAll(/ /g)].map((m) => m.index!);
+  if (!spaces.length) return text;
+  const at = spaces.reduce((best, i) => (Math.abs(text.length - 2 * i) < Math.abs(text.length - 2 * best) ? i : best));
+  return `${text.slice(0, at)}\n${text.slice(at + 1)}`;
+}

@@ -1,7 +1,7 @@
 import { Pressable, Text } from 'react-native';
 import type { GridCard } from '../api';
 import { photosFor } from '../fallbackPhotos';
-import { BORDER, RADIUS, TAG_HEIGHT, titleMetrics } from '../layout';
+import { BORDER, RADIUS, TAG_HEIGHT, titleMetrics, twoLineTitle } from '../layout';
 import { CardImages } from './CardImages';
 import { CardTag } from './CardTag';
 
@@ -16,7 +16,7 @@ export function TodayCard({ card, width, height, onPress }: { card: GridCard; wi
       style={{ width, height, borderRadius: RADIUS, borderWidth: 1, borderColor: BORDER }}>
       <CardTag label={card.tag} />
       <Text numberOfLines={2} className="mt-1.5 px-1.5 text-center font-semibold tracking-[-0.2px] text-ink"
-        style={{ fontSize: title.size, lineHeight: title.line, height: title.height }}>{card.title}</Text>
+        style={{ fontSize: title.size, lineHeight: title.line, height: title.height }}>{twoLineTitle(card.title)}</Text>
       <CardImages urls={photosFor(card.id, card.imageUrls)} width={width} height={Math.max(1, height - top - 6)} />
     </Pressable>
   );
