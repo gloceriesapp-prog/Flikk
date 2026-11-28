@@ -27,6 +27,7 @@ import { useWarmHomeBrowse } from './loading/useWarmHomeBrowse';
 import { isUdupiTab, useHomeModeStore } from './mode-switch/useHomeModeStore';
 import { RegionalTab } from './regional/RegionalTab';
 import { headerColorFor, useHomeHeaderThemeStore } from './header-theme/homeHeaderTheme';
+import { UdupiModeTip } from '../../features/onboarding-tips/UdupiModeTip';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -174,6 +175,8 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         }
       />
+      {/* First open only: points out the Udupi switch at the top. */}
+      <UdupiModeTip ready={isFocused} />
     </Animated.View>
   );
 }
