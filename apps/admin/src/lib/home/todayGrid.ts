@@ -3,9 +3,9 @@
 // endpoint runs — so admin never re-implements them.
 export {
   ACCENT_PRESETS, CARD_IDS, contrastRatio, DEFAULT_CONFIG, HERO_IDS, ITEM_FACTS, ITEM_IDS, MIN_TAG_CONTRAST,
-  passingShade, readConfig, SLOT_KEYS, TAG_TEXT_COLORS, validateConfig,
+  fill, passingShade, placeholdersIn, readConfig, SLOT_KEYS, TAG_TEXT_COLORS, validateConfig, buildTodayGrid, EMPTY_STAT,
 } from '../../../../../packages/today-grid/index.js';
-export type { CardId, ConfigError, HeroId, ItemConfig, ItemId, SlotRule, TodayGridConfig } from '../../../../../packages/today-grid/index.js';
+export type { Availability, CardId, CardTarget, ConfigError, GridCard, HeroId, ItemConfig, ItemId, SlotRule, TodayGrid, TodayGridConfig, TraceRow, UserSummary } from '../../../../../packages/today-grid/index.js';
 import type { ItemId, TodayGridConfig } from '../../../../../packages/today-grid/index.js';
 
 export interface DiffEntry { path: string; from: unknown; to: unknown }
