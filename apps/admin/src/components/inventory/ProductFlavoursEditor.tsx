@@ -10,14 +10,16 @@ import { Plus, X } from '@/components/icons';
 import { FlavourPricesEditor } from './FlavourPricesEditor';
 import type { ProductOption, ProductVariant } from '@/lib/types';
 import { MAX_PRODUCT_OPTIONS } from '@/lib/productValidation';
-import { appendProductPhotos, swapFirstGalleryPhoto } from '@/lib/productPhotoUpload';
+import { appendProductPhotos, swapFirstGalleryPhoto, type UploadedPhoto } from '@/lib/productPhotoUpload';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 
 const FIELD_CLASS =
   'w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10';
 
-export function ProductFlavoursEditor({ options, variants = [], onChange, onBusyChange }: {
+export function ProductFlavoursEditor({ options, variants = [], onChange, onBusyChange, preserveOriginal = false, onPhotoUploaded }: {
+  preserveOriginal?: boolean;
+  onPhotoUploaded?: (photo: UploadedPhoto) => void;
   options: ProductOption[];
   variants?: ProductVariant[];
   onChange: (options: ProductOption[]) => void;
@@ -48,6 +50,7 @@ export function ProductFlavoursEditor({ options, variants = [], onChange, onBusy
           <div className="flex items-center gap-2">
             <ProductImageUpload
               small
+              preserveOriginal={preserveOriginal} onPhotoUploaded={onPhotoUploaded}
               imageUrl={option.imageUrl}
               onUploadingChange={busy}
               onChange={(imageUrl) => update(keyOf(option), (current) => ({
@@ -80,6 +83,7 @@ export function ProductFlavoursEditor({ options, variants = [], onChange, onBusy
           </label>
           <FlavourPricesEditor prices={option.priceOverrides} variants={variants} onChange={(priceOverrides) => update(keyOf(option), () => ({ priceOverrides }))} />
           <ProductGalleryEditor
+            preserveOriginal={preserveOriginal} onPhotoUploaded={onPhotoUploaded}
             urls={option.extraImageUrls ?? []}
             hasCover={!!option.imageUrl}
             onChange={(extraImageUrls) => update(keyOf(option), () => ({ extraImageUrls }))}

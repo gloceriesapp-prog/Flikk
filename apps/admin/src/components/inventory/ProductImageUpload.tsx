@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Loader2 } from '@/components/icons';
-import { uploadPhoto } from '@/lib/productPhotoUpload';
+import { uploadPhoto, originalProductPhoto, type UploadedPhoto } from '@/lib/productPhotoUpload';
 
 export function ProductImageUpload({
   imageUrl,
@@ -14,7 +14,11 @@ export function ProductImageUpload({
   small = false,
   onUploadingChange,
   badge,
+  preserveOriginal = false,
+  onPhotoUploaded,
 }: {
+  preserveOriginal?: boolean;
+  onPhotoUploaded?: (photo: UploadedPhoto) => void;
   imageUrl: string | undefined;
   onChange: (url: string, bgColor: string | null) => void | Promise<void>;
   small?: boolean;
@@ -45,7 +49,9 @@ export function ProductImageUpload({
     onUploadingChange?.(true);
 
     try {
-      const photo = await uploadPhoto(file, bucket);
+      const uploadedPhoto = await uploadPhoto(file, bucket);
+      onPhotoUploaded?.(uploadedPhoto);
+      const photo = preserveOriginal ? originalProductPhoto(uploadedPhoto) : uploadedPhoto;
       setWarning(photo.warning ?? null);
       setUploaded(true);
       await onChange(photo.url, photo.bgColor);
@@ -89,7 +95,7 @@ export function ProductImageUpload({
       {error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-danger`}>{error}</p>}
       {warning && !error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-amber-600`}>{warning}</p>}
       {/* Product photos are cut out and centred by the photo worker after the product is saved. */}
-      {uploaded && !error && !small && ['products', 'product-images'].includes(bucket) && (
+      {uploaded && !error && !small && !preserveOriginal && ['products', 'product-images'].includes(bucket) && (
         <p className="mt-1 w-28 text-[10px] text-muted">Background is removed automatically a few seconds after you save.</p>
       )}
     </div>

@@ -14,7 +14,7 @@
 // that component's own note on the Blinkit/Instamart pricing model this
 // follows.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { X } from '@/components/icons';
 import type { NewProductInput, Product, ProductOption, Serving, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
@@ -26,7 +26,7 @@ import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
 import { ImageStyleChoiceField, type ImageStyleChoice } from './PremiumImagePanel';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
-import { appendProductPhotos, swapFirstGalleryPhoto } from '@/lib/productPhotoUpload';
+import { appendProductPhotos, swapFirstGalleryPhoto, originalProductPhoto, type UploadedPhoto } from '@/lib/productPhotoUpload';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { ProductFlavoursEditor } from './ProductFlavoursEditor';
@@ -99,6 +99,34 @@ export function AddProductModal({
   const [flavourUploading, setFlavourUploading] = useState(false);
   const [galleryUploading, setGalleryUploading] = useState(false);
   const photosUploading = flavourUploading || galleryUploading;
+  const photoVersions = useRef(new Map<string, UploadedPhoto>());
+  const rememberPhoto = (photo: UploadedPhoto) => {
+    photoVersions.current.set(photo.url, photo);
+    if (photo.originalUrl) photoVersions.current.set(photo.originalUrl, photo);
+  };
+  function changeImageStyle(next: ImageStyleChoice) {
+    if (photosUploading || submitting) return;
+    try {
+      const resolve = (url?: string) => {
+        if (!url) return undefined;
+        const photo = photoVersions.current.get(url);
+        if (!photo) {
+          if (next.style === 'none') throw new Error('Upload this photo again to retain its original background.');
+          return { url, bgColor: null };
+        }
+        return next.style === 'none' ? originalProductPhoto(photo) : photo;
+      };
+      const cover = resolve(draft.imageUrl);
+      const extraImageUrls = draft.extraImageUrls.map(url => resolve(url)!.url);
+      const options = draft.options.map(option => ({ ...option,
+        imageUrl: resolve(option.imageUrl)?.url,
+        extraImageUrls: (option.extraImageUrls ?? []).map(url => resolve(url)!.url),
+      }));
+      setDraft(current => ({ ...current, imageUrl: cover?.url, bgColor: cover?.bgColor ?? undefined, extraImageUrls, options }));
+      setImageStyle(next);
+      setError(null);
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not change image style.'); }
+  }
   const homeChoice = useHomeSectionChoice(undefined, !quickTabOnly);
 
   async function handleAdd() {
@@ -212,6 +240,7 @@ export function AddProductModal({
           </select>
 
           <ProductGalleryEditor
+            preserveOriginal={imageStyle.style === 'none'} onPhotoUploaded={rememberPhoto}
             coverUrl={draft.imageUrl}
             coverFields={
               <CatalogueNameInput
@@ -238,7 +267,8 @@ export function AddProductModal({
             onUploadingChange={setGalleryUploading}
           />
 
-          {draft.imageUrl && <ImageStyleChoiceField value={imageStyle} category={category} onChange={setImageStyle} />}
+          <ImageStyleChoiceField value={imageStyle} category={category} onChange={changeImageStyle} disabled={photosUploading || submitting} />
+
 
           <input
             value={draft.localName}
@@ -274,7 +304,7 @@ export function AddProductModal({
 
           <ProductVariantsEditor category={category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
-          <ProductFlavoursEditor variants={draft.variants} options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
+          <ProductFlavoursEditor preserveOriginal={imageStyle.style === 'none'} onPhotoUploaded={rememberPhoto} variants={draft.variants} options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
 
           <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
           {!quickTabOnly && <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} variants={draft.variants} onVariantsChange={(variants) => setDraft({ ...draft, variants })} />}

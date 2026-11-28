@@ -1,7 +1,7 @@
 import { MAX_EXTRA_IMAGES } from './productValidation';
 import { prepareAdminImage } from './prepareAdminImage';
 
-export type UploadedPhoto = { url: string; bgColor: string | null; warning?: string };
+export type UploadedPhoto = { url: string; bgColor: string | null; warning?: string; originalUrl?: string };
 
 export async function uploadPhoto(file: File, bucket: string, signal?: AbortSignal): Promise<UploadedPhoto> {
   signal?.throwIfAborted();
@@ -15,7 +15,12 @@ export async function uploadPhoto(file: File, bucket: string, signal?: AbortSign
   if (!response.ok || typeof body?.url !== 'string') {
     throw new Error(body?.error ?? 'Upload failed. Try again.');
   }
-  return { url: body.url, bgColor: body.bgColor ?? null, ...(typeof body.warning === 'string' ? { warning: body.warning } : {}) };
+  return { url: body.url, bgColor: body.bgColor ?? null, ...(typeof body.originalUrl === 'string' ? { originalUrl: body.originalUrl } : {}), ...(typeof body.warning === 'string' ? { warning: body.warning } : {}) };
+}
+
+export function originalProductPhoto(photo: UploadedPhoto): UploadedPhoto {
+  if (!photo.originalUrl) throw new Error('The original photo could not be retained. Upload it again before choosing None.');
+  return { ...photo, url: photo.originalUrl, bgColor: null };
 }
 
 export function appendProductPhotos(

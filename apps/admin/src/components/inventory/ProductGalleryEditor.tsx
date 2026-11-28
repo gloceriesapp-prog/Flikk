@@ -3,7 +3,7 @@
 import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, ImagePlus, X } from '@/components/icons';
 import { MAX_EXTRA_IMAGES } from '@/lib/productValidation';
-import { uploadPhoto, type UploadedPhoto } from '@/lib/productPhotoUpload';
+import { uploadPhoto, originalProductPhoto, type UploadedPhoto } from '@/lib/productPhotoUpload';
 
 export function ProductGalleryEditor({
   urls,
@@ -15,7 +15,11 @@ export function ProductGalleryEditor({
   onUpload,
   onUploadingChange,
   statusBadge,
+  preserveOriginal = false,
+  onPhotoUploaded,
 }: {
+  preserveOriginal?: boolean;
+  onPhotoUploaded?: (photo: UploadedPhoto) => void;
   urls: string[];
   hasCover: boolean;
   coverUrl?: string;
@@ -53,6 +57,11 @@ export function ProductGalleryEditor({
     setErrors([]);
     setRemaining(files.length);
     onUploadingChange(true);
+    const upload = async (file: File) => {
+      const photo = await uploadPhoto(file, 'product-images');
+      onPhotoUploaded?.(photo);
+      return preserveOriginal ? originalProductPhoto(photo) : photo;
+    };
     const photos: UploadedPhoto[] = [];
     const failures: string[] = [];
     try {
@@ -60,7 +69,7 @@ export function ProductGalleryEditor({
       if (hasDesignatedCover) {
         const cover = files[0]!;
         try {
-          photos.push(await uploadPhoto(cover, 'product-images'));
+          photos.push(await upload(cover));
         } catch (error) {
           setErrors([`Main photo (${cover.name}) could not be uploaded. ${error instanceof Error ? error.message : 'Please try again.'}`]);
           return;
@@ -71,7 +80,7 @@ export function ProductGalleryEditor({
       // returns results in file order even when the second one finishes first.
       for (let offset = Number(hasDesignatedCover); offset < files.length; offset += 2) {
         const group = files.slice(offset, offset + 2);
-        const results = await Promise.allSettled(group.map((file) => uploadPhoto(file, 'product-images')));
+        const results = await Promise.allSettled(group.map((file) => upload(file)));
         results.forEach((result, index) => {
           if (result.status === 'fulfilled') photos.push(result.value);
           else {

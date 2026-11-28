@@ -840,6 +840,10 @@
     {
       "file": "20261127120000_welcome_banner_toggle.sql",
       "sha256": "b51583bccf1d278b338f9d81fc173227f1e4b72602d39c8ba8de8ea6ef343d05"
+    },
+    {
+      "file": "20261128140000_product_original_images.sql",
+      "sha256": "637c4756672c827b1c223b44345040f86ac63acdc78002b20a7a4e64d1f404d0"
     }
   ]
 }
