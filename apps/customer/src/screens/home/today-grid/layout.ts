@@ -1,13 +1,13 @@
 // Grid geometry: 3 columns; the hero spans 2 rows in column 1 and up to 4
 // cards fill the 2x2. Fewer cards: 2x1 (hero one row tall), or hero alone.
-// Bento look (same as the Namma Brands preview): a light-blue rounded block
-// inset from the screen edges, white cards with a rounded pill on top.
-export const BLOCK_BG = '#D0E0FD';
-export const MARGIN = 10;
+// Bento look: a full-width light-blue section (header artwork edge to edge,
+// same blue as its background), white cards padded inside.
+export const BLOCK_BG = '#D1E1FE';
+export const MARGIN = 0;
 export const SIDE = 10;
 export const GAP = 8;
 export const RADIUS = 18;
-export const BLOCK_RADIUS = 20;
+export const BLOCK_RADIUS = 0;
 export const BORDER = '#E6ECF7';
 export const TITLE_COLOR = '#101828';
 export const LINE_COLOR = '#667085';
