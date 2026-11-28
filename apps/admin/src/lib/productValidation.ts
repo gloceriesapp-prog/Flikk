@@ -32,6 +32,7 @@ export interface VariantInput {
 }
 
 export interface ProductWriteInput {
+  imageStyle?: 'none' | 'standard';
   storeId: string;
   name: string;
   category: string;

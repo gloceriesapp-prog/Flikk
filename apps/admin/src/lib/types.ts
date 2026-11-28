@@ -367,6 +367,8 @@ export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 // inventory sync with store POS is explicitly out of scope until MVP
 // validates). stockStatus is store-reported, not live-polled.
 export interface Product {
+  /** Write-only image style intent from Edit product; not a stored column. */
+  imageStyle?: 'none' | 'standard';
   quickTabKey?: string;
   id: string;
   name: string;

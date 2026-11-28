@@ -5,12 +5,13 @@
 // cleaned version is ready, so an open form swaps it in and a later save
 // cannot put the uncleaned photo back.
 
+import { isOriginalProductImage } from '@/lib/productImageOriginal';
 import { useEffect, useState } from 'react';
 import type { PhotoState, PhotoStatus } from '@/app/api/product-images/photos/route';
 
 export function usePhotoStatus(productId: string | undefined, urls: string[], onCleaned: (from: string, to: string) => void) {
   const [states, setStates] = useState<Map<string, PhotoState>>(new Map());
-  const key = urls.join('|');
+  const key = urls.filter(url => !isOriginalProductImage(url)).join('|');
 
   useEffect(() => {
     if (!productId || !key) return;

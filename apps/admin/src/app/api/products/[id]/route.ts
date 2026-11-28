@@ -21,6 +21,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
 
   try {
     const input: Partial<ProductWriteInput> = body ?? {};
+    if (input.imageStyle !== undefined && input.imageStyle !== 'none' && input.imageStyle !== 'standard') throw new Error('Invalid image style.');
     // Filed products take their category from the sub-category. A save that
     // sends none (e.g. Approvals' photo Replace on an older, unfiled product)
     // keeps its label; the edit form and approval still require filing it.
@@ -33,8 +34,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
     const extraImageUrls = toExtraImageUrls(input);
     // Validated before anything is written.
     const options = toProductOptions(input);
-    const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input), ...toCommissionWaiver(input), ...toUnitPriceFlag(input), ...toMorningSlot(input), ...toServingOptions(input), ...toPreorder(input), ...toBrand(input), ...toCatalogueItemLink(input) };
-    await saveCatalogueProduct(id, { ...toProductRow(input), pending_image_url: null }, toVariantPayload(input.variants));
+    const extras = { ...(input.imageStyle ? { premium_image_url: null } : {}), ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input), ...toCommissionWaiver(input), ...toUnitPriceFlag(input), ...toMorningSlot(input), ...toServingOptions(input), ...toPreorder(input), ...toBrand(input), ...toCatalogueItemLink(input) };
+    await saveCatalogueProduct(id, { ...toProductRow(input), pending_image_url: null }, toVariantPayload(input.variants), input.imageStyle);
     await saveProductExtras(id, extras);
     await saveVariantMarkups(id, toVariantMarkups(input.variants));
     if (options) await saveProductOptions(id, options);
