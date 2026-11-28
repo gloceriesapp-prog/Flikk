@@ -37,7 +37,8 @@ it.each([[4, 'full', 4], [3, 'row', 2], [0, 'hero-only', 0]])('%i cards render t
 
 it('shows honest hero numbers: price and real MRP struck', async () => {
   await render(<TodayGridView headerImageUrl="https://img/header" grid={grid(4)} onTap={jest.fn()} />);
-  expect(screen.getByText('Landed 6:40 AM')).toBeTruthy();
+  expect(screen.getByText('Landed')).toBeTruthy();
+  expect(screen.getByText('6:40 AM')).toBeTruthy();
   expect(screen.getByText('₹180')).toBeTruthy();
   expect(screen.getByText('₹220')).toBeTruthy();
 });
@@ -72,4 +73,13 @@ it('small cards show the title only; the line stays on the hero', async () => {
 it('skeleton keeps the same layout', async () => {
   await render(<TodayGridSkeleton />);
   expect(screen.getByTestId('today-grid-skeleton')).toBeTruthy();
+});
+
+it('splits tags into the two-tone pill', () => {
+  const { tagParts } = jest.requireActual('../src/screens/home/today-grid/tagParts') as typeof import('../src/screens/home/today-grid/tagParts');
+  expect(tagParts('Up to 33% off')).toEqual({ lead: 'Up to', value: '33% OFF' });
+  expect(tagParts('From ₹20')).toEqual({ lead: 'From', value: '₹20' });
+  expect(tagParts('Landed 6:40 AM')).toEqual({ lead: 'Landed', value: '6:40 AM' });
+  expect(tagParts('Order by 10 PM')).toEqual({ lead: 'Order by', value: '10 PM' });
+  expect(tagParts('Local makers')).toEqual({ lead: null, value: 'Local makers' });
 });
