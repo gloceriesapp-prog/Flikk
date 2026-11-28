@@ -59,7 +59,7 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
           <div className="flex flex-col gap-4 text-sm">
             <label className="flex flex-col gap-1"><span className="flex justify-between text-xs font-medium text-muted">Title <Count value={draft.title} max={24} /></span>
               <input className={field} value={draft.title} onChange={(e) => set({ title: e.target.value })} /><FieldErrors errors={errorFor('title')} /></label>
-            <label className="flex flex-col gap-1"><span className="flex justify-between text-xs font-medium text-muted">{facts.type === 'hero' ? 'Line' : 'Line (screen readers only; small cards show the title)'} <Count value={draft.line} max={40} /></span>
+            <label className="flex flex-col gap-1"><span className="flex justify-between text-xs font-medium text-muted">Line (screen readers only; cards show the title) <Count value={draft.line} max={40} /></span>
               <input className={field} value={draft.line} onChange={(e) => set({ line: e.target.value })} /><FieldErrors errors={errorFor('line')} /></label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1"><span className="text-xs font-medium text-muted">Tag</span>

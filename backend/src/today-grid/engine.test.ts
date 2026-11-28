@@ -35,6 +35,14 @@ describe('slots and hero', () => {
   it('a disabled hero falls back too', () => {
     expect(build(ist(TUESDAY, '13:00'), { config: withConfig(c => { c.items['village-fresh'].enabled = false; }) }).hero.id).toBe('fruits-vegetables');
   });
+  it('hero carries up to 4 in-stock products to rotate, MRP only when real', () => {
+    const top = [1, 2, 3, 4, 5].map(n => ({ id: `p${n}`, name: `Fish ${n}`, price: 100 + n, mrp: n === 2 ? 90 : 150, imageUrl: `https://img/p${n}` }));
+    const hero = build(ist(TUESDAY, '07:30'), { a: availability({ fish: { ...stat(4, 180, 220), arrivedMinute: 400, top } }) }).hero;
+    expect(hero.products?.map(p => p.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
+    expect(hero.products?.[1]?.mrp).toBeNull(); // 90 is not above 102
+    expect(hero.products?.[0]).toMatchObject({ name: 'Fish 1', price: 101, mrp: 150, imageUrl: 'https://img/p1' });
+    expect(build(ist(TUESDAY, '07:30')).hero.products).toBeUndefined(); // no peeks, no rotation
+  });
   it('hero tag and price are honest', () => {
     const hero = build(ist(TUESDAY, '07:30')).hero;
     expect(hero).toMatchObject({ tag: 'Landed 6:40 AM', tagText: '#FFD84D', price: { amount: 180, mrp: 220 } });

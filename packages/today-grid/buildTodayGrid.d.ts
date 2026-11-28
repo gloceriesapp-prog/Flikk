@@ -1,6 +1,7 @@
 import { type IstClock } from './istClock.js';
 import { type Availability, type CardId, type FestivalInput, type ItemConfig, type ItemId, type SlotRule, type Stat, type TodayGrid, type TodayGridConfig, type UserSummary } from './types.js';
 export declare const MAX_CARDS = 4;
+export declare const HERO_PRODUCTS = 4;
 export interface BuildInput {
     now: Date;
     user: UserSummary;

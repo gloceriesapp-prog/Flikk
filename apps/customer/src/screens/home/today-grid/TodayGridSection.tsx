@@ -12,6 +12,7 @@ import { TodayGridSkeleton } from './components/TodayGridSkeleton';
 import { TodayGridView } from './components/TodayGridView';
 import { scheduleGrid } from './scheduleGrid';
 import { useCardTap } from './useCardTap';
+import { useHeroProducts } from './useHeroProducts';
 import { useTodayGrid } from './useTodayGrid';
 
 export const HEADER_IMAGE_KEY = 'home.todayGrid.headerImageUrl';
@@ -22,13 +23,14 @@ export function TodayGridSection() {
   const { data, isPending, isError } = useTodayGrid();
   const schedule = useScheduleGrid(isError);
   const headerImageUrl = useCopyImage(HEADER_IMAGE_KEY, DEFAULT_HEADER_IMAGE);
+  const heroProducts = useHeroProducts(isError ? schedule?.hero : data?.hero);
   const grid = isError ? schedule : data;
   const slot = grid?.slot ?? '';
   const heroId = grid?.hero?.id ?? '';
   const tap = useCardTap((card, _count) => trackAddToCart({ cardId: card.id, slot, position: -1, hero: heroId }));
   if (!grid) return isPending ? <View className="bg-white pt-3"><TodayGridSkeleton /></View> : null;
   if (!grid.enabled || !grid.hero) return null;
-  const hero = grid.hero;
+  const hero = { ...grid.hero, products: heroProducts };
   const onTap = (card: GridCard, position: number) => {
     trackTap({ cardId: card.id, slot, position, hero: hero.id });
     void tap(card);

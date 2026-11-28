@@ -18,7 +18,7 @@ function Pill({ tag }: { tag: string }) {
   );
 }
 
-export function MiniCard({ title, tag, line, images = [], width = 120, height = 166, hero = false, price }: MiniCardProps) {
+export function MiniCard({ title, tag, images = [], width = 120, height = 166, hero = false, price }: MiniCardProps) {
   const mrp = price && price.mrp != null && price.mrp > price.amount ? price.mrp : null;
   return (
     <div style={{ background: '#D0E0FD', padding: 8, borderRadius: 20 }}>
@@ -31,7 +31,6 @@ export function MiniCard({ title, tag, line, images = [], width = 120, height = 
             <span style={{ background: '#E2E175', color: '#111715', fontWeight: 700, fontSize: 16, padding: '2px 10px' }}>₹{price.amount}</span>
           </div>
         )}
-        {hero && <div style={{ color: '#101828', fontWeight: 600, fontSize: 13, lineHeight: '16px', padding: '8px 6px 0' }}>{line}</div>}
         <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: 0, padding: hero ? 8 : 0, boxSizing: 'border-box' }}>
           {images.slice(0, hero ? 1 : 2).map((src, index) => (
             // eslint-disable-next-line @next/next/no-img-element -- product photo URLs from Storage, preview only

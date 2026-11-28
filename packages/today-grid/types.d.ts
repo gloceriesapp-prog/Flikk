@@ -3,12 +3,20 @@ export type CardId = 'milk-breakfast' | 'your-usuals' | 'popular-near-you' | 'br
 export type ItemId = HeroId | CardId;
 export type ItemType = 'hero' | 'rotating' | 'special';
 export type Placeholder = 'min' | 'pct' | 'total' | 'time' | 'cutoff' | 'festival';
+export interface ProductPeek {
+    id: string;
+    name: string;
+    price: number;
+    mrp: number | null;
+    imageUrl: string;
+}
 export interface Stat {
     count: number;
     minPrice: number | null;
     minPriceMrp: number | null;
     maxDiscountPct: number | null;
     imageUrls: string[];
+    top?: ProductPeek[];
 }
 export declare const EMPTY_STAT: Stat;
 export interface LocalBrands {
@@ -145,6 +153,7 @@ export interface GridCard {
         amount: number;
         mrp: number | null;
     };
+    products?: ProductPeek[];
 }
 export type TraceStatus = 'shown' | 'no-data' | 'replaced' | 'backup' | 'not-in-slot' | 'disabled' | 'duplicate' | 'no-room';
 export interface TraceRow {

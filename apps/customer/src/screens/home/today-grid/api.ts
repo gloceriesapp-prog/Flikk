@@ -5,7 +5,7 @@ import { mapApiProduct, type ApiProduct } from '../../../api/products';
 import type { Product } from '../products/types';
 // Card shapes come from the shared rules package, so app and server never drift.
 import type { GridCard } from '../../../../../../packages/today-grid/index.js';
-export type { CardTarget, GridCard } from '../../../../../../packages/today-grid/index.js';
+export type { CardTarget, GridCard, ProductPeek } from '../../../../../../packages/today-grid/index.js';
 
 export interface TodayGrid {
   enabled: boolean;

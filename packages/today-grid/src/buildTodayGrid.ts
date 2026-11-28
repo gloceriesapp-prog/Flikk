@@ -10,6 +10,7 @@ import { fill } from './placeholders.js';
 import { EMPTY_STAT, type Availability, type CardId, type FestivalInput, type GridCard, type HeroId, type ItemConfig, type ItemId, type SlotRule, type Stat, type TodayGrid, type TodayGridConfig, type TraceRow, type UserSummary } from './types.js';
 
 export const MAX_CARDS = 4;
+export const HERO_PRODUCTS = 4;
 const MIN_ITEMS = 3;
 const FALLBACK_HERO: HeroId = 'fruits-vegetables';
 
@@ -29,6 +30,7 @@ function mergeStats(stats: Stat[]): Stat {
     minPrice: cheapest?.minPrice ?? null, minPriceMrp: cheapest?.minPriceMrp ?? null,
     maxDiscountPct: pcts.length ? Math.max(...pcts) : null,
     imageUrls: [...new Set(present.flatMap(s => s.imageUrls))].slice(0, 2),
+    top: present.flatMap(s => s.top ?? []).slice(0, HERO_PRODUCTS),
   };
 }
 
@@ -139,6 +141,7 @@ export function buildTodayGrid({ now, user, availability: a, config, festival }:
   const hero: GridCard = {
     ...toCard(heroId, heroCfg, used, a),
     ...(used.minPrice != null ? { price: { amount: used.minPrice, mrp: used.minPriceMrp != null && used.minPriceMrp > used.minPrice ? used.minPriceMrp : null } } : {}),
+    ...(used.top?.length ? { products: used.top.slice(0, HERO_PRODUCTS).map(p => ({ ...p, mrp: p.mrp != null && p.mrp > p.price ? p.mrp : null })) } : {}),
   };
   note({ id: heroId, status: 'shown', reason: heroId === slot.hero ? 'hero for this slot' : 'fallback hero', position: 0 });
 

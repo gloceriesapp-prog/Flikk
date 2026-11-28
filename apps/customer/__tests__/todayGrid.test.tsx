@@ -65,9 +65,9 @@ it('a card or hero without photos gets stand-in product photos, never an empty f
   expect(stand).toHaveLength(3); // hero: 1, first card: 2
 });
 
-it('small cards show the title only; the line stays on the hero', async () => {
+it('no sub heading on any card: titles only', async () => {
   await render(<TodayGridView headerImageUrl="https://img/header" grid={grid(4)} onTap={jest.fn()} />);
-  expect(screen.getAllByText('line')).toHaveLength(1);
+  expect(screen.queryByText('line')).toBeNull();
 });
 
 it('skeleton keeps the same layout', async () => {
@@ -82,4 +82,20 @@ it('splits tags into the two-tone pill', () => {
   expect(tagParts('Landed 6:40 AM')).toEqual({ lead: 'Landed', value: '6:40 AM' });
   expect(tagParts('Order by 10 PM')).toEqual({ lead: 'Order by', value: '10 PM' });
   expect(tagParts('Local makers')).toEqual({ lead: null, value: 'Local makers' });
+});
+
+it('hero rotates through its products: name, store price, real MRP struck', async () => {
+  const { act } = jest.requireActual('@testing-library/react-native') as typeof import('@testing-library/react-native');
+  const g = grid(4);
+  const products = [
+    { id: 'a', name: 'Seer Fish', price: 599, mrp: 1295, imageUrl: 'https://img/a' },
+    { id: 'b', name: 'Prawns', price: 320, mrp: null, imageUrl: 'https://img/b' },
+  ];
+  await render(<TodayGridView headerImageUrl="https://img/header" grid={{ ...g, hero: { ...g.hero, products } }} onTap={jest.fn()} />);
+  expect(screen.getByText('Seer Fish')).toBeTruthy();
+  expect(screen.getByText('₹599')).toBeTruthy();
+  expect(screen.getByText('₹1,295')).toBeTruthy();
+  await act(async () => { jest.advanceTimersByTime(3000); });
+  expect(screen.getByText('Prawns')).toBeTruthy();
+  expect(screen.queryByText('₹1,295')).toBeNull(); // no MRP when there isn't a real one
 });
