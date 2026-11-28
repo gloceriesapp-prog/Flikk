@@ -24,8 +24,9 @@ export function gridShape(cardCount: number): { shape: GridShape; cards: number 
 
 export function gridMetrics(screenWidth: number) {
   const column = Math.floor((screenWidth - MARGIN * 2 - SIDE * 2 - GAP * 2) / 3);
-  const cardHeight = Math.round(column * 0.97);
+  // Tall enough that the photo area, not the text, fills most of each card.
+  const cardHeight = Math.round(column * 1.45);
   // 2x1: one taller row, so the hero's title, price and photo still fit.
-  return { column, cardHeight, heroHeight: cardHeight * 2 + GAP, rowHeight: Math.round(cardHeight * 1.5), wide: column * 2 + GAP,
+  return { column, cardHeight, heroHeight: cardHeight * 2 + GAP, rowHeight: Math.round(cardHeight * 1.25), wide: column * 2 + GAP,
     inner: screenWidth - MARGIN * 2 - SIDE * 2 };
 }
