@@ -1,6 +1,7 @@
 import { PAGE_TITLE_CLASS_NAME } from '../../theme/typography';
 import { locationFromAddress } from '../../features/delivery-address/mapAddress';
-import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
+import { useDeliveryEstimateMinutes, useDeliveryWindow } from '../../api/deliverySettings';
+import { formatWindow } from '../../utils/deliveryWindow';
 import { useCopy } from '../../api/appConfig';
 // Reached from CartBar's "View cart" tap (see components/CartBar/CartBar.tsx)
 // or the bottom nav. Payment selection and order placement live in the
@@ -67,6 +68,8 @@ export function CartScreen({ navigation, route }: Props) {
   const emptySubtitle = useCopy('cart.empty.subtitle');
   const estimatedMinutes = useDeliveryEstimateMinutes();
   const items = useCartStore((state) => state.items);
+  // A slower category in the cart (e.g. fresh-cut meat) sets the whole order's time.
+  const deliveryWindow = useDeliveryWindow(items.map((item) => item.category));
   const totalQuantity = useCartStore(selectCartTotalQuantity);
   const itemTotal = useCartStore(selectCartTotalPrice);
   // Pre-order cart: its delivery day + slot replaces the minutes estimate.
@@ -296,11 +299,16 @@ export function CartScreen({ navigation, route }: Props) {
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2.5">
                   <View>
-                    <Text className="font-bold tracking-tight text-ink/90" style={{ fontSize: Platform.OS === 'ios' ? 18 : 17 }}>{preorder ? `${isPreorderCart ? 'Pre-order' : 'Morning delivery'} · ${preorder.label}` : storeClosed ? 'Your cart' : `Delivery in ${estimatedMinutes} minutes`}</Text>
+                    <Text className="font-bold tracking-tight text-ink/90" style={{ fontSize: Platform.OS === 'ios' ? 18 : 17 }}>{preorder ? `${isPreorderCart ? 'Pre-order' : 'Morning delivery'} · ${preorder.label}` : storeClosed ? 'Your cart' : `Delivery in ${formatWindow(deliveryWindow).replace('mins', 'minutes')}`}</Text>
                     <Text className="mt-1.5 text-[14px] font-medium text-ink/55">
                       {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
                       {storeGroups.length > 1 ? ` from ${storeGroups.length} stores` : ' in this order'}
                     </Text>
+                    {!preorder && !storeClosed && deliveryWindow.category ? (
+                      <Text className="mt-1 text-[13px] font-semibold text-[#B45309]" testID="cart-delivery-window-note">
+                        Includes {deliveryWindow.category}{deliveryWindow.note ? `, ${deliveryWindow.note}` : ''} · {formatWindow(deliveryWindow)}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               </View>

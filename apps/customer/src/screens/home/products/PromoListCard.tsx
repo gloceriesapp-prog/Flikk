@@ -21,7 +21,7 @@ import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from './horiz
 import { ScrollView, View , useWindowDimensions } from 'react-native';
 import { ProductCard } from './ProductCard';
 import { SectionTitle } from '../components/SectionTitle';
-import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
+import { useCategoryWindows, useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import { productAvailability } from '../../../utils/productAvailability';
 import type { Product } from './types';
 
@@ -40,6 +40,7 @@ export function PromoListCard({ title, products, subtitle }: Props) {
   // Lifted once for the whole row (issue #22) — see ProductSection for the
   // rationale: one clock + delivery-settings subscription, not one per card.
   const estimatedMinutes = useDeliveryEstimateMinutes();
+  const categoryWindows = useCategoryWindows();
 
   return (
     <View>
@@ -63,6 +64,7 @@ export function PromoListCard({ title, products, subtitle }: Props) {
                 widthClassName="w-full"
                 showDiscountBadge
                 estimatedMinutes={estimatedMinutes}
+                categoryWindows={categoryWindows}
                 isAvailable={availability.isAvailable}
                 availabilityLabel={availability.label}
               />

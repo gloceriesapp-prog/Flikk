@@ -57,7 +57,7 @@ function AddControl({ product, onChooseFlavour }: { product: Product; onChooseFl
           requiresProductSelection(product) ? onChooseFlavour() : addToCart({
             isAvailable: product.isAvailable,
             id: lineId,
-            productId: product.id,
+            productId: product.id, category: product.categoryLabel,
             variantId: product.defaultVariantId,
             cutSize,
             name: product.name,

@@ -17,7 +17,8 @@ import { addToCart } from '../../../store/addToCart';
 import { preorderMinimumLabel } from '../../../store/preorderQuantity';
 import { useProductAvailability } from './useProductAvailability';
 import { EtaPill } from '../../../components/EtaPill';
-import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
+import { useCategoryWindows, useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
+import { deliveryWindowFor, type CategoryDeliveryWindow } from '../../../utils/deliveryWindow';
 import type { Product } from './types';
 
 interface Props {
@@ -42,11 +43,19 @@ interface Props {
   // object) so React.memo's default shallow compare bails on a tick that
   // didn't actually change this card's availability.
   estimatedMinutes?: number;
+  // Slower categories' ranges (lifted with estimatedMinutes).
+  categoryWindows?: CategoryDeliveryWindow[];
   isAvailable: boolean;
   availabilityLabel?: string;
 }
 
-function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = true, compact = false, onDark = false, onPress, onAdd, estimatedMinutes, isAvailable, availabilityLabel }: Props) {
+// The card's delivery pill: its category's range, else the one estimate.
+function etaRange(category: string | undefined, minutes: number, windows?: CategoryDeliveryWindow[]) {
+  const window = deliveryWindowFor([category], minutes, windows);
+  return { minutes: window.min, maxMinutes: window.max };
+}
+
+function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = true, compact = false, onDark = false, onPress, onAdd, estimatedMinutes, categoryWindows, isAvailable, availabilityLabel }: Props) {
   const {
     id,
     name,
@@ -89,7 +98,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
     <ProductCardCartControl name={name} quantity={quantity} chooseOptions={chooseOptions} compact={compact} diameter={metrics.diameter} pillWidth={metrics.pillWidth} animatedWidth={buttonWidth}
       onAdd={() => {
         if (chooseOptions) { onAdd?.(); return; }
-        addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
+        addToCart({ isAvailable, id: lineId, productId: id, category: product.categoryLabel, variantId: product.defaultVariantId, cutSize, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl });
       }}
       onIncrement={() => incrementItem(lineId)} onDecrement={() => decrementItem(lineId)} />
   );
@@ -146,7 +155,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showImage = 
           {name}
         </Text>
         {/* Pre-orders deliver in a booked slot, not in minutes. */}
-        {isAvailable && !product.preorder && estimatedMinutes ? <EtaPill minutes={estimatedMinutes} /> : null}
+        {isAvailable && !product.preorder && estimatedMinutes ? <EtaPill {...etaRange(product.categoryLabel, estimatedMinutes, categoryWindows)} /> : null}
         {stockStatus ? (
           <Text className="text-[11px] font-semibold leading-[15px]" style={{ color: onDark ? '#FFB4AB' : '#D92D20' }}>{stockStatus}</Text>
         ) : null}
@@ -184,12 +193,14 @@ export function SelfServiceProductCardView(
 ) {
   const availability = useProductAvailability(props.product);
   const estimatedMinutes = useDeliveryEstimateMinutes();
+  const categoryWindows = useCategoryWindows();
   const [pickerOpen, setPickerOpen] = useState(false);
   return (
     <><ProductCardView
       {...props}
       onAdd={() => setPickerOpen(true)}
       estimatedMinutes={estimatedMinutes}
+      categoryWindows={categoryWindows}
       isAvailable={availability.isAvailable}
       availabilityLabel={availability.label}
     /><FlavourPickerSheet product={props.product} visible={pickerOpen} onClose={() => setPickerOpen(false)} isAvailable={availability.isAvailable} availabilityLabel={availability.label} /></>

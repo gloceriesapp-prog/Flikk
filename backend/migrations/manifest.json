@@ -844,6 +844,10 @@
     {
       "file": "20261128130000_today_grid.sql",
       "sha256": "1370de7351bb49d75ce7323aca4f966225ddc8c95ab2d3c472fb5feec2b68bf7"
+    },
+    {
+      "file": "20261129090000_category_delivery_windows.sql",
+      "sha256": "9753f59444675c3dd6cb6cb36690c54c559242350ce51626262c9ef4df768c5e"
     }
   ]
 }

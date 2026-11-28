@@ -5,6 +5,7 @@
 import { Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useDeliveryEstimateMinutes } from '../api/deliverySettings';
+import { formatWindow } from '../utils/deliveryWindow';
 import { useIsOutsideOperatingHours } from '../utils/useOperatingHours';
 
 // Same blue as the cart bar.
@@ -19,12 +20,14 @@ function FlashIcon({ size }: { size: number }) {
   );
 }
 
-export function EtaPill({ minutes, size = 'card' }: { minutes: number; size?: 'card' | 'header' }) {
+// maxMinutes: a slower category's range ("45–60 mins"); omitted = one time.
+export function EtaPill({ minutes, maxMinutes, size = 'card' }: { minutes: number; maxMinutes?: number; size?: 'card' | 'header' }) {
   const header = size === 'header';
+  const label = formatWindow({ min: minutes, max: Math.max(minutes, maxMinutes ?? minutes) });
   return (
-    <View accessible accessibilityLabel={`Delivery in ${minutes} minutes`} className="flex-row items-center self-start">
+    <View accessible accessibilityLabel={`Delivery in ${label.replace('mins', 'minutes')}`} className="flex-row items-center self-start">
       <FlashIcon size={header ? 13 : 11} />
-      <Text className={`font-bold uppercase text-ink/60 ${header ? 'text-[11px] leading-[13px]' : 'text-[9px] leading-[11px]'}`}>{minutes} mins</Text>
+      <Text className={`font-bold uppercase text-ink/60 ${header ? 'text-[11px] leading-[13px]' : 'text-[9px] leading-[11px]'}`}>{label}</Text>
     </View>
   );
 }

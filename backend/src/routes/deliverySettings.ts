@@ -6,13 +6,16 @@
 // on for the real charged amount), so this display value and the real
 // charge can never read the row differently.
 import { Router } from 'express';
+import { getCategoryDeliveryWindows } from '../lib/categoryDeliveryWindows.js';
 import { getDeliverySettings } from '../lib/deliverySettings.js';
 
 export const deliverySettingsRouter = Router();
 
 deliverySettingsRouter.get('/', async (_req, res, next) => {
   try {
-    res.json(await getDeliverySettings());
+    // categoryWindows: slower categories (e.g. fresh-cut meat) and their range.
+    const [settings, categoryWindows] = await Promise.all([getDeliverySettings(), getCategoryDeliveryWindows()]);
+    res.json({ ...settings, categoryWindows });
   } catch (err) {
     next(err);
   }

@@ -13,7 +13,7 @@ export function addAllToCart(products: Product[]): number {
     const cutSize = quickAddCut(product);
     const id = cartLineId(product.id, product.defaultVariantId, cutSize);
     if (cart.items.some(item => item.id === id)) continue;
-    cart.addItem({ isAvailable: true, id, productId: product.id, variantId: product.defaultVariantId, cutSize, name: product.name,
+    cart.addItem({ isAvailable: true, id, productId: product.id, category: product.categoryLabel, variantId: product.defaultVariantId, cutSize, name: product.name,
       weight: product.weight, price: product.price, originalPrice: product.originalPrice, storeId: product.storeId ?? '',
       storeName: product.storeName, imageUrl: product.imageUrl });
     added += 1;
