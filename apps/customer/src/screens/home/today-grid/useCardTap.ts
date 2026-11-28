@@ -3,6 +3,7 @@
 //   card's live products (same rows its tag counted)
 //   action add-usuals -> add them all to the cart, with a short confirmation
 //   action preorder-list or tab preorder -> Pre-order; tab fresh/udupi
+//   products unavailable -> All brands (brands) or Categories (anything else)
 import { useRef } from 'react';
 import { Alert, Platform, ToastAndroid } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -45,7 +46,10 @@ export function useCardTap(onAdded?: (card: GridCard, count: number) => void) {
       if (!products.length) { notify('These items just sold out. Try again soon.'); return; }
       navigation.navigate('HomeSectionCollection', { title: card.title, products, showDiscountBadge: target.type === 'action' && target.id === 'offers' });
     } catch {
-      notify('Could not open this right now. Please try again.');
+      // Card products endpoint unavailable (schedule mode): open the
+      // closest existing list for the target instead of a dead tap.
+      if (target.type === 'brands') navigation.navigate('AllBrands');
+      else navigation.navigate('Categories');
     } finally {
       busy.current = false;
     }

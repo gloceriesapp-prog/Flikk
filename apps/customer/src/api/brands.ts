@@ -36,12 +36,3 @@ export function fetchSelectedPopularBrands(ids: string[], signal: AbortSignal) {
     { auth: false, signal },
   );
 }
-
-// GET /home/namma-brands (scoped to the pinned location by apiRequest): the
-// whole Namma Brands block, pills already computed from live prices.
-export interface NammaBrandCard { brand: PopularBrand; title: string; imageUrls: string[]; pill: string }
-export interface NammaBrands { enabled: boolean; headerImageUrl: string | null; cards: NammaBrandCard[] }
-
-export function fetchNammaBrands(signal?: AbortSignal) {
-  return apiRequest<NammaBrands>('/home/namma-brands', { auth: false, signal });
-}
