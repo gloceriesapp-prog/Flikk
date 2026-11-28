@@ -1,20 +1,20 @@
 import { View, useWindowDimensions } from 'react-native';
-import { BORDER, CARD_RADIUS, GAP, HERO_RADIUS, SIDE, gridMetrics } from '../layout';
+import { BLOCK_BG, BLOCK_RADIUS, GAP, MARGIN, RADIUS, SIDE, gridMetrics } from '../layout';
 
 // Same geometry as the live grid, so nothing jumps when data arrives.
 export function TodayGridSkeleton() {
   const { width } = useWindowDimensions();
   const { column, cardHeight, heroHeight } = gridMetrics(width);
-  const box = (w: number, h: number, radius: number) => (
-    <View style={{ width: w, height: h, borderRadius: radius, borderWidth: 1, borderColor: BORDER, backgroundColor: '#F6F7F9' }} />
+  const box = (w: number, h: number) => (
+    <View style={{ width: w, height: h, borderRadius: RADIUS, backgroundColor: 'rgba(255,255,255,0.7)' }} />
   );
   return (
-    <View accessibilityLabel="Loading today’s picks" testID="today-grid-skeleton" style={{ paddingHorizontal: SIDE }}>
-      <View className="mb-2.5 h-5 w-44 rounded bg-[#EEF0F4]" />
+    <View accessibilityLabel="Loading today’s picks" testID="today-grid-skeleton" style={{ marginHorizontal: MARGIN, padding: SIDE, paddingTop: 12, borderRadius: BLOCK_RADIUS, backgroundColor: BLOCK_BG }}>
+      <View className="mb-2.5 ml-1 h-5 w-44 rounded bg-white/70" />
       <View className="flex-row" style={{ gap: GAP }}>
-        {box(column, heroHeight, HERO_RADIUS)}
+        {box(column, heroHeight)}
         <View className="flex-row flex-wrap" style={{ gap: GAP, width: column * 2 + GAP }}>
-          {[0, 1, 2, 3].map((i) => <View key={i}>{box(column, cardHeight, CARD_RADIUS)}</View>)}
+          {[0, 1, 2, 3].map((i) => <View key={i}>{box(column, cardHeight)}</View>)}
         </View>
       </View>
     </View>
