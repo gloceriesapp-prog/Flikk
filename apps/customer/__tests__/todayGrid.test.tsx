@@ -84,7 +84,7 @@ it('splits tags into the two-tone pill', () => {
   expect(tagParts('Local makers')).toEqual({ lead: null, value: 'Local makers' });
 });
 
-it('hero rotates through its products: name, store price, real MRP struck', async () => {
+it('hero slides through its products right to left, looping back to the first', async () => {
   const { act } = jest.requireActual('@testing-library/react-native') as typeof import('@testing-library/react-native');
   const g = grid(4);
   const products = [
@@ -92,10 +92,16 @@ it('hero rotates through its products: name, store price, real MRP struck', asyn
     { id: 'b', name: 'Prawns', price: 320, mrp: null, imageUrl: 'https://img/b' },
   ];
   await render(<TodayGridView headerImageUrl="https://img/header" grid={{ ...g, hero: { ...g.hero, products } }} onTap={jest.fn()} />);
-  expect(screen.getByText('Seer Fish')).toBeTruthy();
-  expect(screen.getByText('₹599')).toBeTruthy();
-  expect(screen.getByText('₹1,295')).toBeTruthy();
+  // Slides side by side + a copy of the first at the end for the loop.
+  expect(screen.getAllByText('Seer Fish')).toHaveLength(2);
+  expect(screen.getAllByText('Prawns')).toHaveLength(1);
+  expect(screen.getAllByText('₹1,295')).toHaveLength(2); // MRP only on the product that has a real one
+  const { Animated } = jest.requireActual('react-native') as typeof import('react-native');
+  const timing = jest.spyOn(Animated, 'timing');
   await act(async () => { jest.advanceTimersByTime(3000); });
-  expect(screen.getByText('Prawns')).toBeTruthy();
-  expect(screen.queryByText('₹1,295')).toBeNull(); // no MRP when there isn't a real one
+  const toValue = (timing.mock.calls.at(-1)![1] as { toValue: number }).toValue;
+  expect(toValue).toBeLessThan(0); // one card width to the left: the next product comes in from the right
+  await act(async () => { jest.advanceTimersByTime(3000); });
+  expect((timing.mock.calls.at(-1)![1] as { toValue: number }).toValue).toBe(toValue * 2); // on to the loop copy of the first
+  timing.mockRestore();
 });
