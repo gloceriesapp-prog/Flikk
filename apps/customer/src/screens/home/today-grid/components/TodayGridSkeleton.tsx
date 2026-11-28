@@ -9,8 +9,8 @@ export function TodayGridSkeleton() {
     <View style={{ width: w, height: h, borderRadius: RADIUS, backgroundColor: 'rgba(255,255,255,0.7)' }} />
   );
   return (
-    <View accessibilityLabel="Loading today’s picks" testID="today-grid-skeleton" style={{ marginHorizontal: MARGIN, padding: SIDE, paddingTop: 0, overflow: 'hidden', borderRadius: BLOCK_RADIUS, backgroundColor: BLOCK_BG }}>
-      <View className="mb-2.5 bg-white/60" style={{ marginHorizontal: -SIDE, aspectRatio: 3 }} />
+    <View accessibilityLabel="Loading today’s picks" testID="today-grid-skeleton" style={{ marginHorizontal: MARGIN, padding: SIDE, overflow: 'hidden', borderRadius: BLOCK_RADIUS, backgroundColor: BLOCK_BG }}>
+      <View className="mb-2.5 bg-white/60" style={{ aspectRatio: 3, borderRadius: RADIUS }} />
       <View className="flex-row" style={{ gap: GAP }}>
         {box(column, heroHeight)}
         <View className="flex-row flex-wrap" style={{ gap: GAP, width: column * 2 + GAP }}>
