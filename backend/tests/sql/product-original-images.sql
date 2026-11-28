@@ -28,6 +28,23 @@ BEGIN
     RAISE EXCEPTION 'Standard gallery photos must still accept their processed result'; END IF;
   IF (SELECT extra_image_urls FROM products WHERE id=p) <> ARRAY['https://images.test/products/processed.webp'] THEN
     RAISE EXCEPTION 'Standard gallery photo was not replaced in place'; END IF;
+  -- An older batch worker records its result then directly updates the main URL.
+  INSERT INTO product_image_jobs(product_id,slot,original_url,result_url,status)
+    VALUES(n,'main',kept,'https://images.test/products/old-worker.webp','done');
+  UPDATE products SET image_url='https://images.test/products/old-worker.webp' WHERE id=n;
+  IF (SELECT image_url FROM products WHERE id=n) <> kept THEN
+    RAISE EXCEPTION 'An older worker must not overwrite a None main photo'; END IF;
+  -- None does not prevent an admin from uploading a different standard photo.
+  UPDATE products SET image_url='https://images.test/products/replacement.webp' WHERE id=n;
+  IF (SELECT image_url FROM products WHERE id=n) <> 'https://images.test/products/replacement.webp' THEN
+    RAISE EXCEPTION 'Admin replacement must remain possible'; END IF;
+  INSERT INTO product_premium_images(product_id,preset,status,url)
+    VALUES(n,'studio','done','https://images.test/products/premium.webp');
+  IF product_image_is_new('https://images.test/products/premium.webp') THEN
+    RAISE EXCEPTION 'Premium photos must retain their existing queue exclusion'; END IF;
+  UPDATE products SET image_url='https://images.test/products/premium.webp' WHERE id=n;
+  IF EXISTS(SELECT 1 FROM product_image_jobs WHERE product_id=n AND status IN ('queued','processing')) THEN
+    RAISE EXCEPTION 'Selecting Premium must not trigger cut-out processing'; END IF;
   IF NOT product_original_images_enabled() THEN RAISE EXCEPTION 'Feature probe must enable the UI'; END IF;
   IF has_function_privilege('anon','public.product_original_images_enabled()','EXECUTE') THEN
     RAISE EXCEPTION 'Anonymous clients must not get the Admin probe'; END IF;
