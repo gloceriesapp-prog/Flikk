@@ -1,16 +1,16 @@
 import { View } from 'react-native';
 import { AppImage } from '../../../../components/AppImage';
 
-// Two product photos (720x810), contained and bottom-aligned at one height,
-// overlapping slightly side by side.
+// Two product photos side by side filling the card's middle, bottom-aligned
+// on the offer strip, slightly overlapping.
 export function CardImages({ urls, width, height }: { urls: string[]; width: number; height: number }) {
   const photos = urls.slice(0, 2);
-  const photoWidth = photos.length > 1 ? Math.round(width * 0.6) : Math.round(width * 0.78);
+  const photoWidth = photos.length > 1 ? Math.round(width * 0.54) : Math.round(width * 0.8);
   return (
-    <View className="flex-row items-end justify-center overflow-hidden pb-2" style={{ height }}>
+    <View className="w-full flex-row items-end justify-center overflow-hidden" style={{ height }}>
       {photos.map((uri, index) => (
         <AppImage key={uri} source={{ uri }} resizeMode="contain" accessible={false} testID="today-photo"
-          style={{ width: photoWidth, height: Math.max(1, Math.min(Math.round(photoWidth * 810 / 720), height - 8)), marginLeft: index ? -photoWidth * 0.28 : 0 }} />
+          style={{ width: photoWidth, height: Math.max(1, height - 2), marginLeft: index ? -photoWidth * 0.12 : 0 }} />
       ))}
     </View>
   );
