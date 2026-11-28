@@ -20,7 +20,7 @@ export function TodayCard({ card, width, height, pillHeight, onPress }: { card: 
       <Text numberOfLines={2} className="px-1.5 pt-1.5 text-center font-extrabold tracking-[-0.2px] text-ink"
         style={{ fontSize: titleSize, lineHeight: titleLine }}>{card.title}</Text>
       {showLine ? <Text numberOfLines={1} className="px-1.5 text-center text-[11px] leading-[14px]" style={{ color: LINE_COLOR }}>{card.line}</Text> : null}
-      <CardImages urls={card.imageUrls} width={width} height={Math.max(1, height - pillHeight - textHeight)} />
+      <CardImages urls={card.imageUrls} accent={card.accent} width={width} height={Math.max(1, height - pillHeight - textHeight)} />
     </Pressable>
   );
 }

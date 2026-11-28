@@ -57,6 +57,12 @@ it('logs one impression per card per session', async () => {
   expect(events.filter(e => e.type === 'impression').map(e => e.cardId)).toEqual(['todays-catch', 'milk-breakfast', 'your-usuals', 'breakfast-ready', 'tea-coffee']);
 });
 
+it('a card or hero without photos shows a placeholder, not an empty foot', async () => {
+  const g = grid(4);
+  await render(<TodayGridView grid={{ ...g, hero: { ...g.hero, imageUrls: [] }, cards: g.cards.map((c, i) => (i ? c : { ...c, imageUrls: [] })) }} onTap={jest.fn()} />);
+  expect(screen.getAllByTestId('today-photo-placeholder')).toHaveLength(2);
+});
+
 it('skeleton keeps the same layout', async () => {
   await render(<TodayGridSkeleton />);
   expect(screen.getByTestId('today-grid-skeleton')).toBeTruthy();

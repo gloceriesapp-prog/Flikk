@@ -1,5 +1,5 @@
 // Namma Brands (Home, All tab, above the welcome card): a light-blue rounded
-// card, inset 16 pt from the screen edges, with the admin's header image and up to six local-brand cards
+// card, inset 10 pt from the screen edges, with the admin's header image and up to six local-brand cards
 // (3 per row). Each card shows the brand name and 1-2 product photos.
 // Each white card leads with its offer pill ("Up to | 20% OFF"), then the
 // brand name, then the photos sitting on the card's foot.
@@ -20,9 +20,9 @@ import { welcomeBannerRatio } from '../welcome-banner/HomeWelcomeBanner';
 export const NAMMA_BG = '#D0E0FD';
 export const MIN_CARDS = 3;
 // Inset from the screen edges, and the block's own inner padding.
-const MARGIN = 16;
-const SIDE = 12;
-const GAP = 10;
+const MARGIN = 10;
+const SIDE = 10;
+const GAP = 8;
 const RADIUS = 20;
 const COLUMNS = 3;
 const DEFAULT_HEADER = 'https://images.gloceries.com/appsui/Namma.png';

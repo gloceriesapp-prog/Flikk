@@ -2,6 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import { AppImage } from '../../../../components/AppImage';
 import type { GridCard } from '../api';
 import { BORDER, RADIUS } from '../layout';
+import { PhotoPlaceholder } from './CardImages';
 import { CardTag } from './CardTag';
 
 const rupees = (value: number) => `₹${Number.isInteger(value) ? value.toLocaleString('en-IN') : value.toFixed(2)}`;
@@ -32,9 +33,11 @@ export function TodayHero({ hero, width, height, pillHeight, onPress }: { hero: 
         </>
       ) : null}
       <Text numberOfLines={width < 110 ? 1 : 2} className="mt-1.5 text-center text-[12px] font-bold leading-[15px] text-ink">{hero.line}</Text>
-      <View className="w-full flex-1 justify-end pb-2">
-        {photo ? <AppImage source={{ uri: photo }} resizeMode="contain" accessible={false} style={{ width: '100%', height: '100%', flex: 1 }} /> : null}
-      </View>
+      {photo ? (
+        <View className="w-full flex-1 justify-end pb-2">
+          <AppImage source={{ uri: photo }} resizeMode="contain" accessible={false} style={{ width: '100%', height: '100%', flex: 1 }} />
+        </View>
+      ) : <View className="w-full flex-1 justify-end"><PhotoPlaceholder width={width} height={Math.round(width * 0.8)} accent={hero.accent} /></View>}
     </Pressable>
   );
 }
