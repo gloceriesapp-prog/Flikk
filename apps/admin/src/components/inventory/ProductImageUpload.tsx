@@ -4,6 +4,7 @@
 // The hosted URL is saved on the product, store or content record.
 
 import { useEffect, useRef, useState } from 'react';
+import { useProductPhotoCrop } from './photo-crop/useProductPhotoCrop';
 import { ImagePlus, Loader2 } from '@/components/icons';
 import { uploadPhoto, originalProductPhoto, type UploadedPhoto } from '@/lib/productPhotoUpload';
 
@@ -27,6 +28,7 @@ export function ProductImageUpload({
   badge?: React.ReactNode;
   bucket?: 'appsui' | 'banners' | 'categories' | 'festivals' | 'illustrations' | 'products' | 'stores' | 'product-images' | 'store-images' | 'category-images' | 'home-tab-images' | 'home-tab-banner-images';
 }) {
+  const { preparePhotos, cropDialog } = useProductPhotoCrop();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -44,12 +46,16 @@ export function ProductImageUpload({
 
     setError(null);
     setWarning(null);
-    setPreview(URL.createObjectURL(file));
     setUploading(true);
     onUploadingChange?.(true);
 
     try {
-      const uploadedPhoto = await uploadPhoto(file, bucket);
+      const productPhoto = ['products', 'product-images'].includes(bucket);
+      const selected = productPhoto ? await preparePhotos([file]) : [file];
+      if (!selected) return;
+      const prepared = selected[0]!;
+      setPreview(URL.createObjectURL(prepared));
+      const uploadedPhoto = await uploadPhoto(prepared, bucket);
       onPhotoUploaded?.(uploadedPhoto);
       const photo = preserveOriginal ? originalProductPhoto(uploadedPhoto) : uploadedPhoto;
       setWarning(photo.warning ?? null);
@@ -68,6 +74,7 @@ export function ProductImageUpload({
 
   return (
     <div className="shrink-0">
+      {cropDialog}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}

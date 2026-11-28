@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, ImagePlus, X } from '@/components/icons';
+import { useProductPhotoCrop } from './photo-crop/useProductPhotoCrop';
 import { MAX_EXTRA_IMAGES } from '@/lib/productValidation';
 import { uploadPhoto, originalProductPhoto, type UploadedPhoto } from '@/lib/productPhotoUpload';
 
@@ -30,6 +31,8 @@ export function ProductGalleryEditor({
   onUpload: (photos: UploadedPhoto[], replaceCover: boolean) => void;
   onUploadingChange: (uploading: boolean) => void;
 }) {
+  const { preparePhotos, cropDialog } = useProductPhotoCrop();
+  const [preparing, setPreparing] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const replaceCoverOnPick = useRef(false);
   const inFlight = useRef(false);
@@ -43,7 +46,7 @@ export function ProductGalleryEditor({
   }
 
   async function uploadBatch(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
+    let files = Array.from(event.target.files ?? []);
     event.target.value = '';
     if (inFlight.current || !files.length) return;
     const replaceCover = replaceCoverOnPick.current;
@@ -55,7 +58,7 @@ export function ProductGalleryEditor({
 
     inFlight.current = true;
     setErrors([]);
-    setRemaining(files.length);
+    setPreparing(true);
     onUploadingChange(true);
     const upload = async (file: File) => {
       const photo = await uploadPhoto(file, 'product-images');
@@ -65,6 +68,11 @@ export function ProductGalleryEditor({
     const photos: UploadedPhoto[] = [];
     const failures: string[] = [];
     try {
+      const adjusted = await preparePhotos(files);
+      if (!adjusted) return;
+      files = adjusted;
+      setPreparing(false);
+      setRemaining(files.length);
       const hasDesignatedCover = replaceCover || !hasCover;
       if (hasDesignatedCover) {
         const cover = files[0]!;
@@ -94,6 +102,7 @@ export function ProductGalleryEditor({
       setErrors(failures);
     } finally {
       inFlight.current = false;
+      setPreparing(false);
       setRemaining(0);
       onUploadingChange(false);
     }
@@ -108,9 +117,10 @@ export function ProductGalleryEditor({
 
   return (
     <div className="flex flex-col gap-2">
+      {cropDialog}
       {coverFields && (
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => choosePhotos(true)} disabled={remaining > 0}
+          <button type="button" onClick={() => choosePhotos(true)} disabled={preparing || remaining > 0}
             aria-label="Select main product image and gallery photos"
             className="relative flex h-28 w-28 shrink-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl border border-border bg-accent text-muted disabled:opacity-60">
             {coverUrl ? (
@@ -175,7 +185,7 @@ export function ProductGalleryEditor({
           </div>
         ))}
         {available > 0 && (
-          <button type="button" onClick={() => choosePhotos(false)} disabled={remaining > 0}
+          <button type="button" onClick={() => choosePhotos(false)} disabled={preparing || remaining > 0}
             className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-accent text-muted disabled:opacity-60">
             <ImagePlus size={20} />
             <span className="text-[10px] font-medium">Add photos</span>
