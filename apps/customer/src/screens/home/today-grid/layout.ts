@@ -34,3 +34,11 @@ export function gridMetrics(screenWidth: number) {
   return { column, cardHeight, heroHeight: cardHeight * 2 + GAP, rowHeight: Math.round(cardHeight * 1.25), wide: column * 2 + GAP,
     inner: screenWidth - MARGIN * 2 - SIDE * 2 };
 }
+
+// One title size for every card (hero included): two lines, fixed height so
+// titles line up across the grid.
+export function titleMetrics(cardWidth: number) {
+  const size = Math.max(13, Math.round(cardWidth * 0.125));
+  const line = Math.ceil(size * 1.12);
+  return { size, line, height: line * 2 };
+}

@@ -3,7 +3,7 @@ import { AccessibilityInfo, Animated, Easing, Pressable, Text, View } from 'reac
 import { AppImage } from '../../../../components/AppImage';
 import type { GridCard, ProductPeek } from '../api';
 import { photosFor } from '../fallbackPhotos';
-import { BORDER, RADIUS, TAG_LEAD_BG, TAG_VALUE_BG, TAG_VALUE_TEXT } from '../layout';
+import { BORDER, RADIUS, TAG_LEAD_BG, TAG_VALUE_BG, TAG_VALUE_TEXT, titleMetrics } from '../layout';
 import { CardTag } from './CardTag';
 
 export const ROTATE_MS = 3000;
@@ -20,13 +20,16 @@ export function TodayHero({ hero, width, height, onPress }: { hero: GridCard; wi
   const track = slides.length > 1 ? [...slides, { ...slides[0]!, key: `${slides[0]!.key}-loop` }] : slides;
   const x = useSlide(slides.length, width);
   const first = slides[0];
+  const title = titleMetrics(width);
   return (
     <Pressable onPress={onPress} accessibilityRole="button" testID="today-hero"
       accessibilityLabel={`${hero.title}, ${hero.tag}${first ? `. ${first.name ? `${first.name}, ` : ''}${rupees(first.price)}` : ''}`}
       className="items-center overflow-hidden bg-white active:opacity-90"
       style={{ width, height, borderRadius: RADIUS, borderWidth: 1, borderColor: BORDER }}>
       <CardTag label={hero.tag} />
-      <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} className="mt-2 px-1.5 text-center text-[16px] font-semibold leading-[19px] tracking-[-0.3px] text-ink">{hero.title}</Text>
+      {/* Same title size and two-line box as the other cards. */}
+      <Text numberOfLines={2} className="mt-1.5 px-1.5 text-center font-semibold tracking-[-0.2px] text-ink"
+        style={{ fontSize: title.size, lineHeight: title.line, height: title.height }}>{hero.title}</Text>
       <View className="w-full flex-1 overflow-hidden">
         <Animated.View className="h-full flex-row" style={{ width: width * track.length, transform: [{ translateX: x }] }} testID="today-hero-track">
           {track.map((slide) => <HeroSlide key={slide.key} slide={slide} width={width} />)}
