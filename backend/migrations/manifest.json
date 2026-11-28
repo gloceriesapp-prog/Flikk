@@ -840,6 +840,10 @@
     {
       "file": "20261127120000_welcome_banner_toggle.sql",
       "sha256": "b51583bccf1d278b338f9d81fc173227f1e4b72602d39c8ba8de8ea6ef343d05"
+    },
+    {
+      "file": "20261128130000_today_grid.sql",
+      "sha256": "4a845ef9c0ba718c08fa4b06936c667bbdf59edd18d12fab166de7e5582b9fd1"
     }
   ]
 }
