@@ -32,6 +32,7 @@ import { homeFestivalSectionRouter } from './routes/homeFestivalSection.js';
 import { homeFestivalGreetingRouter } from './routes/homeFestivalGreeting.js';
 import { homeSectionsRouter } from './routes/homeSections.js';
 import { nammaBrandsRouter } from './routes/nammaBrands.js';
+import { todayGridRouter } from './today-grid/route.js';
 import { homeContentRouter } from './routes/homeContent.js';
 import { homeSeasonalSectionRouter } from './routes/homeSeasonalSection.js';
 import { storesRouter } from './routes/stores.js';
@@ -202,6 +203,9 @@ app.use('/home/festival-section', shortCache(), homeFestivalSectionRouter);
 app.use('/home/festival-greeting', shortCache(), homeFestivalGreetingRouter);
 app.use('/home/sections', shortCache(), homeSectionsRouter);
 app.use('/home/namma-brands', shortCache(), nammaBrandsRouter);
+// Personalised (Usuals/Offers): no shared response cache; availability is
+// cached per store set inside today-grid/availability.ts.
+app.use('/home/today-grid', todayGridRouter);
 // The full content list (not the /events SSE stream) is cached; any
 // home_content change invalidates it before clients are told to refetch.
 const homeContentCache = shortCache();
