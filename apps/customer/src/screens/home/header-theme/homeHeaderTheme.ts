@@ -1,5 +1,5 @@
-// Home's header colour follows what the customer is browsing: brand blue for
-// All, its own colour for each category tab and for Udupi. The colour runs
+// Home's header colour follows what the customer is browsing: deep ink
+// (HOME_HEADER_COLOR) for All, its own colour for each category tab and for Udupi. The colour runs
 // from the top switch down through the search sheet and the category row,
 // eases to the new colour on a switch, and fades the sticky parts to white
 // over FADE_DISTANCE of scroll. HomeScreen sets it; the shell header reads it.
@@ -15,7 +15,7 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 
-export const HOME_BLUE = '#155DFC';
+export const HOME_HEADER_COLOR = '#0C1413';
 export const UDUPI_COLOR = '#B4532A'; // laterite red, Udupi's own stone
 export const PREORDER_COLOR = '#0E7490';
 export const FADE_DISTANCE = 120;
@@ -44,7 +44,7 @@ export function deepen(hex: string, amount = 0.5) {
 }
 
 interface HeaderThemeState {
-  // null: no tint (Home not showing), the header falls back to brand blue.
+  // null: no tint (Home not showing), the header falls back to HOME_HEADER_COLOR.
   color: string | null;
   setColor: (color: string | null) => void;
 }
@@ -56,7 +56,7 @@ export const useHomeHeaderThemeStore = create<HeaderThemeState>((set) => ({
 
 // The current colour as an animated value that eases to each new colour.
 export function useHeaderTint(deep = false): SharedValue<string> {
-  const base = useHomeHeaderThemeStore((state) => state.color) ?? HOME_BLUE;
+  const base = useHomeHeaderThemeStore((state) => state.color) ?? HOME_HEADER_COLOR;
   const target = deep ? deepen(base) : base;
   const tint = useSharedValue(target);
   useEffect(() => { tint.value = withTiming(target, { duration: SWITCH_MS }); }, [target, tint]);

@@ -26,7 +26,7 @@ import { useNearestStore } from './useNearestStore';
 import { useWarmHomeBrowse } from './loading/useWarmHomeBrowse';
 import { isUdupiTab, useHomeModeStore } from './mode-switch/useHomeModeStore';
 import { RegionalTab } from './regional/RegionalTab';
-import { colorForTab, HOME_BLUE, PREORDER_COLOR, UDUPI_COLOR, useHomeHeaderThemeStore } from './header-theme/homeHeaderTheme';
+import { colorForTab, HOME_HEADER_COLOR, PREORDER_COLOR, UDUPI_COLOR, useHomeHeaderThemeStore } from './header-theme/homeHeaderTheme';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -127,7 +127,7 @@ export function HomeScreen({ navigation }: Props) {
 
   const { scrollY, scrollHandler } = useHomeBrowseScroll();
   // Header colour follows what is shown: Udupi, the picked tab, or All.
-  const headerColor = udupi ? UDUPI_COLOR : preorder ? PREORDER_COLOR : activeTab ? colorForTab(activeTab.name) : HOME_BLUE;
+  const headerColor = udupi ? UDUPI_COLOR : preorder ? PREORDER_COLOR : activeTab ? colorForTab(activeTab.name) : HOME_HEADER_COLOR;
   const setHeaderColor = useHomeHeaderThemeStore((state) => state.setColor);
   useEffect(() => {
     setHeaderColor(headerColor);
