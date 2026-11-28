@@ -45,3 +45,9 @@ it('skipped when the customer is already in Udupi mode', async () => {
   expect(screen.queryByTestId('udupi-tip')).toBeNull();
   expect(useOnboardingTipsStore.getState().seen['udupi-mode']).toBe(true);
 });
+
+it('arrowhead points along the curve’s end direction', () => {
+  const { arrowHead } = jest.requireActual('../src/features/onboarding-tips/udupiTipLayout') as typeof import('../src/features/onboarding-tips/udupiTipLayout');
+  // Travelling straight up into (100, 50): both wings sit below the tip, mirrored.
+  expect(arrowHead({ x: 100, y: 100 }, { x: 100, y: 50 }, 10)).toBe('M95 58.7 L100 50 L105 58.7');
+});

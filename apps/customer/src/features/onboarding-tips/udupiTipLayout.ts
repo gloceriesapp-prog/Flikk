@@ -18,3 +18,19 @@ export function udupiTabRect(screenWidth: number, topInset: number): Rect {
   const y = topInset + ROW_TOP + TAB_HEIGHT - PILL_FOOT - PILL_HEIGHT;
   return { x: SIDE + tabWidth + GAP, y, width: tabWidth, height: PILL_HEIGHT };
 }
+
+export interface Point { x: number; y: number }
+
+// Arrowhead for a quadratic curve ending at `end`: two strokes swept back
+// from the tip along the curve's own end direction (end - control), so the
+// head always points the way the line is travelling.
+export function arrowHead(control: Point, end: Point, length = 11, spread = Math.PI / 6): string {
+  const angle = Math.atan2(end.y - control.y, end.x - control.x);
+  const wing = (side: number) => ({
+    x: end.x - length * Math.cos(angle + side * spread),
+    y: end.y - length * Math.sin(angle + side * spread),
+  });
+  const [a, b] = [wing(1), wing(-1)];
+  const r = (n: number) => Math.round(n * 10) / 10;
+  return `M${r(a.x)} ${r(a.y)} L${r(end.x)} ${r(end.y)} L${r(b.x)} ${r(b.y)}`;
+}

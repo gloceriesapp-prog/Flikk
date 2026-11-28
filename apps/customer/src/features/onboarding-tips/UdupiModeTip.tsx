@@ -1,14 +1,14 @@
 // First-open coach mark for the Gloceries / Udupi switch: the screen dims,
-// a pulsing ring circles the Udupi tab, a curved dashed arrow runs from a
+// a ring circles the Udupi tab, a curved dashed arrow runs from a
 // rounded card up to it. "Show me" switches to Udupi; "Got it" or a tap
 // anywhere closes it. Shown once per install (useOnboardingTipsStore).
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useHomeModeStore } from '../../screens/home/mode-switch/useHomeModeStore';
 import { actionColors } from '../../theme/tokens';
-import { udupiTabRect } from './udupiTipLayout';
+import { arrowHead, udupiTabRect } from './udupiTipLayout';
 import { useOnboardingTipsStore, useTipDue } from './useOnboardingTipsStore';
 
 const SHOW_DELAY_MS = 900; // let Home settle before dimming it
@@ -47,39 +47,24 @@ function TipOverlay({ onClose, onTry }: { onClose: () => void; onTry: () => void
   // Arrow: from the card's top (left third) curving up into the ring's foot.
   const start = { x: cardLeft + cardWidth * 0.3, y: cardTop - 6 };
   const end = { x: ring.x + ring.width / 2, y: ring.y + ring.height + 8 };
-  const control = { x: start.x - 10, y: end.y + 6 };
-  const head = `M${end.x - 7} ${end.y + 9} L${end.x} ${end.y} L${end.x + 8} ${end.y + 7}`;
-
-  const [enter] = useState(() => new Animated.Value(0));
-  const [pulse] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    Animated.timing(enter, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ]));
-    loop.start();
-    return () => loop.stop();
-  }, [enter, pulse]);
+  // Bend point straight under the tab: the line sweeps across, then comes
+  // up vertically into the Udupi tab.
+  const control = { x: end.x, y: (start.y + end.y) / 2 + 8 };
+  const head = arrowHead(control, end);
 
   return (
     <Modal transparent visible animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <Pressable accessibilityLabel="Close tip" onPress={onClose} className="flex-1" style={{ backgroundColor: 'rgba(8,12,11,0.66)' }} testID="udupi-tip">
-        <Animated.View pointerEvents="none" style={{
+        <View pointerEvents="none" style={{
           position: 'absolute', left: ring.x, top: ring.y, width: ring.width, height: ring.height,
           borderRadius: 16, borderWidth: 2, borderColor: '#FFFFFF',
-          transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }],
-          opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.7] }),
         }} />
         <Svg pointerEvents="none" width={width} height={cardTop + 4} style={{ position: 'absolute', left: 0, top: 0 }}>
           <Path d={`M${start.x} ${start.y} Q${control.x} ${control.y} ${end.x} ${end.y}`} stroke="#FFFFFF" strokeWidth={2.5}
             strokeDasharray="6 6" strokeLinecap="round" fill="none" />
-          <Path d={head} stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <Path d={head} stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
         </Svg>
-        <Animated.View style={{
-          position: 'absolute', top: cardTop, left: cardLeft, width: cardWidth, opacity: enter,
-          transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-        }}>
+        <View style={{ position: 'absolute', top: cardTop, left: cardLeft, width: cardWidth }}>
           {/* Inner Pressable swallows taps so the card itself doesn't close the tip. */}
           <Pressable accessibilityRole="none" onPress={() => {}} className="rounded-[28px] bg-white p-5" style={{ borderTopRightRadius: 10 }}>
             <View className="mb-2 self-start rounded-full bg-[#E2E175] px-2.5 py-0.5">
@@ -96,7 +81,7 @@ function TipOverlay({ onClose, onTry }: { onClose: () => void; onTry: () => void
               </Pressable>
             </View>
           </Pressable>
-        </Animated.View>
+        </View>
       </Pressable>
     </Modal>
   );
