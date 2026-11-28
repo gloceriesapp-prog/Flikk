@@ -3,6 +3,7 @@
 // through the /api/product-images/worker/* routes with IMAGE_WORKER_TOKEN, so
 // it never holds database or storage credentials.
 import 'server-only';
+import { PRODUCT_ORIGINALS_SCOPE } from './productImageOriginal';
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { storePublicImage } from '@/features/media/publicImages';
@@ -128,7 +129,7 @@ export async function publish(job: { product_id: string; slot: JobSlot; original
     return data === true;
   }
   const { data, error } = await supabaseAdmin.from('products').update({ image_url: resultUrl })
-    .eq('id', job.product_id).in('image_url', from).select('id');
+    .eq('id', job.product_id).in('image_url', from).not('image_url', 'like', `%/products/${PRODUCT_ORIGINALS_SCOPE}/%`).select('id');
   if (error) throw error;
   return (data ?? []).length > 0;
 }

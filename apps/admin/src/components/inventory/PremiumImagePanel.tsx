@@ -18,23 +18,26 @@ import {
 } from '@/lib/photoroomPresets';
 import { renderHeadline } from './renderHeadline';
 
-export type ImageStyleChoice = { style: 'standard' } | { style: 'premium'; preset: PresetId; color: string | null };
+export type ImageStyleChoice = { style: 'standard' } | { style: 'none' } | { style: 'premium'; preset: PresetId; color: string | null };
 
 async function loadState(productId?: string): Promise<PremiumState | null> {
   const res = await fetch(`/api/product-images/premium${productId ? `?productId=${productId}` : ''}`).catch(() => null);
-  return res?.ok ? ((await res.json()) as PremiumState) : null;
+  return res?.ok ? ((await res.json().catch(() => null)) as PremiumState | null) : null;
 }
 
-function StyleRadios({ premium, onChange, disabled }: { premium: boolean; onChange: (premium: boolean) => void; disabled?: boolean }) {
+function StyleRadios({ premium, onChange, disabled, none = false, onNone, noneEnabled = false, busy = false, showPremium = true }: { premium: boolean; onChange: (premium: boolean) => void; disabled?: boolean; none?: boolean; onNone?: () => void; noneEnabled?: boolean; busy?: boolean; showPremium?: boolean }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {[false, true].map((value) => (
+      {onNone && <button type="button" aria-pressed={none} disabled={busy || !noneEnabled} onClick={onNone}
+        className={`rounded-[10px] border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40 ${none ? 'border-brand bg-brand/10 text-ink' : 'border-border text-muted hover:text-ink'}`}>None (keep original)</button>}
+      {(showPremium ? [false, true] : [false]).map((value) => (
         <button
           key={String(value)}
           type="button"
-          disabled={disabled}
+          disabled={busy || (value && disabled)}
+          aria-pressed={premium === value && !none}
           onClick={() => onChange(value)}
-          className={`rounded-[10px] border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40 ${premium === value ? 'border-brand bg-brand/10 text-ink' : 'border-border text-muted hover:text-ink'}`}
+          className={`rounded-[10px] border px-3 py-1.5 text-xs font-medium transition disabled:opacity-40 ${premium === value && !none ? 'border-brand bg-brand/10 text-ink' : 'border-border text-muted hover:text-ink'}`}
         >
           {value ? 'Premium background (Photoroom)' : 'Standard (rembg, default)'}
         </button>
@@ -152,17 +155,25 @@ function Usage({ state }: { state: PremiumState }) {
 
 // Add product: the product does not exist yet, so only the choice is made
 // here; Premium opens the generate step right after the product is added.
-export function ImageStyleChoiceField({ value, category, onChange }: { value: ImageStyleChoice; category?: string; onChange: (value: ImageStyleChoice) => void }) {
+export function ImageStyleChoiceField({ value, category, onChange, disabled = false }: { value: ImageStyleChoice; category?: string; onChange: (value: ImageStyleChoice) => void; disabled?: boolean }) {
   const [state, setState] = useState<PremiumState | null>(null);
-  useEffect(() => { void Promise.resolve().then(() => loadState()).then(setState); }, []);
-  if (!state?.enabled) return null;
+  const [originalsEnabled, setOriginalsEnabled] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadState().then(result => { if (!controller.signal.aborted) setState(result); });
+    void fetch('/api/product-images/original', { signal: controller.signal }).then(res => res.ok ? res.json() : null)
+      .then(result => { if (!controller.signal.aborted) setOriginalsEnabled(result?.enabled === true); }).catch(() => {});
+    return () => controller.abort();
+  }, []);
   const premium = value.style === 'premium';
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-border p-3">
       <p className="text-xs font-semibold text-ink">Image style</p>
       <StyleRadios
         premium={premium}
-        disabled={!!state.capMessage && !premium}
+        none={value.style === 'none'} onNone={() => onChange({ style: 'none' })} noneEnabled={originalsEnabled}
+        busy={disabled} showPremium={!!state?.enabled}
+        disabled={!!state?.capMessage && !premium}
         onChange={(next) => onChange(next ? { style: 'premium', preset: categoryPreset(category), color: null } : { style: 'standard' })}
       />
       {value.style === 'premium' && (
@@ -171,7 +182,9 @@ export function ImageStyleChoiceField({ value, category, onChange }: { value: Im
           <p className="text-[11px] text-muted">{value.preset === 'text' ? 'After you add the product you type the headline, generate and compare it with the standard photo.' : 'After you add the product you can generate and compare it with the standard photo.'}</p>
         </>
       )}
-      {state.capMessage ? <p className="text-[11px] font-medium text-amber-600">{state.capMessage}</p> : <Usage state={state} />}
+      <p className="text-[11px] text-muted">None keeps the uploaded background and composition. File-size optimization still applies.</p>
+      {!originalsEnabled && <p className="text-[11px] text-muted">Keep original will be available after the pending photo-processing update.</p>}
+      {value.style === 'premium' && state?.enabled && (state.capMessage ? <p className="text-[11px] font-medium text-amber-600">{state.capMessage}</p> : <Usage state={state} />)}
     </div>
   );
 }

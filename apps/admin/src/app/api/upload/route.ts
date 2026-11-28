@@ -12,7 +12,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB — generous for a product/store photo, small enough to stay fast
 // Untouched product uploads live beside the fitted photos under this fixed
 // scope (products/<scope>/...), for the cut-out pipeline (workers/image-cutout).
-const ORIGINALS_SCOPE = '0f1a2b3c-0000-4000-8000-0000000a11c0';
+import { PRODUCT_ORIGINALS_SCOPE } from '@/lib/productImageOriginal';
 const SMALL_PHOTO_WARNING = 'This photo is small and may look blurry, use a bigger one.';
 
 let activeUploads = 0;
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const original = await storeOriginal(input).catch(() => null);
     if (original) await supabaseAdmin.from('media_assets').update({ source_url: original }).eq('id', asset.assetId);
     const warning = (await productAreaIsSmall(input).catch(() => false)) ? SMALL_PHOTO_WARNING : null;
-    return NextResponse.json({ ...asset, bgColor, warning });
+    return NextResponse.json({ ...asset, bgColor, warning, originalUrl: original });
   } catch (err) {
     if (err instanceof MediaError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
     if (err instanceof UploadBodyTooLarge) return NextResponse.json({error:'Upload must be under 6MB.'},{status:413});
@@ -71,6 +71,6 @@ async function storeOriginal(input: Buffer): Promise<string> {
     .timeout({ seconds: 8 }).rotate()
     .resize(2400, 2400, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 95 }).toBuffer();
-  const { url } = await storePublicImage({ folder: 'products', scope: ORIGINALS_SCOPE, bytes });
+  const { url } = await storePublicImage({ folder: 'products', scope: PRODUCT_ORIGINALS_SCOPE, bytes });
   return url;
 }

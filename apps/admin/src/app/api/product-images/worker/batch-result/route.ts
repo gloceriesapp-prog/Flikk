@@ -1,6 +1,7 @@
 // Worker batch (apply): one reviewed dry-run result for an existing photo
 // (main or extra). Records it as a finished job and publishes it like a
 // queued job would, but only if the product still shows that photo.
+import { isOriginalProductImage } from '@/lib/productImageOriginal';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { parseResult, publish, requireWorker, shouldPublish, storeCutout, storeResult, type JobSlot } from '@/lib/productImageJobs';
@@ -12,6 +13,7 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const productId = String(form.get('productId') ?? '');
     const imageUrl = String(form.get('imageUrl') ?? '');
+    if (isOriginalProductImage(imageUrl)) return NextResponse.json({ ok: true, skipped: true });
     const slot: JobSlot = form.get('slot') === 'extra' ? 'extra' : 'main';
     const { data: product, error } = await supabaseAdmin.from('products').select('id, image_url, extra_image_urls').eq('id', productId).maybeSingle();
     if (error) throw error;

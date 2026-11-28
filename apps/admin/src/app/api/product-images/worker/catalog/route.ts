@@ -1,6 +1,7 @@
 // Worker batch (dry run): every photo of approved products, main and extra,
 // 200 products per page by id. processed = that photo already came out of
 // the pipeline or was already decided on, so the batch skips it.
+import { isOriginalProductImage } from '@/lib/productImageOriginal';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireWorker } from '@/lib/productImageJobs';
@@ -24,6 +25,6 @@ export async function GET(request: Request) {
   const photos = (data ?? []).flatMap((p) => [
     ...(p.image_url?.startsWith('https://') ? [{ slot: 'main', url: p.image_url as string }] : []),
     ...((p.extra_image_urls ?? []) as string[]).map((url) => ({ slot: 'extra', url })),
-  ].map(({ slot, url }) => ({ id: p.id, name: p.name, slot, imageUrl: url, processed: seen.has(`${p.id} ${url}`) })));
+  ].map(({ slot, url }) => ({ id: p.id, name: p.name, slot, imageUrl: url, processed: isOriginalProductImage(url) || seen.has(`${p.id} ${url}`) })));
   return NextResponse.json({ products: photos, next: (data ?? []).length === PAGE ? data!.at(-1)!.id : null });
 }
