@@ -17,7 +17,9 @@ export function TodayHero({ hero, width, height, onPress }: { hero: GridCard; wi
       style={{ width, height, borderRadius: HERO_RADIUS, borderWidth: 1, borderColor: BORDER }}>
       <CardTag label={hero.tag} bg={hero.tagBg} color={hero.tagText} />
       <View className="flex-1 px-2.5 pb-2.5" style={{ paddingTop: 8 }}>
-        <Text numberOfLines={2} className="text-[19px] font-black leading-[22px] tracking-[-0.3px]" style={{ color: TITLE_COLOR }}>{hero.title}</Text>
+        {/* Narrow phones (360 px) give the hero ~100 px: shrink so words never clip. */}
+        <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} className="font-black tracking-[-0.3px]"
+          style={{ color: TITLE_COLOR, fontSize: width < 112 ? 16 : 19, lineHeight: width < 112 ? 19 : 22 }}>{hero.title}</Text>
         <Text numberOfLines={2} className="mt-1 text-[12px] leading-[15px]" style={{ color: LINE_COLOR }}>{hero.line}</Text>
         {price ? (
           <View className="mt-2 flex-row items-center gap-1.5">
