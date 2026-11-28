@@ -844,6 +844,10 @@
     {
       "file": "20261128140000_product_original_images.sql",
       "sha256": "637c4756672c827b1c223b44345040f86ac63acdc78002b20a7a4e64d1f404d0"
+    },
+    {
+      "file": "20261128150000_product_original_images_rollout.sql",
+      "sha256": "3b624c0ad9db18724113e62f3120fc85de19893f445a1da4976777c8c6e3ccc8"
     }
   ]
 }

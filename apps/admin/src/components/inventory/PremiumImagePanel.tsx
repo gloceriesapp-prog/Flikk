@@ -161,10 +161,28 @@ export function ImageStyleChoiceField({ value, category, onChange, disabled = fa
   useEffect(() => {
     const controller = new AbortController();
     void loadState().then(result => { if (!controller.signal.aborted) setState(result); });
-    void fetch('/api/product-images/original', { signal: controller.signal }).then(res => res.ok ? res.json() : null)
-      .then(result => { if (!controller.signal.aborted) setOriginalsEnabled(result?.enabled === true); }).catch(() => {});
     return () => controller.abort();
   }, []);
+  useEffect(() => {
+    if (originalsEnabled) return;
+    const controller = new AbortController();
+    // A database rollout may finish while this form has unsaved photos.
+    // Refresh readiness without making the admin close or reload the form.
+    const checkReadiness = () => {
+      void fetch('/api/product-images/original', { signal: controller.signal, cache: 'no-store' })
+        .then(res => res.ok ? res.json() : null)
+        .then(result => { if (!controller.signal.aborted && result?.enabled === true) setOriginalsEnabled(true); })
+        .catch(() => {});
+    };
+    checkReadiness();
+    const retry = window.setInterval(checkReadiness, 10000);
+    window.addEventListener('focus', checkReadiness);
+    return () => {
+      controller.abort();
+      window.clearInterval(retry);
+      window.removeEventListener('focus', checkReadiness);
+    };
+  }, [originalsEnabled]);
   const premium = value.style === 'premium';
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-border p-3">
