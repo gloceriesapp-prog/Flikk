@@ -34,6 +34,7 @@ import { HomeCategoryButton, HomeProductCollectionButton } from '../components/H
 import { HomeSectionBanner } from '../components/HomeSectionBanner';
 import { PreorderSection } from '../preorders/PreorderSection';
 import { NammaBrandsSection } from '../namma-brands/NammaBrandsSection';
+import { TodayGridSection } from '../today-grid/TodayGridSection';
 import { homePreviewLimit, homeProductLayout, supportsHomeBanner, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 export interface HomeSectionItem {
@@ -274,7 +275,9 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   // doesn't change a given section's inputs reuses its element (React skips the
   // subtree and never re-runs that section's registry renderer).
   return useMemo(() => {
-    const items: HomeSectionItem[] = [{ key: 'namma-brands', node: <NammaBrandsSection enabled={nammaBrandsOn} /> }];
+    // "Today on Gloceries" leads Home, then Namma Brands (when switched on).
+    const items: HomeSectionItem[] = [{ key: 'today-grid', node: <TodayGridSection /> },
+      { key: 'namma-brands', node: <NammaBrandsSection enabled={nammaBrandsOn} /> }];
     if (welcomeOn) items.push({
       key: 'welcome-banner',
       node: (
