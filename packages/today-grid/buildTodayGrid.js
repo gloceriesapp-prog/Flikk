@@ -110,7 +110,8 @@ export function renderTag(def, stat, a) {
         min: stat.minPrice != null ? formatRupees(stat.minPrice) : null,
         pct: stat.maxDiscountPct != null && stat.maxDiscountPct > 0 ? String(stat.maxDiscountPct) : null,
         total: stat.count > 0 ? String(stat.count) : null,
-        cutoff: a.preorder.cutoffMinute != null ? formatIstMinute(a.preorder.cutoffMinute) : null,
+        // "4 AM" rather than "4:00 AM": keeps the tag inside a narrow card.
+        cutoff: a.preorder.cutoffMinute != null ? formatIstMinute(a.preorder.cutoffMinute).replace(':00 ', ' ') : null,
     };
     let missing = false;
     const tag = def.tag.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? ((missing = true), ''));

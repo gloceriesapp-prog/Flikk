@@ -152,7 +152,7 @@ describe('honest numbers', () => {
     expect(renderTag(def('snack-time'), { ...stat(5), minPrice: null }, a)).toBe('Snack break');
     expect(renderTag(def('offers-for-you'), stat(3, 40, 60, 33), a)).toBe('Up to 33% off');
     expect(renderTag(def('offers-for-you'), { ...stat(3), maxDiscountPct: 0 }, a)).toBe('Offers today');
-    expect(renderTag(def('tomorrow-by-7'), stat(1), a)).toBe('Order by 10:00 PM');
+    expect(renderTag(def('tomorrow-by-7'), stat(1), a)).toBe('Order by 10 PM');
     expect(renderTag(def('tomorrow-by-7'), stat(1), availability({ preorder: { open: true, cutoffMinute: null } }))).toBe('By 7 AM');
   });
   it('tap target carries the admin-edited category list', () => {
