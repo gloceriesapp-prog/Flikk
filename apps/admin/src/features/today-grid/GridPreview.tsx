@@ -20,7 +20,7 @@ function Tile({ card, width, height, hero }: { card: Card; width: number; height
     <div style={{ width, height, flexShrink: 0, boxSizing: 'border-box', background: '#FFFFFF', border: '1px solid #EEF0F4', borderRadius: hero ? 20 : 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Tag card={card} />
       <div style={{ padding: hero ? '8px 10px 10px' : '6px 8px 8px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <div style={{ color: '#101828', fontWeight: hero ? 900 : 700, fontSize: hero ? (width < 112 ? 16 : 19) : 14, lineHeight: hero ? (width < 112 ? '19px' : '22px') : '17px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{card.title}</div>
+        <div style={{ color: '#101828', fontWeight: hero ? 900 : 700, fontSize: hero ? (width < 112 ? 15 : 19) : 14, lineHeight: hero ? (width < 112 ? '18px' : '22px') : '17px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{card.title}</div>
         <div style={{ color: '#667085', fontSize: 12, lineHeight: '15px', marginTop: 2, whiteSpace: hero ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{card.line}</div>
         {hero && card.price && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
@@ -39,6 +39,7 @@ function Tile({ card, width, height, hero }: { card: Card; width: number; height
 export function GridPreview({ grid, screenWidth }: { grid: TodayGrid; screenWidth: number }) {
   const column = Math.floor((screenWidth - SIDE * 2 - GAP * 2) / 3);
   const cardHeight = Math.round(column * 1.38);
+  const rowHeight = Math.round(cardHeight * 1.3);
   const count = grid.cards.length >= 4 ? 4 : grid.cards.length >= 2 ? 2 : 0;
   const cards = grid.cards.slice(0, count);
   return (
@@ -46,9 +47,9 @@ export function GridPreview({ grid, screenWidth }: { grid: TodayGrid; screenWidt
       <div style={{ color: '#101828', fontWeight: 800, fontSize: 18, letterSpacing: -0.3, marginBottom: 10 }}>Today on Gloceries</div>
       {count === 0 ? <Tile card={grid.hero} width={screenWidth - SIDE * 2} height={cardHeight} hero /> : (
         <div style={{ display: 'flex', gap: GAP }}>
-          <Tile card={grid.hero} width={column} height={count === 4 ? cardHeight * 2 + GAP : cardHeight} hero />
+          <Tile card={grid.hero} width={column} height={count === 4 ? cardHeight * 2 + GAP : rowHeight} hero />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: GAP, width: column * 2 + GAP, flexShrink: 0 }}>
-            {cards.map((card) => <Tile key={card.id} card={card} width={column} height={cardHeight} />)}
+            {cards.map((card) => <Tile key={card.id} card={card} width={column} height={count === 4 ? cardHeight : rowHeight} />)}
           </div>
         </div>
       )}
