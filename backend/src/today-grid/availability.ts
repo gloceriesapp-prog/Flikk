@@ -87,7 +87,10 @@ export function summarizeAvailability(input: {
     party: statOf(products.filter(p => p.party_enabled), ranked),
     popularThisWeek: statOf(products.filter(p => popular.has(p.id)), input.popularWeek),
     localBrands: localBrandsInStock(input.localBrands, products),
-    productImages: Object.fromEntries(products.filter(p => p.image_url).map(p => [p.id, p.image_url!])),
+    products: Object.fromEntries(products.map(p => [p.id, {
+      id: p.id, name: p.name, price: p.price, imageUrl: p.image_url ?? '',
+      mrp: p.original_price != null && p.original_price > p.price ? p.original_price : null,
+    }])),
   };
 }
 

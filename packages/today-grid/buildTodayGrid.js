@@ -4,12 +4,12 @@
 //
 // Pipeline: slot list -> modifiers (config order, later wins) -> dedupe ->
 // data checks with ordered backups -> at most 4 unique cards.
-import { ITEM_FACTS } from './catalog.js';
+import { IMAGE_SLOTS, ITEM_FACTS } from './catalog.js';
 import { formatIstMinute, inWindow, istClock } from './istClock.js';
 import { fill } from './placeholders.js';
 import { EMPTY_STAT } from './types.js';
 export const MAX_CARDS = 4;
-export const HERO_PRODUCTS = 4;
+export const HERO_PRODUCTS = IMAGE_SLOTS.hero;
 const MIN_ITEMS = 3;
 const FALLBACK_HERO = 'fruits-vegetables';
 export function slotFor(clock, config) {
@@ -75,21 +75,39 @@ export function renderTag(item, stat, a) {
         cutoff: a.preorder.cutoffMinute != null ? formatIstMinute(a.preorder.cutoffMinute, true) : null,
     }) ?? item.fallbackTag;
 }
-function images(item, stat, a) {
-    if (item.images.mode === 'picked') {
-        const picked = item.images.productIds.map(id => a.productImages[id]).filter((url) => !!url);
-        if (picked.length)
-            return picked.slice(0, 2); // only photos of products in stock now
-    }
-    return stat.imageUrls.slice(0, 2);
+// The admin's picked products that are in stock now, in order, each with
+// its custom photo if one was uploaded; price, MRP and name stay the
+// product's own. Products with no photo at all are skipped.
+export function pickedSlots(item, a, slots) {
+    if (item.images.mode !== 'picked')
+        return [];
+    const photos = item.images.photos ?? {};
+    return item.images.productIds
+        .flatMap(id => (a.products[id] ? [{ ...a.products[id], imageUrl: photos[id] ?? a.products[id].imageUrl }] : []))
+        .filter(p => p.imageUrl)
+        .slice(0, slots);
+}
+// Card photos: picked slots first, else automatic. The hero's own photo is
+// its first product (its rotation is `products`, below).
+function images(id, item, stat, a) {
+    const count = ITEM_FACTS[id].type === 'hero' ? 1 : IMAGE_SLOTS[ITEM_FACTS[id].type];
+    const picked = pickedSlots(item, a, count);
+    return (picked.length ? picked.map(p => p.imageUrl) : stat.imageUrls).slice(0, count);
 }
 function toCard(id, item, stat, a) {
     return {
         id, title: item.title, tag: renderTag(item, stat, a), line: item.line, accent: item.accent, tagBg: item.accent, tagText: item.tagText,
-        imageUrls: images(item, stat, a),
+        imageUrls: images(id, item, stat, a),
         bannerUrl: item.bannerUrl, categories: item.categories,
         target: item.target.type === 'categories' && !item.target.categories.length ? { type: 'categories', categories: item.categories } : item.target,
     };
+}
+// Hero rotation: the admin's picked products (up to IMAGE_SLOTS.hero), else
+// the top in-stock products its data check counted. MRP kept only if real.
+function heroProducts(item, used, a) {
+    const picked = pickedSlots(item, a, IMAGE_SLOTS.hero);
+    const list = picked.length ? picked : (used.top ?? []).filter(p => p.imageUrl).slice(0, IMAGE_SLOTS.hero);
+    return list.length ? { products: list.map(p => ({ ...p, mrp: p.mrp != null && p.mrp > p.price ? p.mrp : null })) } : {};
 }
 // ---- modifiers -----------------------------------------------------------
 export function rainOn(config, now) {
@@ -141,7 +159,7 @@ export function buildTodayGrid({ now, user, availability: a, config, festival })
     const hero = {
         ...toCard(heroId, heroCfg, used, a),
         ...(used.minPrice != null ? { price: { amount: used.minPrice, mrp: used.minPriceMrp != null && used.minPriceMrp > used.minPrice ? used.minPriceMrp : null } } : {}),
-        ...(used.top?.length ? { products: used.top.slice(0, HERO_PRODUCTS).map(p => ({ ...p, mrp: p.mrp != null && p.mrp > p.price ? p.mrp : null })) } : {}),
+        ...heroProducts(heroCfg, used, a),
     };
     note({ id: heroId, status: 'shown', reason: heroId === slot.hero ? 'hero for this slot' : 'fallback hero', position: 0 });
     const { cards: modified, notes } = applyModifiers(slot.cards, clock, now, user, config, festival);

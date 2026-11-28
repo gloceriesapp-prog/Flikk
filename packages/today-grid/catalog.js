@@ -39,6 +39,10 @@ function item(title, line, tag, fallbackTag, accent, target, categories = [], ta
 // text, so defaults use darker shades of the same hue (#9A6700 / #1E7A45 /
 // #C2410C / #0369A1). The originals stay in the presets; saving them with a
 // failing text colour is blocked by validateConfig.
+// Photo slots per card type: the hero rotates up to 4 products (photo,
+// price, MRP, name); every other card shows 2 photos.
+export const IMAGE_SLOTS = { hero: 4, rotating: 2, special: 2 };
+export const imageSlotsFor = (id) => IMAGE_SLOTS[ITEM_FACTS[id].type];
 export const DEFAULT_ITEMS = {
     'todays-catch': item("Today's Catch", 'Fresh from Malpe harbour', 'Landed {time}', 'Fresh catch', '#0B1F4D', { type: 'tab', id: 'fresh' }, ['Non Veg'], Y),
     'village-fresh': item('Village Fresh', 'Grown by farms near you', 'Picked today', 'Picked today', '#1E7A45', { type: 'tab', id: 'fresh' }),

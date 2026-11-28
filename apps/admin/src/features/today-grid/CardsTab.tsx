@@ -3,7 +3,7 @@
 // Cards tab: every hero version and card with its live config. Editing
 // happens in CardEditModal; changes stay in the draft until saved/published.
 import { useState } from 'react';
-import { ITEM_FACTS, ITEM_IDS, type ItemId, type TodayGridConfig } from '@/lib/home/todayGrid';
+import { ITEM_FACTS, ITEM_IDS, imageSlotsFor, type ItemId, type TodayGridConfig } from '@/lib/home/todayGrid';
 import { CardEditModal } from './CardEditModal';
 import { opensLabel, targetLabel } from './targetLabel';
 
@@ -28,7 +28,7 @@ export function CardsTab({ config, onChange, errorFor }: { config: TodayGridConf
                   <td className="pr-3"><input type="checkbox" checked={item.enabled} disabled={id === 'fruits-vegetables'} onChange={() => toggle(id)} aria-label={`${item.title} enabled`}
                     title={id === 'fruits-vegetables' ? 'The fallback hero is always on' : undefined} /></td>
                   <td className="pr-3"><span className="inline-flex h-5 w-8 items-center justify-center rounded text-[10px] font-bold" style={{ background: item.accent, color: item.tagText }}>Aa</span></td>
-                  <td className="pr-3 text-ink">{opensLabel(item)}<p className="text-muted">{targetLabel(item.target, item.categories)}</p></td>
+                  <td className="pr-3 text-ink">{opensLabel(item)}<p className="text-muted">{targetLabel(item.target, item.categories)}</p><p className="text-muted">Photos: {item.images.mode === 'picked' ? `${item.images.productIds.length}/${imageSlotsFor(id)} picked` : `auto (${imageSlotsFor(id)})`}</p></td>
                   <td className="max-w-[220px] pr-3 text-muted">{facts.rule}</td>
                   <td className="pr-3 text-muted">{item.updatedAt ? `${item.updatedBy ?? ''} · ${new Date(item.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : '—'}</td>
                   <td><button type="button" onClick={() => setEditing(id)} className="rounded-lg border border-border px-2.5 py-1 font-medium text-ink hover:bg-canvas">Edit</button></td>

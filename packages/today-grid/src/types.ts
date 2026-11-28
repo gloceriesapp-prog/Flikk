@@ -16,7 +16,7 @@ export type Placeholder = 'min' | 'pct' | 'total' | 'time' | 'cutoff' | 'festiva
 // ---- live data (computed by the backend from the database) -------------
 // One in-stock product the hero can show (rotating): store price, real MRP
 // only when above it.
-export interface ProductPeek { id: string; name: string; price: number; mrp: number | null; imageUrl: string }
+export interface ProductPeek { id: string; name: string; price: number; mrp: number | null; imageUrl: string } // imageUrl '' = no photo
 
 export interface Stat {
   count: number;
@@ -42,7 +42,7 @@ export interface Availability {
   party: Stat;
   popularThisWeek: Stat;
   localBrands: LocalBrands; // local brands with 1+ in-stock product nearby
-  productImages: Record<string, string>; // in-stock product id -> photo (picked card images)
+  products: Record<string, ProductPeek>; // in-stock products by id (picked slots read name, price, MRP, photo here)
 }
 
 export interface UserSummary {
@@ -66,7 +66,11 @@ export type CardTarget =
   | { type: 'brands' }
   | { type: 'action'; id: 'add-usuals' | 'party-form' | 'preorder-list' | 'popular' | 'offers' | 'bulk' };
 
-export type ImageSource = { mode: 'auto' } | { mode: 'picked'; productIds: string[] };
+// A card's photo slots. 'auto' = top in-stock products. 'picked' = these
+// products, in order (price, MRP and name always come live from the product;
+// `photos` may swap in a custom photo per product). How many slots a card
+// has: IMAGE_SLOTS by type (hero 4 rotating, other cards 2).
+export type ImageSource = { mode: 'auto' } | { mode: 'picked'; productIds: string[]; photos?: Record<string, string> };
 
 export interface ItemConfig {
   enabled: boolean;

@@ -15,6 +15,7 @@ import {
 } from '@/lib/home/todayGrid';
 import type { Product } from '@/lib/types';
 import { MiniCard } from './MiniCard';
+import { PhotoSlotsEditor } from './PhotoSlotsEditor';
 import { ACTION_LABELS } from './targetLabel';
 
 const field = 'w-full rounded-lg border border-border bg-canvas px-2.5 py-1.5 text-sm text-ink';
@@ -46,6 +47,12 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
   const ratio = contrastRatio(draft.accent, draft.tagText);
   const set = (patch: Partial<ItemConfig>) => setDraft({ ...draft, ...patch });
   const setTarget = (target: CardTarget) => set({ target });
+  // Preview: the picked slots' photos (custom or product), and for the big
+  // card the first pick's live price / MRP.
+  const picks = draft.images.mode === 'picked' ? draft.images.productIds.map((pid) => products.find((p) => p.id === pid)).filter((p): p is Product => !!p) : [];
+  const customPhotos = draft.images.mode === 'picked' ? draft.images.photos ?? {} : {};
+  const previewPhotos = picks.map((p) => customPhotos[p.id] || p.imageUrl).filter((url): url is string => !!url);
+  const previewPrice = picks[0] ? { amount: picks[0].price, mrp: picks[0].originalPrice ?? null } : { amount: 25, mrp: 30 };
 
 
   return createPortal(
@@ -133,15 +140,7 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
               <FieldErrors errors={errorFor('bannerUrl')} />
             </div>
             <div>
-              <p className="mb-1 text-xs font-medium text-muted">Images</p>
-              <div className="flex gap-4 text-xs">
-                <label className="flex items-center gap-1"><input type="radio" checked={draft.images.mode === 'auto'} onChange={() => set({ images: { mode: 'auto' } })} />Automatic (top 2 in-stock products)</label>
-                <label className="flex items-center gap-1"><input type="radio" checked={draft.images.mode === 'picked'} onChange={() => set({ images: { mode: 'picked', productIds: [] } })} />Pick 2 products</label>
-              </div>
-              {draft.images.mode === 'picked' && (
-                <div className="mt-2"><ProductPinPicker productIds={draft.images.productIds} products={products} capacity={2}
-                  onChange={(ids) => set({ images: { mode: 'picked', productIds: ids.slice(0, 2) } })} /></div>
-              )}
+              <PhotoSlotsEditor id={id} images={draft.images} products={products} onChange={(images) => set({ images })} />
               <FieldErrors errors={errorFor('images')} />
             </div>
           </div>
@@ -149,7 +148,7 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
             <p className="text-xs font-medium text-muted">Preview</p>
             <MiniCard hero={facts.type === 'hero'} title={fill(draft.title, SAMPLE) ?? draft.title} tag={fill(draft.tag, SAMPLE) ?? draft.fallbackTag} line={draft.line}
               accent={draft.accent} tagText={draft.tagText} width={facts.type === 'hero' ? 150 : 140} height={facts.type === 'hero' ? 300 : 190}
-              price={facts.type === 'hero' ? { amount: 25, mrp: 30 } : undefined} />
+              price={facts.type === 'hero' ? previewPrice : undefined} images={previewPhotos} />
             <p className="text-center text-[10px] text-muted">Sample numbers; live values on the phone. Fallback tag: “{draft.fallbackTag}”</p>
           </div>
         </div>

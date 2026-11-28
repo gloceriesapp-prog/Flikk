@@ -2,7 +2,7 @@
 // validation all come from packages/today-grid — the same engine the backend
 // endpoint runs — so admin never re-implements them.
 export {
-  ACCENT_PRESETS, CARD_IDS, contrastRatio, DEFAULT_CONFIG, HERO_IDS, ITEM_FACTS, ITEM_IDS, MIN_TAG_CONTRAST,
+  ACCENT_PRESETS, CARD_IDS, IMAGE_SLOTS, imageSlotsFor, contrastRatio, DEFAULT_CONFIG, HERO_IDS, ITEM_FACTS, ITEM_IDS, MIN_TAG_CONTRAST,
   fill, passingShade, placeholdersIn, readConfig, SLOT_KEYS, TAG_TEXT_COLORS, validateConfig, buildTodayGrid, EMPTY_STAT,
 } from '../../../../../packages/today-grid/index.js';
 export type { Availability, CardId, CardTarget, ConfigError, GridCard, HeroId, ItemConfig, ItemId, SlotRule, TodayGrid, TodayGridConfig, TraceRow, UserSummary } from '../../../../../packages/today-grid/index.js';

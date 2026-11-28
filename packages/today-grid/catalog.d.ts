@@ -12,4 +12,6 @@ export declare const CARD_IDS: CardId[];
 export declare const ITEM_IDS: ItemId[];
 export declare const ACCENT_PRESETS: string[];
 export declare const TAG_TEXT_COLORS: readonly ["#FFFFFF", "#FFD84D"];
+export declare const IMAGE_SLOTS: Record<ItemType, number>;
+export declare const imageSlotsFor: (id: ItemId) => number;
 export declare const DEFAULT_ITEMS: Record<ItemId, ItemConfig>;

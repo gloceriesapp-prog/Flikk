@@ -41,7 +41,7 @@ export interface Availability {
     party: Stat;
     popularThisWeek: Stat;
     localBrands: LocalBrands;
-    productImages: Record<string, string>;
+    products: Record<string, ProductPeek>;
 }
 export interface UserSummary {
     kind: 'guest' | 'customer';
@@ -78,6 +78,7 @@ export type ImageSource = {
 } | {
     mode: 'picked';
     productIds: string[];
+    photos?: Record<string, string>;
 };
 export interface ItemConfig {
     enabled: boolean;

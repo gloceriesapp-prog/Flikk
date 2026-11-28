@@ -1,6 +1,6 @@
 // Grid config: defaults, a lenient reader (endpoint: never blank Home over a
 // bad row) and a strict validator (admin saves: reject with exact reasons).
-import { ACCENT_PRESETS, CARD_IDS, DEFAULT_ITEMS, HERO_IDS, ITEM_FACTS, ITEM_IDS, TAG_TEXT_COLORS } from './catalog.js';
+import { ACCENT_PRESETS, CARD_IDS, DEFAULT_ITEMS, HERO_IDS, ITEM_FACTS, ITEM_IDS, TAG_TEXT_COLORS, imageSlotsFor } from './catalog.js';
 import { contrastRatio, isHex, MIN_TAG_CONTRAST, passingShade } from './contrast.js';
 import { placeholdersIn } from './placeholders.js';
 import type { CardId, CardTarget, HeroId, ItemConfig, ItemId, Modifiers, SlotKey, SlotRule, TodayGridConfig } from './types.js';
@@ -25,7 +25,7 @@ export const DEFAULT_MODIFIERS: Modifiers = {
 export const SLOT_KEYS: SlotKey[] = DEFAULT_SLOTS.map(slot => slot.key);
 export const DEFAULT_CONFIG: TodayGridConfig = { items: DEFAULT_ITEMS, slots: DEFAULT_SLOTS, backups: DEFAULT_BACKUPS, modifiers: DEFAULT_MODIFIERS };
 
-export const LIMITS = { title: 24, line: 40, tag: 24, categories: 12, pickedImages: 2, pinnedProducts: 30 } as const;
+export const LIMITS = { title: 24, line: 40, tag: 24, categories: 12, pinnedProducts: 30 } as const;
 
 export interface ConfigError { path: string; message: string; suggestion?: string }
 
@@ -57,7 +57,8 @@ function readItem(id: ItemId, raw: unknown): ItemConfig {
   const base = DEFAULT_ITEMS[id];
   const r = obj(raw);
   const images = obj(r.images);
-  const picked = Array.isArray(images.productIds) ? images.productIds.filter((p): p is string => typeof p === 'string' && UUID.test(p)).slice(0, LIMITS.pickedImages) : [];
+  const picked = Array.isArray(images.productIds) ? [...new Set(images.productIds.filter((p): p is string => typeof p === 'string' && UUID.test(p)))].slice(0, imageSlotsFor(id)) : [];
+  const photos = Object.fromEntries(Object.entries(obj(images.photos)).filter(([pid, url]) => picked.includes(pid) && httpsUrl(url)).map(([pid, url]) => [pid, (url as string).trim()]));
   return {
     enabled: typeof r.enabled === 'boolean' ? r.enabled : base.enabled,
     title: str(r.title) || base.title,
@@ -68,7 +69,7 @@ function readItem(id: ItemId, raw: unknown): ItemConfig {
     tagText: r.tagText === '#FFD84D' ? '#FFD84D' : r.tagText === '#FFFFFF' ? '#FFFFFF' : base.tagText,
     categories: strings(r.categories, LIMITS.categories) ?? base.categories,
     target: readTarget(r.target) ?? base.target,
-    images: images.mode === 'picked' && picked.length ? { mode: 'picked', productIds: picked } : { mode: 'auto' },
+    images: images.mode === 'picked' && picked.length ? { mode: 'picked', productIds: picked, ...(Object.keys(photos).length ? { photos } : {}) } : { mode: 'auto' },
     bannerUrl: httpsUrl(r.bannerUrl) ? (r.bannerUrl as string).trim() : r.bannerUrl === null ? null : base.bannerUrl,
     updatedBy: str(r.updatedBy) ?? null,
     updatedAt: str(r.updatedAt) ?? null,
@@ -150,8 +151,13 @@ function itemErrors(id: ItemId, raw: unknown): ConfigError[] {
   if (r.bannerUrl !== undefined && r.bannerUrl !== null && !httpsUrl(r.bannerUrl)) at('bannerUrl', 'Page banner must be an https:// image link.');
   if (r.target !== undefined && !readTarget(r.target)) at('target', 'Choose a valid target (categories, a sub-category, pinned products, a tab, brands or an action).');
   const images = obj(r.images);
-  if (images.mode === 'picked' && (!Array.isArray(images.productIds) || images.productIds.length < 1 || images.productIds.length > LIMITS.pickedImages))
-    at('images', `Pick 1–${LIMITS.pickedImages} products for the card images, or use automatic images.`);
+  const slots = imageSlotsFor(id);
+  if (images.mode === 'picked' && (!Array.isArray(images.productIds) || images.productIds.length < 1 || images.productIds.length > slots))
+    at('images', `This card has ${slots} photo slot${slots === 1 ? '' : 's'}: pick 1–${slots} products, or use automatic photos.`);
+  for (const [pid, url] of Object.entries(obj(images.photos))) {
+    if (!Array.isArray(images.productIds) || !images.productIds.includes(pid)) at('images', 'A custom photo must belong to one of the picked products.');
+    else if (!httpsUrl(url)) at('images', 'Custom photos must be https:// image links.');
+  }
   return errors;
 }
 

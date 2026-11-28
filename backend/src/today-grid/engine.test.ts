@@ -121,11 +121,25 @@ describe('data checks, backups and trace', () => {
     expect(card).toMatchObject({ tag: 'Local makers', line: 'Made in Udupi', imageUrls: ['https://logo/1', 'https://logo/2'], target: { type: 'brands' } });
   });
   it('picked images show only products in stock now, else automatic images', () => {
-    const picked = withConfig(c => { c.items['tea-coffee'].images = { mode: 'picked', productIds: ['00000000-0000-4000-8000-000000000001'] }; });
-    const card = build(ist(TUESDAY, '07:30'), { config: picked, a: availability({ productImages: { '00000000-0000-4000-8000-000000000001': 'https://img/picked' } }) }).cards.find(c => c.id === 'tea-coffee');
+    const id = '00000000-0000-4000-8000-000000000001';
+    const picked = withConfig(c => { c.items['tea-coffee'].images = { mode: 'picked', productIds: [id] }; });
+    const card = build(ist(TUESDAY, '07:30'), { config: picked, a: availability({ products: { [id]: { id, name: 'Chai', price: 40, mrp: null, imageUrl: 'https://img/picked' } } }) }).cards.find(c => c.id === 'tea-coffee');
     expect(card?.imageUrls).toEqual(['https://img/picked']);
     const gone = build(ist(TUESDAY, '07:30'), { config: picked }).cards.find(c => c.id === 'tea-coffee');
     expect(gone?.imageUrls).toEqual(['https://img/a', 'https://img/b']);
+  });
+  it('a custom photo replaces the product photo; price, MRP and name stay the product\'s', () => {
+    const [a1, a2] = ['00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000a2'];
+    const products = {
+      [a1]: { id: a1, name: 'Seer Fish', price: 599, mrp: 1295, imageUrl: 'https://img/seer' },
+      [a2]: { id: a2, name: 'Prawns', price: 320, mrp: 300, imageUrl: '' }, // no photo of its own
+    };
+    const config = withConfig(c => { c.items['todays-catch'].images = { mode: 'picked', productIds: [a1, a2], photos: { [a2]: 'https://custom/prawns' } }; });
+    const hero = build(ist(TUESDAY, '07:30'), { config, a: availability({ products }) }).hero;
+    expect(hero.products).toEqual([
+      { id: a1, name: 'Seer Fish', price: 599, mrp: 1295, imageUrl: 'https://img/seer' },
+      { id: a2, name: 'Prawns', price: 320, mrp: null, imageUrl: 'https://custom/prawns' }, // MRP below price is not shown
+    ]);
   });
 });
 
