@@ -25,7 +25,7 @@ afterEach(() => client.clear());
 
 it('hides the whole block with fewer than 3 cards', async () => {
   jest.mocked(fetchNammaBrands).mockResolvedValue({ enabled: true, headerImageUrl: null, cards: [card(1), card(2)] });
-  const view = await render(<NammaBrandsSection enabled demo={false} />, { wrapper: Wrapper });
+  const view = await render(<NammaBrandsSection enabled />, { wrapper: Wrapper });
   await waitFor(() => expect(fetchNammaBrands).toHaveBeenCalled());
   await waitFor(() => expect(view.toJSON()).toBeNull());
 });
@@ -38,7 +38,7 @@ it('renders nothing (not even a skeleton) when switched off', async () => {
 
 it('shows the brand cards, and a tap opens that brand', async () => {
   jest.mocked(fetchNammaBrands).mockResolvedValue({ enabled: true, headerImageUrl: null, cards: [card(1), card(2), card(3)] });
-  await render(<NammaBrandsSection enabled demo={false} />, { wrapper: Wrapper });
+  await render(<NammaBrandsSection enabled />, { wrapper: Wrapper });
   await screen.findByText('Brand\n2');
   await fireEvent.press(screen.getByTestId('namma-card-b2'));
   expect(mockNavigate).toHaveBeenCalledWith('BrandProducts', { brand: card(2).brand });
@@ -58,9 +58,3 @@ it('splits the offer pill into a lead and a bold value', () => {
   expect(pillParts('  ')).toBeNull();
 });
 
-it('shows the 5-card dummy bento in demo mode without fetching', async () => {
-  await render(<NammaBrandsSection enabled demo />, { wrapper: Wrapper });
-  expect(screen.getByTestId('namma-demo-beauty')).toBeTruthy();
-  expect(screen.getByText('₹180')).toBeTruthy();
-  expect(fetchNammaBrands).not.toHaveBeenCalled();
-});
