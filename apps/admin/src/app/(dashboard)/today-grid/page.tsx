@@ -22,7 +22,15 @@ export default function TodayGridPage() {
   const [tab, setTab] = useState<TabKey>('cards');
   const [showVersions, setShowVersions] = useState(false);
   const { loaded, config } = grid;
-  if (!config || !loaded) return grid.error ? <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{grid.error}</p> : <p className="text-sm text-muted">Loading…</p>;
+  // The header image lives in App content, so it can be set even when the
+  // grid settings can't load (e.g. its tables aren't on this database yet).
+  if (!config || !loaded) return (
+    <div className="flex flex-col gap-5">
+      <h1 className="page-title">Today grid</h1>
+      <HeaderImageCard />
+      {grid.error ? <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{grid.error} Cards, slots and modifiers need the grid tables on this database.</p> : <p className="text-sm text-muted">Loading…</p>}
+    </div>
+  );
   const status = grid.dirty ? 'Unsaved changes' : !loaded.draft ? 'Recommended defaults (not saved yet)'
     : grid.draftIsLive ? `Live: version ${loaded.draft.id}` : `Draft v${loaded.draft.id} · live v${loaded.publishedVersionId ?? '—'}`;
   return (

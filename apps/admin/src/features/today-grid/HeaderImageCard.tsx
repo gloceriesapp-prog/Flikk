@@ -36,7 +36,7 @@ export function HeaderImageCard() {
     <div className="card flex flex-wrap items-start gap-4 p-4">
       <div className="min-w-[220px] flex-1">
         <p className="text-sm font-semibold text-ink">Header image</p>
-        <p className="mt-0.5 text-xs text-muted">Across the top of the grid on Home. Wide 3:1, e.g. 1200×400 px, PNG/WebP under 5 MB. Saves straight to the app (not part of the draft).</p>
+        <p className="mt-0.5 text-xs text-muted">Across the full width at the top of the grid on Home; its height follows the image&apos;s own shape (e.g. 1200×400 px). PNG/WebP under 5 MB. Saves straight to the app (not part of the draft).</p>
         <div className="mt-3 flex items-center gap-2">
           {content ? <ProductImageUpload key={current} imageUrl={current || undefined} bucket="appsui" onChange={(url) => save(url)} small /> : <span className="text-xs text-muted">Loading…</span>}
           {current && <button type="button" disabled={saving} onClick={() => void save('')} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-ink disabled:opacity-40">Use built-in image</button>}

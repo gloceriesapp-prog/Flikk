@@ -105,3 +105,11 @@ it('hero slides through its products right to left, looping back to the first', 
   expect((timing.mock.calls.at(-1)![1] as { toValue: number }).toValue).toBe(toValue * 2); // on to the loop copy of the first
   timing.mockRestore();
 });
+
+it('header keeps the image’s own shape (no banner clamp), ignoring broken sizes', () => {
+  const { headerRatio } = jest.requireActual('../src/screens/home/today-grid/components/TodayGridView') as typeof import('../src/screens/home/today-grid/components/TodayGridView');
+  expect(headerRatio(1200, 400)).toBe(3);
+  expect(headerRatio(1600, 200)).toBe(8); // wide strip stays wide
+  expect(headerRatio(800, 800)).toBe(1);
+  expect(headerRatio(0, 400)).toBeNull();
+});
