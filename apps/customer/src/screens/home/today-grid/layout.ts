@@ -1,8 +1,8 @@
 // Grid geometry: 3 columns; the hero spans 2 rows in column 1 and up to 4
 // cards fill the 2x2. Fewer cards: 2x1 (hero one row tall), or hero alone.
-// Bento look: a light-blue rounded block inset from the screen edges; the
+// Bento look: a deep maroon rounded block inset from the screen edges; the
 // header artwork and the white cards share one width inside it.
-export const BLOCK_BG = '#D1E1FE';
+export const BLOCK_BG = '#701C32';
 export const MARGIN = 10;
 export const SIDE = 10;
 export const GAP = 8;

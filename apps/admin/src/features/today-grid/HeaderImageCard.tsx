@@ -47,7 +47,7 @@ export function HeaderImageCard() {
           <div key={w}>
             <p className="text-[10px] text-muted">{w} px phone</p>
             {/* eslint-disable-next-line @next/next/no-img-element -- R2 artwork URL, preview only */}
-            <img src={current || DEFAULT_HEADER_IMAGE} alt="" style={{ width: w * 0.6, borderRadius: 12, background: '#D0E0FD' }} />
+            <img src={current || DEFAULT_HEADER_IMAGE} alt="" style={{ width: w * 0.6, borderRadius: 12, background: '#701C32' }} />
           </div>
         ))}
       </div>

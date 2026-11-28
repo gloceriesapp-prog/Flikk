@@ -21,7 +21,7 @@ function Pill({ tag }: { tag: string }) {
 export function MiniCard({ title, tag, images = [], width = 120, height = 166, hero = false, price }: MiniCardProps) {
   const mrp = price && price.mrp != null && price.mrp > price.amount ? price.mrp : null;
   return (
-    <div style={{ background: '#D0E0FD', padding: 8, borderRadius: 20 }}>
+    <div style={{ background: '#701C32', padding: 8, borderRadius: 20 }}>
       <div style={{ width, height, boxSizing: 'border-box', background: '#FFFFFF', border: '1px solid #E6ECF7', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'Gilroy, system-ui, sans-serif', textAlign: 'center' }}>
         <Pill tag={tag} />
         <div style={{ color: '#101828', fontWeight: 600, fontSize: hero ? 16 : Math.max(13, Math.round(width * 0.125)), lineHeight: 1.15, padding: '6px 6px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{title}</div>
