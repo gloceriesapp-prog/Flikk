@@ -14,12 +14,17 @@ export type ItemType = 'hero' | 'rotating' | 'special';
 export type Placeholder = 'min' | 'pct' | 'total' | 'time' | 'cutoff' | 'festival';
 
 // ---- live data (computed by the backend from the database) -------------
+// One in-stock product the hero can show (rotating): store price, real MRP
+// only when above it.
+export interface ProductPeek { id: string; name: string; price: number; mrp: number | null; imageUrl: string } // imageUrl '' = no photo
+
 export interface Stat {
   count: number;
   minPrice: number | null;
   minPriceMrp: number | null; // only when real and above minPrice
   maxDiscountPct: number | null; // best real discount, whole percent
   imageUrls: string[];
+  top?: ProductPeek[]; // up to HERO_PRODUCTS, most popular first, with a photo
 }
 export const EMPTY_STAT: Stat = { count: 0, minPrice: null, minPriceMrp: null, maxDiscountPct: null, imageUrls: [] };
 
@@ -37,7 +42,7 @@ export interface Availability {
   party: Stat;
   popularThisWeek: Stat;
   localBrands: LocalBrands; // local brands with 1+ in-stock product nearby
-  productImages: Record<string, string>; // in-stock product id -> photo (picked card images)
+  products: Record<string, ProductPeek>; // in-stock products by id (picked slots read name, price, MRP, photo here)
 }
 
 export interface UserSummary {
@@ -61,7 +66,11 @@ export type CardTarget =
   | { type: 'brands' }
   | { type: 'action'; id: 'add-usuals' | 'party-form' | 'preorder-list' | 'popular' | 'offers' | 'bulk' };
 
-export type ImageSource = { mode: 'auto' } | { mode: 'picked'; productIds: string[] };
+// A card's photo slots. 'auto' = top in-stock products. 'picked' = these
+// products, in order (price, MRP and name always come live from the product;
+// `photos` may swap in a custom photo per product). How many slots a card
+// has: IMAGE_SLOTS by type (hero 4 rotating, other cards 2).
+export type ImageSource = { mode: 'auto' } | { mode: 'picked'; productIds: string[]; photos?: Record<string, string> };
 
 export interface ItemConfig {
   enabled: boolean;
@@ -74,6 +83,7 @@ export interface ItemConfig {
   categories: string[]; // data-check list for category cards
   target: CardTarget;
   images: ImageSource;
+  bannerUrl: string | null; // card page artwork (https), null = the grid header artwork
   updatedBy?: string | null;
   updatedAt?: string | null;
 }
@@ -108,6 +118,9 @@ export interface GridCard {
   imageUrls: string[];
   target: CardTarget;
   price?: { amount: number; mrp: number | null }; // hero only
+  products?: ProductPeek[]; // hero only: rotates through these (max 4)
+  bannerUrl: string | null; // artwork on top of the card's own page
+  categories: string[]; // what the card counts (its page lists these when the server can't)
 }
 
 export type TraceStatus = 'shown' | 'no-data' | 'replaced' | 'backup' | 'not-in-slot' | 'disabled' | 'duplicate' | 'no-room';

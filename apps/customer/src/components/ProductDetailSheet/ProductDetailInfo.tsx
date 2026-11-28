@@ -46,7 +46,8 @@ import { SellerDetailsCard } from './SellerDetailsCard';
 import { SimilarProductsRow } from './SimilarProductsRow';
 import { ProductServiceHighlights } from './ProductServiceHighlights';
 import type { Product } from '../../screens/home/products/types';
-import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
+import { useDeliveryWindow } from '../../api/deliverySettings';
+import { formatWindow } from '../../utils/deliveryWindow';
 
 interface Props {
   product: Product;
@@ -78,7 +79,7 @@ interface Props {
 
 export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder, onSelectProduct, onOpenStore }: Props) {
   const { name, localName, weight, storeName, sellerDetails } = product;
-  const estimatedMinutes = useDeliveryEstimateMinutes();
+  const deliveryWindow = useDeliveryWindow([product.categoryLabel]);
   const option = product.options?.find(o => o.id === selectedOptionId);
   const { price, originalPrice, unitPriceLabel } = flavourPrice(product, option);
   const variants = product.variants?.map(v => ({ ...v, ...flavourPrice(product, option, v) }));
@@ -117,7 +118,7 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
           <ProductVariantOptions
             variants={variants!}
             imageUrl={product.imageUrl}
-            deliveryLabel={product.preorder ? 'Pre-order' : `${estimatedMinutes} mins`}
+            deliveryLabel={product.preorder ? 'Pre-order' : formatWindow(deliveryWindow)}
             selectedId={selectedVariantId ?? variants![0]!.id}
             onSelect={(id) => onSelectVariant?.(id)}
           />

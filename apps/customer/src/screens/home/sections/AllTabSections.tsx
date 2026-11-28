@@ -33,7 +33,6 @@ import { SeasonalSection } from '../seasonal/SeasonalSection';
 import { HomeCategoryButton, HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { HomeSectionBanner } from '../components/HomeSectionBanner';
 import { PreorderSection } from '../preorders/PreorderSection';
-import { NammaBrandsSection } from '../namma-brands/NammaBrandsSection';
 import { TodayGridSection } from '../today-grid/TodayGridSection';
 import { homePreviewLimit, homeProductLayout, supportsHomeBanner, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
@@ -205,10 +204,8 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   const t = useCopyText();
 
   // The header's category row replaces the Quick categories grid on Home.
-  // Namma Brands always sits above the welcome card; its row only says on/off.
   // The welcome banner shows unless its Home Sections row is switched off.
   const welcomeOn = !sectionConfig?.some((section) => section.key === 'welcome-banner' && !section.enabled);
-  const nammaBrandsOn = !!sectionConfig?.some((section) => section.key === 'namma-brands' && section.enabled);
   const sections = useMemo(() => resolveAllTabSections(sectionConfig).filter((section) => section.key !== 'quick-categories'), [sectionConfig]);
 
   // Only visible sections can claim products from a shared feed.
@@ -275,9 +272,8 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   // doesn't change a given section's inputs reuses its element (React skips the
   // subtree and never re-runs that section's registry renderer).
   return useMemo(() => {
-    // "Today on Gloceries" leads Home, then Namma Brands (when switched on).
-    const items: HomeSectionItem[] = [{ key: 'today-grid', node: <TodayGridSection /> },
-      { key: 'namma-brands', node: <NammaBrandsSection enabled={nammaBrandsOn} /> }];
+    // "Today on Gloceries" leads Home.
+    const items: HomeSectionItem[] = [{ key: 'today-grid', node: <TodayGridSection /> }];
     if (welcomeOn) items.push({
       key: 'welcome-banner',
       node: (
@@ -312,5 +308,5 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
       });
     }
     return items;
-  }, [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground, nammaBrandsOn, welcomeOn]);
+  }, [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground, welcomeOn]);
 }

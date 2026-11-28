@@ -25,7 +25,8 @@ import { useSimilarProducts } from '../../../components/ProductDetailSheet/useSi
 import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductCardView } from './ProductCardView';
 import { useProductAvailability } from './useProductAvailability';
-import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
+import { useCategoryWindows, useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
+import type { CategoryDeliveryWindow } from '../../../utils/deliveryWindow';
 import type { Product } from './types';
 import { searchProductDisplay } from '../../../components/ProductDetailSheet/flavourSelection';
 
@@ -43,6 +44,7 @@ interface Props {
   // them and the card self-subscribes below — fine for one-off placements
   // (wishlist, cart, search) that aren't a big grid.
   estimatedMinutes?: number;
+  categoryWindows?: CategoryDeliveryWindow[];
   isAvailable?: boolean;
   availabilityLabel?: string;
 }
@@ -59,6 +61,7 @@ const ProductCardShell = memo(function ProductCardShell({
   compact,
   onDark,
   estimatedMinutes,
+  categoryWindows,
   isAvailable,
   availabilityLabel,
 }: {
@@ -69,6 +72,7 @@ const ProductCardShell = memo(function ProductCardShell({
   compact?: boolean;
   onDark?: boolean;
   estimatedMinutes?: number;
+  categoryWindows?: CategoryDeliveryWindow[];
   isAvailable: boolean;
   availabilityLabel?: string;
 }) {
@@ -104,6 +108,7 @@ const ProductCardShell = memo(function ProductCardShell({
         onPress={onPress}
         onAdd={onAdd}
         estimatedMinutes={estimatedMinutes}
+        categoryWindows={categoryWindows}
         isAvailable={isAvailable && matchedOption?.isAvailable !== false}
         availabilityLabel={matchedOption?.isAvailable === false ? 'Out of stock' : availabilityLabel}
       />
@@ -119,6 +124,7 @@ const ProductCardShell = memo(function ProductCardShell({
 function SelfSubscribedProductCard({ product, widthClassName, showDiscountBadge, showImage, compact, onDark }: Props) {
   const availability = useProductAvailability(product);
   const estimatedMinutes = useDeliveryEstimateMinutes();
+  const categoryWindows = useCategoryWindows();
   return (
     <ProductCardShell
       product={product}
@@ -128,6 +134,7 @@ function SelfSubscribedProductCard({ product, widthClassName, showDiscountBadge,
       compact={compact}
       onDark={onDark}
       estimatedMinutes={estimatedMinutes}
+      categoryWindows={categoryWindows}
       isAvailable={availability.isAvailable}
       availabilityLabel={availability.label}
     />
@@ -148,6 +155,7 @@ export function ProductCard(props: Props) {
         compact={props.compact}
         onDark={props.onDark}
         estimatedMinutes={props.estimatedMinutes}
+        categoryWindows={props.categoryWindows}
         isAvailable={props.isAvailable}
         availabilityLabel={props.availabilityLabel}
       />

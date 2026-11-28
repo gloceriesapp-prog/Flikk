@@ -13,7 +13,10 @@ export function availability(patch: Partial<Availability> = {}): Availability {
     preorder: { open: true, cutoffMinute: 22 * 60 },
     bulk: stat(4), party: stat(3), popularThisWeek: stat(6),
     localBrands: { count: 4, brandIds: ['b1', 'b2', 'b3', 'b4'], logoUrls: ['https://logo/1', 'https://logo/2'] },
-    productImages: { p1: 'https://img/p1', p2: 'https://img/p2' },
+    products: {
+      p1: { id: 'p1', name: 'P1', price: 10, mrp: null, imageUrl: 'https://img/p1' },
+      p2: { id: 'p2', name: 'P2', price: 20, mrp: 25, imageUrl: 'https://img/p2' },
+    },
     ...patch,
   };
 }

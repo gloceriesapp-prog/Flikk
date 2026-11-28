@@ -36,6 +36,16 @@
         "SENTRY_ORG": "gloceries",
         "SENTRY_PROJECT": "customer-app"
       }
+    },
+    "demo": {
+      "distribution": "internal",
+      "environment": "production",
+      "channel": "preview",
+      "env": {
+        "APP_ENV": "production",
+        "SENTRY_ORG": "gloceries",
+        "SENTRY_PROJECT": "customer-app"
+      }
     }
   },
   "submit": {

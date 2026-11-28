@@ -139,7 +139,7 @@ export function ProductDetailFooter({
             addToCart({
               isAvailable: availability.isAvailable,
               id,
-              productId: product.id,
+              productId: product.id, category: product.categoryLabel,
               variantId,
               cutSize,
               optionId: option?.id,

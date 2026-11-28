@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from '@/components/icons';
 import { ProductPinPicker } from '@/components/home/ProductPinPicker';
+import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 import { fetchCategories } from '@/lib/supabase/categories';
 import { fetchAllSubCategoryOptions, type SubCategoryOption } from '@/lib/supabase/subcategories';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@/lib/home/todayGrid';
 import type { Product } from '@/lib/types';
 import { MiniCard } from './MiniCard';
+import { PhotoSlotsEditor } from './PhotoSlotsEditor';
 import { ACTION_LABELS } from './targetLabel';
 
 const field = 'w-full rounded-lg border border-border bg-canvas px-2.5 py-1.5 text-sm text-ink';
@@ -45,6 +47,12 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
   const ratio = contrastRatio(draft.accent, draft.tagText);
   const set = (patch: Partial<ItemConfig>) => setDraft({ ...draft, ...patch });
   const setTarget = (target: CardTarget) => set({ target });
+  // Preview: the picked slots' photos (custom or product), and for the big
+  // card the first pick's live price / MRP.
+  const picks = draft.images.mode === 'picked' ? draft.images.productIds.map((pid) => products.find((p) => p.id === pid)).filter((p): p is Product => !!p) : [];
+  const customPhotos = draft.images.mode === 'picked' ? draft.images.photos ?? {} : {};
+  const previewPhotos = picks.map((p) => customPhotos[p.id] || p.imageUrl).filter((url): url is string => !!url);
+  const previewPrice = picks[0] ? { amount: picks[0].price, mrp: picks[0].originalPrice ?? null } : { amount: 25, mrp: 30 };
 
 
   return createPortal(
@@ -59,7 +67,7 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
           <div className="flex flex-col gap-4 text-sm">
             <label className="flex flex-col gap-1"><span className="flex justify-between text-xs font-medium text-muted">Title <Count value={draft.title} max={24} /></span>
               <input className={field} value={draft.title} onChange={(e) => set({ title: e.target.value })} /><FieldErrors errors={errorFor('title')} /></label>
-            <label className="flex flex-col gap-1"><span className="flex justify-between text-xs font-medium text-muted">Line <Count value={draft.line} max={40} /></span>
+            <label className="flex flex-col gap-1"><span className="flex justify-between text-xs font-medium text-muted">Line (screen readers only; cards show the title) <Count value={draft.line} max={40} /></span>
               <input className={field} value={draft.line} onChange={(e) => set({ line: e.target.value })} /><FieldErrors errors={errorFor('line')} /></label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1"><span className="text-xs font-medium text-muted">Tag</span>
@@ -122,15 +130,17 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
                 </select></label>
             ) : null}
             <div>
-              <p className="mb-1 text-xs font-medium text-muted">Images</p>
-              <div className="flex gap-4 text-xs">
-                <label className="flex items-center gap-1"><input type="radio" checked={draft.images.mode === 'auto'} onChange={() => set({ images: { mode: 'auto' } })} />Automatic (top 2 in-stock products)</label>
-                <label className="flex items-center gap-1"><input type="radio" checked={draft.images.mode === 'picked'} onChange={() => set({ images: { mode: 'picked', productIds: [] } })} />Pick 2 products</label>
+              <p className="mb-1 text-xs font-medium text-muted">Page banner (top of the page this card opens; wide, e.g. 1200×525 px)</p>
+              <div className="flex items-center gap-2">
+                <ProductImageUpload key={draft.bannerUrl ?? 'none'} imageUrl={draft.bannerUrl ?? undefined} bucket="appsui" small onChange={(url) => set({ bannerUrl: url || null })} />
+                {draft.bannerUrl
+                  ? <button type="button" onClick={() => set({ bannerUrl: null })} className="rounded-lg border border-border px-2.5 py-1 text-xs text-ink">Use the grid header image</button>
+                  : <span className="text-[11px] text-muted">None set: the page shows the grid header image.</span>}
               </div>
-              {draft.images.mode === 'picked' && (
-                <div className="mt-2"><ProductPinPicker productIds={draft.images.productIds} products={products} capacity={2}
-                  onChange={(ids) => set({ images: { mode: 'picked', productIds: ids.slice(0, 2) } })} /></div>
-              )}
+              <FieldErrors errors={errorFor('bannerUrl')} />
+            </div>
+            <div>
+              <PhotoSlotsEditor id={id} images={draft.images} products={products} onChange={(images) => set({ images })} />
               <FieldErrors errors={errorFor('images')} />
             </div>
           </div>
@@ -138,7 +148,7 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
             <p className="text-xs font-medium text-muted">Preview</p>
             <MiniCard hero={facts.type === 'hero'} title={fill(draft.title, SAMPLE) ?? draft.title} tag={fill(draft.tag, SAMPLE) ?? draft.fallbackTag} line={draft.line}
               accent={draft.accent} tagText={draft.tagText} width={facts.type === 'hero' ? 150 : 140} height={facts.type === 'hero' ? 300 : 190}
-              price={facts.type === 'hero' ? { amount: 25, mrp: 30 } : undefined} />
+              price={facts.type === 'hero' ? previewPrice : undefined} images={previewPhotos} />
             <p className="text-center text-[10px] text-muted">Sample numbers; live values on the phone. Fallback tag: “{draft.fallbackTag}”</p>
           </div>
         </div>

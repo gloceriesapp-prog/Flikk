@@ -1,16 +1,14 @@
 import { View } from 'react-native';
 import { AppImage } from '../../../../components/AppImage';
-import { tint } from '../layout';
 
-// Up to two product photos on a 10% wash of the card's accent.
-export function CardImages({ urls, accent, height, radius = 14 }: { urls: string[]; accent: string; height: number; radius?: number }) {
-  const photos = urls.slice(0, 2);
+// The card's one image across its foot: full card width, sitting on the
+// bottom edge (no padding below). A wide photo can show several products.
+export function CardImages({ urls, height }: { urls: string[]; height: number }) {
+  const uri = urls[0];
   return (
-    <View className="flex-row items-end justify-center overflow-hidden" style={{ height, borderRadius: radius, backgroundColor: tint(accent) }}>
-      {photos.map((uri, index) => (
-        <AppImage key={uri} source={{ uri }} resizeMode="contain" accessible={false}
-          style={{ width: photos.length > 1 ? '54%' : '78%', height: '92%', marginLeft: index ? '-12%' : 0 }} />
-      ))}
+    <View className="w-full justify-end overflow-hidden" style={{ height }}>
+      {uri ? <AppImage source={{ uri }} resizeMode="contain" contentPosition="bottom center" accessible={false} testID="today-photo"
+        style={{ width: '100%', height: '100%' }} /> : null}
     </View>
   );
 }

@@ -37,7 +37,7 @@ export function ReorderItemRow({ product }: { product: Product }) {
 
   const photo = product.imageUrls?.[0] || product.imageUrl || PLACEHOLDER_IMAGE_URI;
   const reorder = () => choose ? setPickerOpen(true) : addToCart({
-    isAvailable: availability.isAvailable, id: lineId, productId: product.id, variantId: product.defaultVariantId, cutSize,
+    isAvailable: availability.isAvailable, id: lineId, productId: product.id, category: product.categoryLabel, variantId: product.defaultVariantId, cutSize,
     name: product.name, weight: product.weight, price: product.price, originalPrice: product.originalPrice,
     storeId: product.storeId ?? '', storeName: product.storeName, imageUrl: product.imageUrl,
   });

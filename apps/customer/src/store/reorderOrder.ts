@@ -35,7 +35,7 @@ export function reorderLines(items: ReorderSource[], catalogue: Product[]) {
     lines.push({
       quantity,
       product: {
-        isAvailable: true, id: cartLineId(product.id, variantId, cutSize, option?.id, serving), productId: product.id, variantId, cutSize,
+        isAvailable: true, id: cartLineId(product.id, variantId, cutSize, option?.id, serving), productId: product.id, category: product.categoryLabel, variantId, cutSize,
         optionId: option?.id, optionName: option?.name, serving, name: product.name, weight: variant?.label ?? product.weight,
         price, originalPrice, storeId: product.storeId ?? '', storeName: product.storeName, imageUrl: option?.imageUrl ?? product.imageUrl,
       },

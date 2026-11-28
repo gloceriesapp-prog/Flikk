@@ -12,6 +12,7 @@ export const COPY_KEYS = {
   'home.deliveryNotice.rain': { default: 'Rain nearby. Deliveries may take a little longer.', hint: 'Header notice while rain is enabled. Hides after 4 seconds.' },
   'home.deliveryNotice.rainAndDemand': { default: 'Rain and high demand nearby. Delivery may take longer.', hint: 'Single combined notice when both conditions are enabled.' },
   // Home artwork and tiles (blank = built-in artwork / behaviour).
+  'home.todayGrid.headerImageUrl': { default: '', hint: 'Home "Today on Gloceries" header artwork across the top of the grid block (wide, 3:1, e.g. 1200x400). Blank = the title in text', kind: 'image' },
   'home.welcome.imageUrl': { default: '', hint: 'Home welcome banner artwork (16:9, e.g. 1920x1080). Blank = built-in artwork', kind: 'image' },
   'home.welcome.label': { default: 'Welcome. Shop the stores you already love.', hint: 'Home welcome banner text read by screen readers' },
   'home.quickCategories.groceryImageUrl': { default: '', hint: 'Groceries quick-category tile artwork. Blank = built-in artwork', kind: 'image' },

@@ -35,6 +35,14 @@ describe('slots and hero', () => {
   it('a disabled hero falls back too', () => {
     expect(build(ist(TUESDAY, '13:00'), { config: withConfig(c => { c.items['village-fresh'].enabled = false; }) }).hero.id).toBe('fruits-vegetables');
   });
+  it('hero carries up to 4 in-stock products to rotate, MRP only when real', () => {
+    const top = [1, 2, 3, 4, 5].map(n => ({ id: `p${n}`, name: `Fish ${n}`, price: 100 + n, mrp: n === 2 ? 90 : 150, imageUrl: `https://img/p${n}` }));
+    const hero = build(ist(TUESDAY, '07:30'), { a: availability({ fish: { ...stat(4, 180, 220), arrivedMinute: 400, top } }) }).hero;
+    expect(hero.products?.map(p => p.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
+    expect(hero.products?.[1]?.mrp).toBeNull(); // 90 is not above 102
+    expect(hero.products?.[0]).toMatchObject({ name: 'Fish 1', price: 101, mrp: 150, imageUrl: 'https://img/p1' });
+    expect(build(ist(TUESDAY, '07:30')).hero.products).toBeUndefined(); // no peeks, no rotation
+  });
   it('hero tag and price are honest', () => {
     const hero = build(ist(TUESDAY, '07:30')).hero;
     expect(hero).toMatchObject({ tag: 'Landed 6:40 AM', tagText: '#FFD84D', price: { amount: 180, mrp: 220 } });
@@ -110,14 +118,28 @@ describe('data checks, backups and trace', () => {
     const two = availability({ localBrands: { count: 2, brandIds: ['b1', 'b2'], logoUrls: ['https://logo/1'] } });
     expect(ids(build(ist(TUESDAY, '14:00'), { a: two }))).not.toContain('namma-brands');
     const card = build(ist(TUESDAY, '14:00')).cards.find(c => c.id === 'namma-brands');
-    expect(card).toMatchObject({ tag: 'Local makers', line: 'Made in Udupi', imageUrls: ['https://logo/1', 'https://logo/2'], target: { type: 'brands' } });
+    expect(card).toMatchObject({ tag: 'Local makers', line: 'Made in Udupi', imageUrls: ['https://logo/1'], target: { type: 'brands' } });
   });
   it('picked images show only products in stock now, else automatic images', () => {
-    const picked = withConfig(c => { c.items['tea-coffee'].images = { mode: 'picked', productIds: ['00000000-0000-4000-8000-000000000001'] }; });
-    const card = build(ist(TUESDAY, '07:30'), { config: picked, a: availability({ productImages: { '00000000-0000-4000-8000-000000000001': 'https://img/picked' } }) }).cards.find(c => c.id === 'tea-coffee');
+    const id = '00000000-0000-4000-8000-000000000001';
+    const picked = withConfig(c => { c.items['tea-coffee'].images = { mode: 'picked', productIds: [id] }; });
+    const card = build(ist(TUESDAY, '07:30'), { config: picked, a: availability({ products: { [id]: { id, name: 'Chai', price: 40, mrp: null, imageUrl: 'https://img/picked' } } }) }).cards.find(c => c.id === 'tea-coffee');
     expect(card?.imageUrls).toEqual(['https://img/picked']);
     const gone = build(ist(TUESDAY, '07:30'), { config: picked }).cards.find(c => c.id === 'tea-coffee');
-    expect(gone?.imageUrls).toEqual(['https://img/a', 'https://img/b']);
+    expect(gone?.imageUrls).toEqual(['https://img/a']); // one image per card
+  });
+  it('a custom photo replaces the product photo; price, MRP and name stay the product\'s', () => {
+    const [a1, a2] = ['00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000a2'];
+    const products = {
+      [a1]: { id: a1, name: 'Seer Fish', price: 599, mrp: 1295, imageUrl: 'https://img/seer' },
+      [a2]: { id: a2, name: 'Prawns', price: 320, mrp: 300, imageUrl: '' }, // no photo of its own
+    };
+    const config = withConfig(c => { c.items['todays-catch'].images = { mode: 'picked', productIds: [a1, a2], photos: { [a2]: 'https://custom/prawns' } }; });
+    const hero = build(ist(TUESDAY, '07:30'), { config, a: availability({ products }) }).hero;
+    expect(hero.products).toEqual([
+      { id: a1, name: 'Seer Fish', price: 599, mrp: 1295, imageUrl: 'https://img/seer' },
+      { id: a2, name: 'Prawns', price: 320, mrp: null, imageUrl: 'https://custom/prawns' }, // MRP below price is not shown
+    ]);
   });
 });
 

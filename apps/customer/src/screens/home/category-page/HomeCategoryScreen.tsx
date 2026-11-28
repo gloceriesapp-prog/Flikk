@@ -4,15 +4,14 @@ import Animated from 'react-native-reanimated';
 import { ScreenStatusBar as StatusBar } from '../../../components/ScreenStatusBar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AppStackParamList } from '../../../navigation/types';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { HomeCategoryContent, homeCategoryKind } from './HomeCategoryContent';
 import { useHomeBrowseScroll } from './useHomeBrowseScroll';
+import { FloatingBackButton } from './components/FloatingBackButton';
 import { HomeCategoryBanner } from './components/HomeCategoryBanner';
 import { storageUrl } from '../../../utils/storageUrl';
 import { useCopyImage } from '../../../api/appConfig';
-import { IconlyArrowLeft } from '../../../components/icons/iconly';
 import type { ComponentProps } from 'react';
 
 const GROCERY_HEADER_IMAGE_URI =
@@ -26,7 +25,6 @@ const CATEGORY_BANNERS: Partial<Record<string, Pick<ComponentProps<typeof HomeCa
 
 export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps<AppStackParamList, 'HomeCategory'>) {
   const isFocused = useIsFocused();
-  const insets = useSafeAreaInsets();
   const tabs = useHomeTabs();
   const tab = (tabs.data ?? []).find((item) => item.id === route.params.tabId);
   const categoryKind = tab ? homeCategoryKind(tab) : undefined;
@@ -72,11 +70,7 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
       </Animated.ScrollView>
       {/* Artwork starts at the screen edge; only the floating control is
           inset below the status bar. Keep Back available while scrolling. */}
-      <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 8, left: 20, zIndex: 10 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back to Home" onPress={() => navigation.goBack()} className="h-11 w-11 items-center justify-center rounded-full border border-[#E8EBEF] bg-white active:bg-[#F3F4F6]" hitSlop={8}>
-          <IconlyArrowLeft size={24} color="#101C10" />
-        </Pressable>
-      </View>
+      <FloatingBackButton onPress={() => navigation.goBack()} />
     </View>
   );
 }

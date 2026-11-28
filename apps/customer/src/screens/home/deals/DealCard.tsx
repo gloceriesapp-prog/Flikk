@@ -77,7 +77,7 @@ export function DealCard({ product }: { product: Product }) {
     // Keep Add choices separate from product-body navigation.
     if (requiresProductSelection(product)) { setIsPickerOpen(true); return; }
     addToCart({
-      isAvailable: availability.isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize,
+      isAvailable: availability.isAvailable, id: lineId, productId: id, category: product.categoryLabel, variantId: product.defaultVariantId, cutSize,
       name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl,
     });
   }

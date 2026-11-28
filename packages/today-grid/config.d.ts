@@ -10,7 +10,6 @@ export declare const LIMITS: {
     readonly line: 40;
     readonly tag: 24;
     readonly categories: 12;
-    readonly pickedImages: 2;
     readonly pinnedProducts: 30;
 };
 export interface ConfigError {

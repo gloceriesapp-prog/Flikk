@@ -35,7 +35,7 @@ export function FlavourPickerCard({ product, option, pack, isAvailable, availabi
   // Screen-reader name: product or flavour, then the pack.
   const label = `${option.name}, ${pack.label}`;
   function add() {
-    addToCart({ id, productId: product.id, variantId: pack.id, optionId: chosen?.id, optionName: chosen?.name,
+    addToCart({ id, productId: product.id, category: product.categoryLabel, variantId: pack.id, optionId: chosen?.id, optionName: chosen?.name,
       cutSize: cut, serving, name: product.name, weight: pack.label, price, originalPrice,
       imageUrl: option.imageUrl ?? product.imageUrl, storeId: product.storeId ?? '', storeName: product.storeName,
       isAvailable: !unavailable, preorderMinQty: product.preorder?.minQty }, product.preorder ? preorder : undefined);

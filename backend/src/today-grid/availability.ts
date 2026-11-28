@@ -7,10 +7,10 @@ import { supabase } from '../db/supabase.js';
 import { storeIsOpen, type EligibilityStore } from '../lib/checkoutEligibility.js';
 import { applyCustomerPrices } from '../lib/customerPrice.js';
 import { activeMorningSlots, PREORDER_CUTOFF_MS, type PreorderSlot } from '../lib/preorders.js';
-import { EMPTY_STAT, istClock, type Availability, type LocalBrands, type Stat, type UserSummary } from '../../../packages/today-grid/index.js';
+import { EMPTY_STAT, HERO_PRODUCTS, istClock, type Availability, type LocalBrands, type Stat, type UserSummary } from '../../../packages/today-grid/index.js';
 
 export interface LiveProduct {
-  id: string; store_id: string; category: string | null; sub_category_id: string | null; price: number; original_price: number | null;
+  id: string; name: string; store_id: string; category: string | null; sub_category_id: string | null; price: number; original_price: number | null;
   image_url: string | null; bulk_min_kg: number | null; morning_slot: boolean | null; party_enabled: boolean | null; brand_id: string | null;
 }
 export interface FishArrival { store_id: string; fish_arrived_at: string; fish_product_ids: string[]; expires_at: string }
@@ -29,11 +29,13 @@ export function statOf(products: LiveProduct[], ranked: string[] = []): Stat {
   const cheapest = products.reduce((low, p) => (p.price < low.price ? p : low));
   const realMrp = (p: LiveProduct) => (p.original_price != null && p.original_price > p.price ? p.original_price : null);
   const pcts = products.flatMap(p => { const mrp = realMrp(p); return mrp ? [Math.floor(((mrp - p.price) / mrp) * 100)] : []; });
-  const photos = [...products].filter(p => p.image_url).sort((x, y) => (rank.get(x.id) ?? 1e9) - (rank.get(y.id) ?? 1e9)).map(p => p.image_url!);
+  const withPhoto = [...products].filter(p => p.image_url).sort((x, y) => (rank.get(x.id) ?? 1e9) - (rank.get(y.id) ?? 1e9));
+  const photos = withPhoto.map(p => p.image_url!);
   return {
     count: products.length, minPrice: cheapest.price, minPriceMrp: realMrp(cheapest),
     maxDiscountPct: pcts.length && Math.max(...pcts) > 0 ? Math.max(...pcts) : null,
     imageUrls: [...new Set(photos)].slice(0, 2),
+    top: withPhoto.slice(0, HERO_PRODUCTS).map(p => ({ id: p.id, name: p.name, price: p.price, mrp: realMrp(p), imageUrl: p.image_url! })),
   };
 }
 
@@ -85,7 +87,10 @@ export function summarizeAvailability(input: {
     party: statOf(products.filter(p => p.party_enabled), ranked),
     popularThisWeek: statOf(products.filter(p => popular.has(p.id)), input.popularWeek),
     localBrands: localBrandsInStock(input.localBrands, products),
-    productImages: Object.fromEntries(products.filter(p => p.image_url).map(p => [p.id, p.image_url!])),
+    products: Object.fromEntries(products.map(p => [p.id, {
+      id: p.id, name: p.name, price: p.price, imageUrl: p.image_url ?? '',
+      mrp: p.original_price != null && p.original_price > p.price ? p.original_price : null,
+    }])),
   };
 }
 
@@ -104,7 +109,7 @@ export function summarizeUser(history: { order_id: string; product_id: string; c
 }
 
 // ---- database reads ----------------------------------------------------------
-const PRODUCT_FIELDS = 'id, store_id, category, sub_category_id, price, original_price, image_url, bulk_min_kg, morning_slot, party_enabled, brand_id, product_variants(*)';
+const PRODUCT_FIELDS = 'id, name, store_id, category, sub_category_id, price, original_price, image_url, bulk_min_kg, morning_slot, party_enabled, brand_id, product_variants(*)';
 const CACHE_MS = 120_000;
 
 async function readAvailability(storeIds: string[], now: Date) {

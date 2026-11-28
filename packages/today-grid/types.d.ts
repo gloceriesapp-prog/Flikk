@@ -3,12 +3,20 @@ export type CardId = 'milk-breakfast' | 'your-usuals' | 'popular-near-you' | 'br
 export type ItemId = HeroId | CardId;
 export type ItemType = 'hero' | 'rotating' | 'special';
 export type Placeholder = 'min' | 'pct' | 'total' | 'time' | 'cutoff' | 'festival';
+export interface ProductPeek {
+    id: string;
+    name: string;
+    price: number;
+    mrp: number | null;
+    imageUrl: string;
+}
 export interface Stat {
     count: number;
     minPrice: number | null;
     minPriceMrp: number | null;
     maxDiscountPct: number | null;
     imageUrls: string[];
+    top?: ProductPeek[];
 }
 export declare const EMPTY_STAT: Stat;
 export interface LocalBrands {
@@ -33,7 +41,7 @@ export interface Availability {
     party: Stat;
     popularThisWeek: Stat;
     localBrands: LocalBrands;
-    productImages: Record<string, string>;
+    products: Record<string, ProductPeek>;
 }
 export interface UserSummary {
     kind: 'guest' | 'customer';
@@ -70,6 +78,7 @@ export type ImageSource = {
 } | {
     mode: 'picked';
     productIds: string[];
+    photos?: Record<string, string>;
 };
 export interface ItemConfig {
     enabled: boolean;
@@ -82,6 +91,7 @@ export interface ItemConfig {
     categories: string[];
     target: CardTarget;
     images: ImageSource;
+    bannerUrl: string | null;
     updatedBy?: string | null;
     updatedAt?: string | null;
 }
@@ -145,6 +155,9 @@ export interface GridCard {
         amount: number;
         mrp: number | null;
     };
+    products?: ProductPeek[];
+    bannerUrl: string | null;
+    categories: string[];
 }
 export type TraceStatus = 'shown' | 'no-data' | 'replaced' | 'backup' | 'not-in-slot' | 'disabled' | 'duplicate' | 'no-room';
 export interface TraceRow {

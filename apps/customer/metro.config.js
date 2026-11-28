@@ -20,7 +20,7 @@ const config = getSentryExpoConfig(__dirname);
 // nothing pulls root's copy in. Its one peer dep (expo-location) resolves from
 // customer's own node_modules, which has it.
 const sharedPkg = path.resolve(__dirname, '../../packages/shared');
-config.watchFolders = [...(config.watchFolders ?? []), sharedPkg, path.resolve(__dirname, '../../packages/home-content')];
+config.watchFolders = [...(config.watchFolders ?? []), sharedPkg, path.resolve(__dirname, '../../packages/home-content'), path.resolve(__dirname, '../../packages/today-grid')];
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   '@gloceries/shared': sharedPkg,

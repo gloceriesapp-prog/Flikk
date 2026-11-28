@@ -1,5 +1,5 @@
-// Home's header colour follows what the customer is browsing: brand blue for
-// All, its own colour for each category tab and for Udupi. The colour runs
+// Home's header colour follows what the customer is browsing: deep ink
+// (HOME_HEADER_COLOR) for All, its own colour for each category tab and for Udupi. The colour runs
 // from the top switch down through the search sheet and the category row,
 // eases to the new colour on a switch, and fades the sticky parts to white
 // over FADE_DISTANCE of scroll. HomeScreen sets it; the shell header reads it.
@@ -15,9 +15,14 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 
-export const HOME_BLUE = '#155DFC';
-export const UDUPI_COLOR = '#B4532A'; // laterite red, Udupi's own stone
-export const PREORDER_COLOR = '#0E7490';
+// Fixed header colours by Home mode. All are dark enough for the header's
+// white text (4.5:1+, tested).
+export const HEADER_COLORS = {
+  all: '#0C1413', // deep ink
+  udupi: '#852B27', // deep laterite red, Udupi's own stone
+  preorder: '#0E7490',
+} as const;
+export const HOME_HEADER_COLOR = HEADER_COLORS.all;
 export const FADE_DISTANCE = 120;
 const SWITCH_MS = 320;
 
@@ -36,6 +41,14 @@ export function colorForTab(name: string) {
   return TAB_COLORS[name.trim().toLowerCase()] ?? FALLBACK_COLOR;
 }
 
+// The one rule for the header colour, by what Home is showing:
+// Udupi mode > Pre-order > the picked category tab > All.
+export function headerColorFor({ udupi, preorder, tabName }: { udupi: boolean; preorder: boolean; tabName?: string | null }) {
+  if (udupi) return HEADER_COLORS.udupi;
+  if (preorder) return HEADER_COLORS.preorder;
+  return tabName ? colorForTab(tabName) : HEADER_COLORS.all;
+}
+
 // Same hue, darker: the status-bar strip above the switch.
 export function deepen(hex: string, amount = 0.5) {
   const value = parseInt(hex.slice(1), 16);
@@ -44,7 +57,7 @@ export function deepen(hex: string, amount = 0.5) {
 }
 
 interface HeaderThemeState {
-  // null: no tint (Home not showing), the header falls back to brand blue.
+  // null: no tint (Home not showing), the header falls back to HOME_HEADER_COLOR.
   color: string | null;
   setColor: (color: string | null) => void;
 }
@@ -56,7 +69,7 @@ export const useHomeHeaderThemeStore = create<HeaderThemeState>((set) => ({
 
 // The current colour as an animated value that eases to each new colour.
 export function useHeaderTint(deep = false): SharedValue<string> {
-  const base = useHomeHeaderThemeStore((state) => state.color) ?? HOME_BLUE;
+  const base = useHomeHeaderThemeStore((state) => state.color) ?? HOME_HEADER_COLOR;
   const target = deep ? deepen(base) : base;
   const tint = useSharedValue(target);
   useEffect(() => { tint.value = withTiming(target, { duration: SWITCH_MS }); }, [target, tint]);

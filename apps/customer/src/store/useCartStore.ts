@@ -64,6 +64,9 @@ export interface CartItem {
   // group header shows this so a customer sees which real store they're
   // paying, not just a delivery address with no seller context.
   storeName?: string;
+  // Product category (Product.categoryLabel): a slower category (e.g. fresh-
+  // cut meat) gives the whole cart its longer delivery window.
+  category?: string;
   // Real products.image_url (Product.imageUrl) — what CartItemRow/CartBar
   // show instead of the shared PLACEHOLDER_IMAGE_URI stand-in. Undefined
   // for a product with no photo uploaded yet, same fallback-to-placeholder

@@ -8,7 +8,7 @@ import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProductCard } from '../home/products/ProductCard';
 import type { Product } from '../home/products/types';
-import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
+import { useCategoryWindows, useDeliveryEstimateMinutes } from '../../api/deliverySettings';
 import { productAvailability } from '../../utils/productAvailability';
 import { searchProductDisplay } from '../../components/ProductDetailSheet/flavourSelection';
 import { useProductSearch } from './useProductSearch';
@@ -59,6 +59,7 @@ export function SearchScreen({ navigation, route }: Props) {
   // product's (cheap, pure) availability, and the memoized card only re-renders
   // for a product whose availability actually changed.
   const estimatedMinutes = useDeliveryEstimateMinutes();
+  const categoryWindows = useCategoryWindows();
 
   // Final results view: searching, settled (not loading/debouncing/errored).
   // Only then do we surface the product grid; while a query is still
@@ -128,6 +129,7 @@ export function SearchScreen({ navigation, route }: Props) {
                   product={item}
                   widthClassName="w-full"
                   estimatedMinutes={estimatedMinutes}
+                  categoryWindows={categoryWindows}
                   isAvailable={availability.isAvailable}
                   availabilityLabel={availability.label}
                 />

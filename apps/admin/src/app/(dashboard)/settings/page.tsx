@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { CommissionSettingsCard } from '@/components/settings/CommissionSettingsCard';
+import { DeliveryWindowsCard } from '@/components/settings/DeliveryWindowsCard';
 import { fetchDeliverySettings, minuteToTimeInput, timeInputToMinute, type DeliverySettings } from '@/lib/supabase/deliverySettings';
 import { toast } from '@/components/ui/Toast';
 
@@ -614,6 +615,7 @@ export default function SettingsPage() {
         )}
       </div>
 
+      <DeliveryWindowsCard />
       <CommissionSettingsCard />
     </form>
   );

@@ -6,6 +6,7 @@ import { RegionalTab } from '../regional/RegionalTab';
 import { FestivalTab } from '../festival/FestivalTab';
 import { ManagedHomeTab } from '../content/ManagedHomeTab';
 import { HomeTabExtras, HomeTabTileGrid } from '../hometab/HomeTabTileGrid';
+import { CategoryDeliveryNote, MEAT_CATEGORIES } from './components/CategoryDeliveryNote';
 
 // Resolve by managed identity first, so admin display-name changes cannot
 // send Grocery/Fresh/Regional to a different template.
@@ -40,8 +41,8 @@ export function HomeCategoryContent({ tab }: { tab: RemoteHomeTab }) {
     // Festivals & Meat: managed Home-Tab-Content tabs, same pattern as
     // Grocery/Fresh/Regional (custom tiles belong to the managed layout).
     case 'festivals': return <FestivalTab tab={tab} />;
-    case 'meat': return <><HomeTabExtras tab={tab} categoryStyle="meat" showCategoryTiles={false} /><ManagedHomeTab tabKey="meat" /></>;
-    case 'meat-fish': return <HomeTabTileGrid tab={tab} categoryStyle="meat" />;
+    case 'meat': return <><CategoryDeliveryNote categories={MEAT_CATEGORIES} /><HomeTabExtras tab={tab} categoryStyle="meat" showCategoryTiles={false} /><ManagedHomeTab tabKey="meat" /></>;
+    case 'meat-fish': return <><CategoryDeliveryNote categories={MEAT_CATEGORIES} /><HomeTabTileGrid tab={tab} categoryStyle="meat" /></>;
     case 'festival': return <FestivalTab tab={tab} />;
     default: return <HomeTabTileGrid tab={tab} />;
   }

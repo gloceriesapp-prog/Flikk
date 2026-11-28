@@ -26,7 +26,8 @@ import { useNearestStore } from './useNearestStore';
 import { useWarmHomeBrowse } from './loading/useWarmHomeBrowse';
 import { isUdupiTab, useHomeModeStore } from './mode-switch/useHomeModeStore';
 import { RegionalTab } from './regional/RegionalTab';
-import { colorForTab, HOME_BLUE, PREORDER_COLOR, UDUPI_COLOR, useHomeHeaderThemeStore } from './header-theme/homeHeaderTheme';
+import { headerColorFor, useHomeHeaderThemeStore } from './header-theme/homeHeaderTheme';
+import { UdupiModeTip } from '../../features/onboarding-tips/UdupiModeTip';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -126,8 +127,8 @@ export function HomeScreen({ navigation }: Props) {
   const homeReady = useHomeReady(isServiceable && !!storeId);
 
   const { scrollY, scrollHandler } = useHomeBrowseScroll();
-  // Header colour follows what is shown: Udupi, the picked tab, or All.
-  const headerColor = udupi ? UDUPI_COLOR : preorder ? PREORDER_COLOR : activeTab ? colorForTab(activeTab.name) : HOME_BLUE;
+  // Header colour follows what is shown (homeHeaderTheme.headerColorFor).
+  const headerColor = headerColorFor({ udupi, preorder, tabName: activeTab?.name });
   const setHeaderColor = useHomeHeaderThemeStore((state) => state.setColor);
   useEffect(() => {
     setHeaderColor(headerColor);
@@ -174,6 +175,8 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         }
       />
+      {/* First open only: points out the Udupi switch at the top. */}
+      <UdupiModeTip ready={isFocused} />
     </Animated.View>
   );
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { ProductDetailInfo } from '../src/components/ProductDetailSheet/ProductDetailInfo';
 import type { Product } from '../src/screens/home/products/types';
-jest.mock('../src/api/deliverySettings', () => ({ useDeliveryEstimateMinutes: () => 12 }));
+jest.mock('../src/api/deliverySettings', () => ({ useDeliveryEstimateMinutes: () => 12, useDeliveryWindow: () => ({ min: 12, max: 12, note: null, category: null }) }));
 jest.mock('../src/components/ProductDetailSheet/SimilarProductsRow', () => ({ SimilarProductsRow: () => null }));
 jest.mock('../src/components/ProductDetailSheet/ProductServiceHighlights', () => ({ ProductServiceHighlights: () => null }));
 jest.mock('../src/components/AppImage', () => ({ AppImage: () => null }));

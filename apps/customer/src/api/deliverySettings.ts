@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useInventoryCacheSync } from '../screens/home/content/inventoryCache';
 import { DEFAULT_DELIVERY_MINUTES, deliveryMinutes } from '../utils/estimateDelivery';
+import { deliveryWindowFor, type CategoryDeliveryWindow, type DeliveryWindow } from '../utils/deliveryWindow';
 import { apiRequest } from './client';
 import { subscribePublicContentCache } from '../screens/home/content/publicContentCache';
 
@@ -23,6 +24,9 @@ export interface DeliverySettings {
   // back to 6:00 AM-10:30 PM.
   orderingOpensMinute?: number;
   orderingClosesMinute?: number;
+  // Slower categories and their range (utils/deliveryWindow.ts). Absent on
+  // an older backend: every category uses estimatedDeliveryMinutes.
+  categoryWindows?: CategoryDeliveryWindow[];
 }
 
 export async function fetchDeliverySettings(): Promise<DeliverySettings> {
@@ -57,6 +61,21 @@ export function useDeliverySettings() {
 export function useDeliveryEstimateMinutes(): number {
   const { data = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
   return data.estimatedDeliveryMinutes;
+}
+
+const NO_WINDOWS: CategoryDeliveryWindow[] = [];
+// Lifted with useDeliveryEstimateMinutes by product sections, so cards get
+// their category's window without a subscription each.
+export function useCategoryWindows(): CategoryDeliveryWindow[] {
+  const { data } = useDeliverySettings();
+  return data?.categoryWindows ?? NO_WINDOWS;
+}
+
+// Delivery window for products of these categories (a product card passes
+// its one category; the cart passes every line's).
+export function useDeliveryWindow(categories: (string | null | undefined)[]): DeliveryWindow {
+  const { data = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
+  return deliveryWindowFor(categories, data.estimatedDeliveryMinutes, data.categoryWindows);
 }
 
 // Mount once in RootNavigator. Realtime updates and its single foreground

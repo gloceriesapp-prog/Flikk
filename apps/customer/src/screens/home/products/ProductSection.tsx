@@ -2,7 +2,7 @@ import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { ProductCard } from './ProductCard';
 import { HORIZONTAL_PRODUCT_CARD_GAP, horizontalProductCardWidth } from './horizontalProductLayout';
 import { SectionTitle } from '../components/SectionTitle';
-import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
+import { useCategoryWindows, useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import { productAvailability } from '../../../utils/productAvailability';
 import type { HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 import type { Product } from './types';
@@ -19,6 +19,7 @@ export function ProductSection({ title, subtitle, products, layout = 'grid', sho
   const { width } = useWindowDimensions();
   const cardWidth = horizontalProductCardWidth(width);
   const estimatedMinutes = useDeliveryEstimateMinutes();
+  const categoryWindows = useCategoryWindows();
   if (!products.length) return null;
   const horizontal = layout === 'horizontal';
   const cards = products.map((product) => {
@@ -29,6 +30,7 @@ export function ProductSection({ title, subtitle, products, layout = 'grid', sho
         showDiscountBadge={showDiscountBadge}
         widthClassName="w-full"
         estimatedMinutes={estimatedMinutes}
+        categoryWindows={categoryWindows}
         isAvailable={availability.isAvailable}
         availabilityLabel={availability.label}
       />
