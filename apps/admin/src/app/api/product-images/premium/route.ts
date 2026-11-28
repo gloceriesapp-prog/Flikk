@@ -17,6 +17,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { storePublicImage } from '@/features/media/publicImages';
+import { isOriginalProductImage } from '@/lib/productImageOriginal';
 import { MAX_EXTRA_IMAGES } from '@/lib/productValidation';
 import {
   PhotoroomError, categoryPreset, cleanPromptBase, presetBase, type PresetId, callPhotoroom, capReached, checkFrame, headlineBackground, headlineLines, isPreset, monthStart, nextMonthLabel, photoroomKey, scrub,
@@ -196,7 +197,7 @@ export async function POST(request: Request) {
     ]);
     if (product.error || job.error) throw product.error ?? job.error;
     const current = product.data?.image_url as string | null | undefined;
-    const source = (job.data?.[0]?.original_url as string | undefined) ?? current;
+    const source = current && isOriginalProductImage(current) ? current : (job.data?.[0]?.original_url as string | undefined) ?? current;
     if (!source) return NextResponse.json({ error: 'Add a product photo first.' }, { status: 409 });
     const isPremium = rows.some((r) => r.url && r.url === current);
     const standard = isPremium ? await standardUrl(productId, rows) : current ?? null;

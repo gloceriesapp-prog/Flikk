@@ -4,6 +4,7 @@
 //             cleanedUrl, so the form can swap it in before saving)
 //   review    waiting in Photos to review
 //   none      not part of the pipeline (or not saved yet)
+import { isOriginalProductImage } from '@/lib/productImageOriginal';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
   if (jobs.error || assets.error) return NextResponse.json({ error: 'Could not load photo status.' }, { status: 500 });
   const sourceOf = new Map((assets.data ?? []).map((a) => [a.public_url as string, (a.source_url as string | null) ?? null]));
   const statuses: PhotoStatus[] = photos.map((url) => {
+    if (isOriginalProductImage(url)) return { url, state: 'none', cleanedUrl: null };
     if ((jobs.data ?? []).some((job) => job.result_url === url)) return { url, state: 'cleaned', cleanedUrl: null };
     const source = sourceOf.get(url);
     const job = (jobs.data ?? []).find((j) => j.original_url === url || (source && j.original_url === source));

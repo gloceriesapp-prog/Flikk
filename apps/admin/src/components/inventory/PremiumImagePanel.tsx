@@ -155,30 +155,33 @@ function Usage({ state }: { state: PremiumState }) {
 
 // Add product: the product does not exist yet, so only the choice is made
 // here; Premium opens the generate step right after the product is added.
-export function ImageStyleChoiceField({ value, category, onChange, disabled = false }: { value: ImageStyleChoice; category?: string; onChange: (value: ImageStyleChoice) => void; disabled?: boolean }) {
+export function ImageStyleChoiceField({ value, category, onChange, disabled = false, showPremiumSettings = true }: { showPremiumSettings?: boolean; value: ImageStyleChoice; category?: string; onChange: (value: ImageStyleChoice) => void; disabled?: boolean }) {
   const [state, setState] = useState<PremiumState | null>(null);
   const [originalsEnabled, setOriginalsEnabled] = useState(false);
   useEffect(() => {
-    const controller = new AbortController();
-    void loadState().then(result => { if (!controller.signal.aborted) setState(result); });
-    return () => controller.abort();
+    let active = true;
+    void loadState().then(result => { if (active) setState(result); });
+    return () => { active = false; };
   }, []);
   useEffect(() => {
     if (originalsEnabled) return;
-    const controller = new AbortController();
-    // A database rollout may finish while this form has unsaved photos.
-    // Refresh readiness without making the admin close or reload the form.
+    let active = true;
+    let checking = false;
+    // Refresh readiness without discarding an unsaved product form.
     const checkReadiness = () => {
-      void fetch('/api/product-images/original', { signal: controller.signal, cache: 'no-store' })
+      if (checking) return;
+      checking = true;
+      void fetch('/api/product-images/original', { cache: 'no-store' })
         .then(res => res.ok ? res.json() : null)
-        .then(result => { if (!controller.signal.aborted && result?.enabled === true) setOriginalsEnabled(true); })
-        .catch(() => {});
+        .then(result => { if (active && result?.enabled === true) setOriginalsEnabled(true); })
+        .catch(() => {})
+        .finally(() => { checking = false; });
     };
     checkReadiness();
     const retry = window.setInterval(checkReadiness, 10000);
     window.addEventListener('focus', checkReadiness);
     return () => {
-      controller.abort();
+      active = false;
       window.clearInterval(retry);
       window.removeEventListener('focus', checkReadiness);
     };
@@ -194,7 +197,7 @@ export function ImageStyleChoiceField({ value, category, onChange, disabled = fa
         disabled={!!state?.capMessage && !premium}
         onChange={(next) => onChange(next ? { style: 'premium', preset: categoryPreset(category), color: null } : { style: 'standard' })}
       />
-      {value.style === 'premium' && (
+      {value.style === 'premium' && showPremiumSettings && (
         <>
           <PresetPicker preset={value.preset} color={value.color ?? DEFAULT_PASTEL} suggested={categoryPreset(category)} onChange={(preset, color) => onChange({ style: 'premium', preset, color: preset === 'pastel' ? color : null })} />
           <p className="text-[11px] text-muted">{value.preset === 'text' ? 'After you add the product you type the headline, generate and compare it with the standard photo.' : 'After you add the product you can generate and compare it with the standard photo.'}</p>
@@ -202,7 +205,7 @@ export function ImageStyleChoiceField({ value, category, onChange, disabled = fa
       )}
       <p className="text-[11px] text-muted">None keeps the uploaded background and composition. File-size optimization still applies.</p>
       {!originalsEnabled && <p className="text-[11px] text-muted">Keep original will be available after the pending photo-processing update.</p>}
-      {value.style === 'premium' && state?.enabled && (state.capMessage ? <p className="text-[11px] font-medium text-amber-600">{state.capMessage}</p> : <Usage state={state} />)}
+      {value.style === 'premium' && showPremiumSettings && state?.enabled && (state.capMessage ? <p className="text-[11px] font-medium text-amber-600">{state.capMessage}</p> : <Usage state={state} />)}
     </div>
   );
 }
@@ -219,7 +222,8 @@ function Photo({ url, label }: { url: string | null; label: string }) {
   );
 }
 
-export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
+export function PremiumImagePanel({ productId, imageUrl, start, onApplied, hideStyleChoice = false }: {
+  hideStyleChoice?: boolean;
   productId: string;
   imageUrl: string | undefined;
   // From Add product: open on Premium with this background picked.
@@ -305,10 +309,10 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-ink">Image style <span className="font-normal text-muted">· now {state.placement === 'main' ? 'Premium main photo' : state.placement === 'gallery' ? 'Standard main, premium 2nd photo' : 'Standard'}</span></p>
+        <p className="text-xs font-semibold text-ink">{hideStyleChoice ? 'Premium background' : 'Image style'} <span className="font-normal text-muted">· now {state.placement === 'main' ? 'Premium main photo' : state.placement === 'gallery' ? 'Standard main, premium 2nd photo' : 'Standard'}</span></p>
         <Usage state={state} />
       </div>
-      <StyleRadios
+      {!hideStyleChoice && <StyleRadios
         premium={premium}
         disabled={busy !== null}
         onChange={(next) => {
@@ -316,7 +320,7 @@ export function PremiumImagePanel({ productId, imageUrl, start, onApplied }: {
           setPreview(null);
           if (!next && state.style === 'premium') void use(null);
         }}
-      />
+      />}
 
       {premium && (
         <>

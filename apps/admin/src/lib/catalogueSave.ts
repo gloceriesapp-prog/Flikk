@@ -20,8 +20,10 @@ export async function saveCatalogueProduct(
   productId: string | null,
   fields: Record<string, unknown>,
   variants: VariantPayload[] | null,
+  imageStyle?: 'none' | 'standard',
 ): Promise<string> {
-  const { data, error } = await supabaseAdmin.rpc('save_catalogue_product', {
+  const { data, error } = await supabaseAdmin.rpc(imageStyle ? 'save_catalogue_product_with_image_style' : 'save_catalogue_product', {
+    ...(imageStyle ? { p_image_style: imageStyle } : {}),
     p_product: productId,
     p_store: null,
     p_fields: fields,
@@ -43,6 +45,7 @@ export async function saveCatalogueProduct(
 // (toExtraImageUrls / toCutOptions), so a failure here is a database error;
 // the product itself is already saved and a retry is safe.
 export interface ProductExtras {
+  premium_image_url?: null;
   extra_image_urls?: string[];
   cut_options_enabled?: boolean;
   bulk_min_kg?: number | null;
