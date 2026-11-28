@@ -48,7 +48,7 @@ const list = (categories: string[]): CardTarget => ({ type: 'categories', catego
 const W = '#FFFFFF' as const, Y = '#FFD84D' as const;
 
 function item(title: string, line: string, tag: string, fallbackTag: string, accent: string, target: CardTarget, categories: string[] = [], tagText: '#FFFFFF' | '#FFD84D' = W): ItemConfig {
-  return { enabled: true, title, line, tag, fallbackTag, accent, tagText, categories, target, images: { mode: 'auto' } };
+  return { enabled: true, title, line, tag, fallbackTag, accent, tagText, categories, target, images: { mode: 'auto' }, bannerUrl: null };
 }
 // Spec hues #F2A900 / #1FA35C / #E8552A / #0096C7 fail 4.5:1 under white tag
 // text, so defaults use darker shades of the same hue (#9A6700 / #1E7A45 /

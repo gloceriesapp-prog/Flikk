@@ -41,6 +41,7 @@ import { CoconutOilScreen } from '../screens/home/regional/coconut-oil/CoconutOi
 import { PaymentMethodScreen } from '../screens/payment-method/PaymentMethodScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { HomeCategoryScreen } from '../screens/home/category-page/HomeCategoryScreen';
+import { TodayCardScreen } from '../screens/home/today-grid/card-page/TodayCardScreen';
 import { HomeContentCollectionScreen } from '../screens/home/content/HomeContentCollectionScreen';
 import { HomeSectionCollectionScreen } from '../screens/home/sections/HomeSectionCollectionScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
@@ -113,6 +114,7 @@ export function AppNavigator() {
           where it read as wrong. */}
       <Stack.Screen name="Home" component={HomeScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="HomeCategory" component={HomeCategoryScreen} />
+      <Stack.Screen name="TodayCard" component={TodayCardScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="BrandProducts" component={BrandProductsScreen} />
       <Stack.Screen name="AllBrands" component={AllBrandsScreen} />

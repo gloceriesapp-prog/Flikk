@@ -19,6 +19,7 @@ export function scheduleCard(id: ItemId): GridCard {
   const item = DEFAULT_CONFIG.items[id];
   return {
     id, title: item.title, line: item.line, accent: item.accent, tagBg: item.accent, tagText: item.tagText, imageUrls: [], target: item.target,
+    bannerUrl: item.bannerUrl, categories: item.categories,
     tag: placeholdersIn(item.tag).length ? item.fallbackTag : item.tag,
   };
 }

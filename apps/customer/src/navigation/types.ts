@@ -54,6 +54,8 @@ export type AppStackParamList = {
   AddressList: undefined;
   Home: undefined;
   HomeCategory: { tabId: string };
+  // A Today grid card's own page (screens/home/today-grid/card-page).
+  TodayCard: { card: import('../screens/home/today-grid/card-page/cardProducts').CardPageInfo };
   HomeContentCollection: { tabKey: import('../screens/home/content/contracts').HomeContentKey; sectionId: string; itemId?: string };
   HomeSectionCollection: { title: string } & (
     | { products: Product[]; showDiscountBadge?: boolean }

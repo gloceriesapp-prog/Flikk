@@ -33,7 +33,7 @@ const DAILY = ['Milk & Dairy Drinks', 'Rice, Atta & Dal', 'Oils & Ghee', 'Bath &
 const list = (categories) => ({ type: 'categories', categories });
 const W = '#FFFFFF', Y = '#FFD84D';
 function item(title, line, tag, fallbackTag, accent, target, categories = [], tagText = W) {
-    return { enabled: true, title, line, tag, fallbackTag, accent, tagText, categories, target, images: { mode: 'auto' } };
+    return { enabled: true, title, line, tag, fallbackTag, accent, tagText, categories, target, images: { mode: 'auto' }, bannerUrl: null };
 }
 // Spec hues #F2A900 / #1FA35C / #E8552A / #0096C7 fail 4.5:1 under white tag
 // text, so defaults use darker shades of the same hue (#9A6700 / #1E7A45 /

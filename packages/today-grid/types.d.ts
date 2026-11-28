@@ -90,6 +90,7 @@ export interface ItemConfig {
     categories: string[];
     target: CardTarget;
     images: ImageSource;
+    bannerUrl: string | null;
     updatedBy?: string | null;
     updatedAt?: string | null;
 }
@@ -154,6 +155,8 @@ export interface GridCard {
         mrp: number | null;
     };
     products?: ProductPeek[];
+    bannerUrl: string | null;
+    categories: string[];
 }
 export type TraceStatus = 'shown' | 'no-data' | 'replaced' | 'backup' | 'not-in-slot' | 'disabled' | 'duplicate' | 'no-room';
 export interface TraceRow {

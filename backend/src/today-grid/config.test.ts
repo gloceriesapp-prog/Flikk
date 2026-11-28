@@ -45,6 +45,13 @@ describe('validateConfig', () => {
     expect(messages({ items: { 'snack-time': { enabled: false } }, backups: DEFAULT_CONFIG.backups })).toMatch(/cannot be a backup/);
     expect(messages({ items: { 'glo-bulk': { enabled: false } }, modifiers: DEFAULT_CONFIG.modifiers })).toMatch(/Glo Bulk is disabled/);
   });
+  it('card page banner: https link or none', () => {
+    expect(paths({ items: { 'snack-time': { bannerUrl: 'https://images.gloceries.com/appsui/x.webp' } } })).toEqual([]);
+    expect(paths({ items: { 'snack-time': { bannerUrl: null } } })).toEqual([]);
+    expect(paths({ items: { 'snack-time': { bannerUrl: 'http://x/y.png' } } })).toContain('items.snack-time.bannerUrl');
+    expect(validateConfig({ items: { 'snack-time': { bannerUrl: 'https://img/b.webp' } } }).config.items['snack-time'].bannerUrl).toBe('https://img/b.webp');
+    expect(DEFAULT_CONFIG.items['snack-time'].bannerUrl).toBeNull();
+  });
   it('rejects unknown cards and bad targets', () => {
     expect(paths({ items: { nope: {} } })).toContain('items.nope');
     expect(paths({ items: { 'tea-coffee': { target: { type: 'url', href: 'x' } } } })).toContain('items.tea-coffee.target');

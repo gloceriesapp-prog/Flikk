@@ -1,6 +1,6 @@
 'use client';
 
-// Today grid — admin for the "Today on Gloceries" Home grid. Edits save as a
+// Today on Gloceries — admin for the "Today on Gloceries" Home grid. Edits save as a
 // draft version; Publish makes one version live. Rules and validation come
 // from packages/today-grid, the same engine the customer endpoint runs.
 import { useState } from 'react';
@@ -26,7 +26,7 @@ export default function TodayGridPage() {
   // grid settings can't load (e.g. its tables aren't on this database yet).
   if (!config || !loaded) return (
     <div className="flex flex-col gap-5">
-      <h1 className="page-title">Today grid</h1>
+      <h1 className="page-title">Today on Gloceries</h1>
       <HeaderImageCard />
       {grid.error ? <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{grid.error} Cards, slots and modifiers need the grid tables on this database.</p> : <p className="text-sm text-muted">Loading…</p>}
     </div>
@@ -37,7 +37,7 @@ export default function TodayGridPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start gap-3">
         <div className="mr-auto">
-          <h1 className="page-title">Today grid</h1>
+          <h1 className="page-title">Today on Gloceries</h1>
           <p className="text-sm text-muted">“Today on Gloceries” on customer Home: a fresh hero and four cards that change through the day.</p>
         </div>
         <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={loaded.enabled} disabled={grid.busy} onChange={(e) => void grid.setEnabled(e.target.checked)} /> Show on Home</label>

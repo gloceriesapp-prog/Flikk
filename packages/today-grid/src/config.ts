@@ -51,6 +51,8 @@ function readTarget(v: unknown): CardTarget | undefined {
 }
 
 // Merge a stored item over its default, keeping only well-typed fields.
+const httpsUrl = (v: unknown): v is string => typeof v === 'string' && /^https:\/\/\S+$/.test(v.trim()) && v.trim().length <= 500;
+
 function readItem(id: ItemId, raw: unknown): ItemConfig {
   const base = DEFAULT_ITEMS[id];
   const r = obj(raw);
@@ -67,6 +69,7 @@ function readItem(id: ItemId, raw: unknown): ItemConfig {
     categories: strings(r.categories, LIMITS.categories) ?? base.categories,
     target: readTarget(r.target) ?? base.target,
     images: images.mode === 'picked' && picked.length ? { mode: 'picked', productIds: picked } : { mode: 'auto' },
+    bannerUrl: httpsUrl(r.bannerUrl) ? (r.bannerUrl as string).trim() : r.bannerUrl === null ? null : base.bannerUrl,
     updatedBy: str(r.updatedBy) ?? null,
     updatedAt: str(r.updatedAt) ?? null,
   };
@@ -144,6 +147,7 @@ function itemErrors(id: ItemId, raw: unknown): ConfigError[] {
     const options = [contrastRatio(item.accent, other) >= MIN_TAG_CONTRAST ? `use ${other} text` : null, passingShade(item.accent, item.tagText) ? `use accent ${passingShade(item.accent, item.tagText)}` : null].filter(Boolean);
     at('accent', `Tag text on this accent is ${ratio}:1; it must be at least ${MIN_TAG_CONTRAST}:1.`, options.join(' or ') || undefined);
   }
+  if (r.bannerUrl !== undefined && r.bannerUrl !== null && !httpsUrl(r.bannerUrl)) at('bannerUrl', 'Page banner must be an https:// image link.');
   if (r.target !== undefined && !readTarget(r.target)) at('target', 'Choose a valid target (categories, a sub-category, pinned products, a tab, brands or an action).');
   const images = obj(r.images);
   if (images.mode === 'picked' && (!Array.isArray(images.productIds) || images.productIds.length < 1 || images.productIds.length > LIMITS.pickedImages))

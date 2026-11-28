@@ -79,6 +79,7 @@ export interface ItemConfig {
   categories: string[]; // data-check list for category cards
   target: CardTarget;
   images: ImageSource;
+  bannerUrl: string | null; // card page artwork (https), null = the grid header artwork
   updatedBy?: string | null;
   updatedAt?: string | null;
 }
@@ -114,6 +115,8 @@ export interface GridCard {
   target: CardTarget;
   price?: { amount: number; mrp: number | null }; // hero only
   products?: ProductPeek[]; // hero only: rotates through these (max 4)
+  bannerUrl: string | null; // artwork on top of the card's own page
+  categories: string[]; // what the card counts (its page lists these when the server can't)
 }
 
 export type TraceStatus = 'shown' | 'no-data' | 'replaced' | 'backup' | 'not-in-slot' | 'disabled' | 'duplicate' | 'no-room';

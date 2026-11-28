@@ -11,7 +11,7 @@ jest.mock('../src/screens/home/today-grid/api', () => ({ postGridEvents: (...arg
 jest.mock('@sentry/react-native', () => ({ addBreadcrumb: jest.fn() }));
 
 const card = (id: string, patch: Partial<GridCard> = {}): GridCard => ({ id: id as GridCard['id'], title: id, tag: 'From ₹10', line: 'line', accent: '#155DFC', tagBg: '#155DFC',
-  tagText: '#FFFFFF', imageUrls: ['https://img/a'], target: { type: 'categories', categories: ['Snacks'] }, ...patch });
+  tagText: '#FFFFFF', imageUrls: ['https://img/a'], target: { type: 'categories', categories: ['Snacks'] }, bannerUrl: null, categories: ['Snacks'], ...patch });
 const hero = card('todays-catch', { title: "Today's Catch", tag: 'Landed 6:40 AM', tagBg: '#0B1F4D', tagText: '#FFD84D', price: { amount: 180, mrp: 220 } });
 const grid = (n: number): TodayGrid & { hero: GridCard } => ({ enabled: true, hero, slot: 'morning', generatedAt: '2026-12-15T02:00:00Z',
   cards: ['milk-breakfast', 'your-usuals', 'breakfast-ready', 'tea-coffee'].slice(0, n).map(id => card(id)) });

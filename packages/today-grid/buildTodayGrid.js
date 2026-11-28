@@ -87,6 +87,7 @@ function toCard(id, item, stat, a) {
     return {
         id, title: item.title, tag: renderTag(item, stat, a), line: item.line, accent: item.accent, tagBg: item.accent, tagText: item.tagText,
         imageUrls: images(item, stat, a),
+        bannerUrl: item.bannerUrl, categories: item.categories,
         target: item.target.type === 'categories' && !item.target.categories.length ? { type: 'categories', categories: item.categories } : item.target,
     };
 }

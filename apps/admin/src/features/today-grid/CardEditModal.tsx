@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from '@/components/icons';
 import { ProductPinPicker } from '@/components/home/ProductPinPicker';
+import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 import { fetchCategories } from '@/lib/supabase/categories';
 import { fetchAllSubCategoryOptions, type SubCategoryOption } from '@/lib/supabase/subcategories';
 import {
@@ -121,6 +122,16 @@ export function CardEditModal({ id, item, onClose, onApply }: { id: ItemId; item
                   {[...new Set([...draft.categories, ...categories])].map((name) => <option key={name} value={name}>{name}</option>)}
                 </select></label>
             ) : null}
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted">Page banner (top of the page this card opens; wide, e.g. 1200×525 px)</p>
+              <div className="flex items-center gap-2">
+                <ProductImageUpload key={draft.bannerUrl ?? 'none'} imageUrl={draft.bannerUrl ?? undefined} bucket="appsui" small onChange={(url) => set({ bannerUrl: url || null })} />
+                {draft.bannerUrl
+                  ? <button type="button" onClick={() => set({ bannerUrl: null })} className="rounded-lg border border-border px-2.5 py-1 text-xs text-ink">Use the grid header image</button>
+                  : <span className="text-[11px] text-muted">None set: the page shows the grid header image.</span>}
+              </div>
+              <FieldErrors errors={errorFor('bannerUrl')} />
+            </div>
             <div>
               <p className="mb-1 text-xs font-medium text-muted">Images</p>
               <div className="flex gap-4 text-xs">
