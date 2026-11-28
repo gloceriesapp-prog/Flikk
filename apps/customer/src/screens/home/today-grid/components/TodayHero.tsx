@@ -7,8 +7,8 @@ import { CardTag } from './CardTag';
 
 const rupees = (value: number) => `₹${Number.isInteger(value) ? value.toLocaleString('en-IN') : value.toFixed(2)}`;
 
-// Tall deal card: tag pill, title, two-tone price pill (real MRP struck |
-// price, same colours as the tag), big photo, the line as the product name.
+// Tall deal card: tag tab, title, two-tone price pill (real MRP struck |
+// price, same colours as the tag), the line, then the photo at the foot.
 // The MRP shows only when the server sent a real one above the price.
 export function TodayHero({ hero, width, height, onPress }: { hero: GridCard; width: number; height: number; onPress: () => void }) {
   const price = hero.price;
@@ -27,10 +27,11 @@ export function TodayHero({ hero, width, height, onPress }: { hero: GridCard; wi
           <Text className="px-2.5 py-0.5 text-[16px] font-bold" style={{ backgroundColor: TAG_VALUE_BG, color: TAG_VALUE_TEXT }}>{rupees(price.amount)}</Text>
         </View>
       ) : null}
-      <View className="w-full flex-1 px-2 py-2">
+      <Text numberOfLines={2} className="mt-2 px-1.5 text-center text-[13px] font-semibold leading-[16px] text-ink">{hero.line}</Text>
+      {/* Photo fills everything below the text, sitting on the card's foot. */}
+      <View className="w-full flex-1 justify-end px-1.5 pb-1.5 pt-2">
         <AppImage source={{ uri: photo }} resizeMode="contain" accessible={false} testID="today-photo" style={{ width: '100%', height: '100%' }} />
       </View>
-      <Text numberOfLines={2} className="mb-2.5 px-1.5 text-center text-[13px] font-semibold leading-[16px] text-ink">{hero.line}</Text>
     </Pressable>
   );
 }

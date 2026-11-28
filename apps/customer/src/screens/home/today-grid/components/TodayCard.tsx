@@ -10,7 +10,7 @@ import { CardTag } from './CardTag';
 export function TodayCard({ card, width, height, onPress }: { card: GridCard; width: number; height: number; onPress: () => void }) {
   const titleSize = Math.max(13, Math.round(width * 0.125));
   const titleLine = Math.ceil(titleSize * 1.12);
-  const top = 8 + TAG_HEIGHT + 6 + titleLine * 2;
+  const top = TAG_HEIGHT + 6 + titleLine * 2;
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${card.title}, ${card.tag}`}
       testID={`today-card-${card.id}`} className="items-center overflow-hidden bg-white active:opacity-90"

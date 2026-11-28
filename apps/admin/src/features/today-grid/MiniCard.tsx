@@ -11,7 +11,7 @@ function Pill({ tag }: { tag: string }) {
   const m = LEAD.exec(tag.trim());
   const part = { height: 22, lineHeight: '22px', fontSize: 11, padding: '0 8px', whiteSpace: 'nowrap' as const };
   return (
-    <div style={{ marginTop: 8, display: 'flex', borderRadius: 999, overflow: 'hidden', maxWidth: '92%' }}>
+    <div style={{ display: 'flex', borderRadius: '0 0 10px 10px', overflow: 'hidden', maxWidth: '92%' }}>
       {m && <span style={{ ...part, background: '#474A40', color: '#FFFFFF', fontWeight: 600 }}>{m[1]}</span>}
       <span style={{ ...part, background: '#E2E175', color: '#111715', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis' }}>{(m ? m[2] : tag).replace(/%\s*off\b/i, '% OFF')}</span>
     </div>
@@ -31,13 +31,14 @@ export function MiniCard({ title, tag, line, images = [], width = 120, height = 
             <span style={{ background: '#E2E175', color: '#111715', fontWeight: 700, fontSize: 16, padding: '2px 10px' }}>₹{price.amount}</span>
           </div>
         )}
+        {hero && <div style={{ color: '#101828', fontWeight: 600, fontSize: 13, lineHeight: '16px', padding: '8px 6px 0' }}>{line}</div>}
         <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: 0, padding: hero ? 8 : 0, boxSizing: 'border-box' }}>
           {images.slice(0, hero ? 1 : 2).map((src, index) => (
             // eslint-disable-next-line @next/next/no-img-element -- product photo URLs from Storage, preview only
             <img key={src} src={src} alt="" style={{ height: '100%', maxWidth: hero ? '100%' : '54%', marginLeft: index ? '-6%' : 0, objectFit: 'contain' }} />
           ))}
         </div>
-        {hero && <div style={{ color: '#101828', fontWeight: 600, fontSize: 13, lineHeight: '16px', padding: '0 6px 10px' }}>{line}</div>}
+
       </div>
     </div>
   );
