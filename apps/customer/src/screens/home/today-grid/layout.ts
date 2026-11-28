@@ -20,7 +20,8 @@ export function gridShape(cardCount: number): { shape: GridShape; cards: number 
 export function gridMetrics(screenWidth: number) {
   const column = Math.floor((screenWidth - SIDE * 2 - GAP * 2) / 3);
   const cardHeight = Math.round(column * 1.38);
-  return { column, cardHeight, heroHeight: cardHeight * 2 + GAP, wide: column * 2 + GAP };
+  // 2x1: one taller row, so the hero's title, price and photo still fit.
+  return { column, cardHeight, heroHeight: cardHeight * 2 + GAP, rowHeight: Math.round(cardHeight * 1.3), wide: column * 2 + GAP };
 }
 
 // A 10% wash of the accent for the image area (#RRGGBB -> #RRGGBB1A).

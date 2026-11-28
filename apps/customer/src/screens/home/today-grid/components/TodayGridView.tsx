@@ -12,7 +12,7 @@ export const GRID_TITLE = 'Today on Gloceries';
 // impression per card per session.
 export function TodayGridView({ grid, onTap }: { grid: TodayGrid & { hero: GridCard }; onTap: (card: GridCard, position: number) => void }) {
   const { width } = useWindowDimensions();
-  const { column, cardHeight, heroHeight, wide } = gridMetrics(width);
+  const { column, cardHeight, heroHeight, rowHeight, wide } = gridMetrics(width);
   const { shape, cards: count } = gridShape(grid.cards.length);
   const cards = grid.cards.slice(0, count);
   const slot = grid.slot ?? '';
@@ -29,10 +29,10 @@ export function TodayGridView({ grid, onTap }: { grid: TodayGrid & { hero: GridC
         <TodayHero hero={grid.hero} width={width - SIDE * 2} height={cardHeight} onPress={() => onTap(grid.hero, 0)} />
       ) : (
         <View className="flex-row" style={{ gap: GAP }}>
-          <TodayHero hero={grid.hero} width={column} height={shape === 'full' ? heroHeight : cardHeight} onPress={() => onTap(grid.hero, 0)} />
+          <TodayHero hero={grid.hero} width={column} height={shape === 'full' ? heroHeight : rowHeight} onPress={() => onTap(grid.hero, 0)} />
           <View className="flex-row flex-wrap" style={{ gap: GAP, width: wide }}>
             {cards.map((card, index) => (
-              <TodayCard key={card.id} card={card} width={column} height={cardHeight} onPress={() => onTap(card, index + 1)} />
+              <TodayCard key={card.id} card={card} width={column} height={shape === 'full' ? cardHeight : rowHeight} onPress={() => onTap(card, index + 1)} />
             ))}
           </View>
         </View>
