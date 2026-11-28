@@ -15,9 +15,14 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 
-export const HOME_HEADER_COLOR = '#0C1413';
-export const UDUPI_COLOR = '#B4532A'; // laterite red, Udupi's own stone
-export const PREORDER_COLOR = '#0E7490';
+// Fixed header colours by Home mode. All are dark enough for the header's
+// white text (4.5:1+, tested).
+export const HEADER_COLORS = {
+  all: '#0C1413', // deep ink
+  udupi: '#852B27', // deep laterite red, Udupi's own stone
+  preorder: '#0E7490',
+} as const;
+export const HOME_HEADER_COLOR = HEADER_COLORS.all;
 export const FADE_DISTANCE = 120;
 const SWITCH_MS = 320;
 
@@ -34,6 +39,14 @@ const FALLBACK_COLOR = '#4F46E5';
 
 export function colorForTab(name: string) {
   return TAB_COLORS[name.trim().toLowerCase()] ?? FALLBACK_COLOR;
+}
+
+// The one rule for the header colour, by what Home is showing:
+// Udupi mode > Pre-order > the picked category tab > All.
+export function headerColorFor({ udupi, preorder, tabName }: { udupi: boolean; preorder: boolean; tabName?: string | null }) {
+  if (udupi) return HEADER_COLORS.udupi;
+  if (preorder) return HEADER_COLORS.preorder;
+  return tabName ? colorForTab(tabName) : HEADER_COLORS.all;
 }
 
 // Same hue, darker: the status-bar strip above the switch.
