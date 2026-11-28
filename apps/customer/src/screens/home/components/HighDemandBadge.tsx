@@ -14,6 +14,15 @@ export function HighDemandBadge() {
 }
 
 const styles = StyleSheet.create({
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999, backgroundColor: '#FFF0CC', flexShrink: 1, minWidth: 0 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999, backgroundColor: '#FFF0CC', flexShrink: 0, minWidth: 0 },
   label: { flexShrink: 1, fontFamily: GILROY.semibold, fontSize: 11, lineHeight: 15, color: '#75420D', includeFontPadding: false },
 });
+
+export function RainNearbyBadge() {
+  return <View style={[styles.badge, { backgroundColor: '#E1ECFF' }]} accessible accessibilityLabel="Rain nearby">
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" accessible={false}>
+      <Path d="M6 15a4 4 0 0 1-.6-7.95A6 6 0 0 1 17 6a4.5 4.5 0 0 1 1 8.9M8 17l-1 3m6-3-1 3m6-3-1 3" stroke="#234B83" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+    <Text numberOfLines={1} style={[styles.label, { color: '#234B83' }]}>Rain nearby</Text>
+  </View>;
+}

@@ -30,8 +30,14 @@ const INPUT =
 
 let nextRowId = 1;
 const REGISTERED = new Map(REGISTERED_COPY_KEYS.map((k) => [k.key, k]));
+const DELIVERY_STATUS = 'home.delivery.status';
+const LEGACY_DEMAND = 'home.highDemand.enabled';
+const LEGACY_RAIN = 'home.rain.enabled';
+const legacyDeliveryStatus = (copy: Record<string, string>) => copy[LEGACY_RAIN] === 'true'
+  ? copy[LEGACY_DEMAND] === 'true' ? 'rain_and_demand' : 'rain'
+  : copy[LEGACY_DEMAND] === 'true' ? 'high_demand' : 'normal';
 const toRows = (copy: Record<string, string>): CopyRow[] => [
-  ...REGISTERED_COPY_KEYS.map((k) => ({ id: nextRowId++, key: k.key, value: copy[k.key] ?? '', registered: true })),
+  ...REGISTERED_COPY_KEYS.map((k) => ({ id: nextRowId++, key: k.key, value: k.key === DELIVERY_STATUS ? copy[k.key] || legacyDeliveryStatus(copy) : copy[k.key] ?? '', registered: true })),
   ...Object.keys(copy).filter((key) => !REGISTERED.has(key)).sort().map((key) => ({ id: nextRowId++, key, value: copy[key] })),
 ];
 
@@ -101,6 +107,15 @@ export default function AppContentPage() {
 
   const updateRow = (id: number, patch: Partial<CopyRow>) =>
     setRows((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+
+  // Keep legacy flags in sync for older installed customer versions, while
+  // exposing a single condition selector in Admin.
+  const setDeliveryStatus = (value: string) => setRows(previous => previous.map(row => {
+    if (row.key === DELIVERY_STATUS) return { ...row, value };
+    if (row.key === LEGACY_DEMAND) return { ...row, value: String(value === 'high_demand' || value === 'rain_and_demand') };
+    if (row.key === LEGACY_RAIN) return { ...row, value: String(value === 'rain' || value === 'rain_and_demand') };
+    return row;
+  }));
 
   const addRow = (key = '') => setRows((prev) => [...prev, { id: nextRowId++, key, value: '' }]);
 
@@ -206,7 +221,7 @@ export default function AppContentPage() {
         <p className="mb-4 text-xs text-muted">Every text the customer app reads is listed with its built-in default (shown greyed). Type to override; leave empty to keep the default.</p>
 
         <div className="flex flex-col gap-2">
-          {rows.map((row) => {
+          {rows.filter(row => row.key !== LEGACY_DEMAND && row.key !== LEGACY_RAIN).map((row) => {
             const badKey = keyProblem(row);
             const problem = badKey ?? valueProblem(row);
             const registered = REGISTERED.get(row.key.trim());
@@ -225,10 +240,19 @@ export default function AppContentPage() {
                   {registered?.image && (
                     <ProductImageUpload imageUrl={row.value || undefined} onChange={(url) => updateRow(row.id, { value: url })} bucket="banners" />
                   )}
-                  {registered?.toggle ? (
+                  {registered?.options ? (
+                    <label className="flex flex-1 flex-col gap-2">
+                      <span className="text-sm font-semibold">{registered.label ?? row.key}</span>
+                      <select value={row.value || registered.defaultValue || 'normal'}
+                        aria-label={registered.label ?? `Value for ${row.key}`}
+                        onChange={(e) => row.key === DELIVERY_STATUS ? setDeliveryStatus(e.target.value) : updateRow(row.id, { value: e.target.value })} className={INPUT}>
+                        {registered.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </label>
+                  ) : registered?.toggle ? (
                     <label className="flex flex-1 items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
-                      <span className="text-sm font-semibold">High demand indicator</span>
-                      <input type="checkbox" role="switch" aria-label="High demand indicator"
+                      <span className="text-sm font-semibold">{registered.label ?? row.key}</span>
+                      <input type="checkbox" role="switch" aria-label={registered.label ?? row.key}
                         checked={row.value === 'true'}
                         onChange={(e) => updateRow(row.id, { value: String(e.target.checked) })}
                         className="peer sr-only" />
@@ -243,7 +267,7 @@ export default function AppContentPage() {
                   />}
                   <button
                     type="button"
-                    onClick={() => row.registered ? updateRow(row.id, { value: '' }) : setRows((prev) => prev.filter((r) => r.id !== row.id))}
+                    onClick={() => row.key === DELIVERY_STATUS ? setDeliveryStatus('normal') : row.registered ? updateRow(row.id, { value: '' }) : setRows((prev) => prev.filter((r) => r.id !== row.id))}
                     aria-label={row.registered ? `Reset ${row.key} to default` : `Delete ${row.key || 'row'}`}
                     className="self-center text-muted hover:text-danger"
                   >

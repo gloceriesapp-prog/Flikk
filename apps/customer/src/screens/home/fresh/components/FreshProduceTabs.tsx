@@ -1,7 +1,8 @@
 import { Pressable, Text, View } from 'react-native';
-import Svg, { Defs, G, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { G, Path } from 'react-native-svg';
 import { Apple01Icon, CarrotIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../../components/AppIcon';
+import { actionColors } from '../../../../theme/tokens';
 import { FRESH_CHOICES, freshTabTitle, type FreshTabs } from '../../content/contracts';
 import type { FreshProduceMode } from '../freshProduceSections';
 
@@ -10,6 +11,11 @@ import type { FreshProduceMode } from '../freshProduceSections';
 // outline is 200 units wide on one full-width 600-unit canvas, all meeting
 // at the same baseline; inactive tabs close along the bottom.
 const TAB_CURVE = 'M0 95C4 95 6 93 7 89C8 86 8 81 9 76L14 27Q18 6 39 6H161Q182 6 186 27L191 76C192 81 192 86 193 89C194 93 196 95 200 95';
+
+// Brand blue for the selected choice: outline, icon and title; the tab fill
+// stays white. The selected tab's outline joins the shared blue baseline.
+const BLUE = actionColors.fill;
+const BLUE_SOFT = actionColors.soft;
 
 function GrowerIcon({ color = '#616871' }: { color?: string }) {
   return <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" accessible={false}>
@@ -48,19 +54,12 @@ export function FreshProduceTabs({ value, onChange, titles }: { value: FreshProd
     <FreshHeading />
     <View className="relative h-[96px] w-full flex-row">
       <Svg width="100%" height={96} viewBox="0 0 600 96" preserveAspectRatio="none" accessible={false} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0 }}>
-        <Defs>
-          <LinearGradient id="fresh-active-fill" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#E3F2DF" />
-            <Stop offset="0.55" stopColor="#F2F8EF" />
-            <Stop offset="1" stopColor="#FFFFFF" />
-          </LinearGradient>
-        </Defs>
         {options.map((option, index) => {
           const active = value === option.id;
           return <G key={option.id} transform={`translate(${index * 200}, 0)`}>
-            <Path d={`${TAB_CURVE}L200 96H0Z`} fill={active ? 'url(#fresh-active-fill)' : '#FFFFFF'} />
-            <Path d={TAB_CURVE} fill="none" stroke={active ? '#72AD67' : '#DCE3DA'} strokeWidth={1} vectorEffect="non-scaling-stroke" />
-            {!active && <Path d="M200 95H0" fill="none" stroke="#72AD67" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
+            <Path d={`${TAB_CURVE}L200 96H0Z`} fill="#FFFFFF" />
+            <Path d={TAB_CURVE} fill="none" stroke={active ? BLUE : '#DCE3DA'} strokeWidth={active ? 1.5 : 1} vectorEffect="non-scaling-stroke" />
+            {!active && <Path d="M200 95H0" fill="none" stroke={BLUE} strokeWidth={1} vectorEffect="non-scaling-stroke" />}
           </G>;
         })}
       </Svg>
@@ -70,12 +69,12 @@ export function FreshProduceTabs({ value, onChange, titles }: { value: FreshProd
           accessibilityState={{ selected: active }} onPress={() => onChange(option.id)} className="h-[96px] min-w-0 flex-1 justify-center pt-2">
           {/* Icon centred on top, title centred underneath. */}
           <View className="w-full items-center justify-center gap-1.5 px-2">
-            <View className="h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: active ? '#D8EBCF' : '#F4F5F2' }}>
-              {option.id === 'village' ? <GrowerIcon color={active ? '#557746' : '#616871'} />
-                : <AppIcon icon={option.id === 'fruits' ? Apple01Icon : CarrotIcon} size={24} color={active ? '#557746' : '#616871'} />}
+            <View className="h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: active ? BLUE_SOFT : '#F4F5F2' }}>
+              {option.id === 'village' ? <GrowerIcon color={active ? BLUE : '#616871'} />
+                : <AppIcon icon={option.id === 'fruits' ? Apple01Icon : CarrotIcon} size={24} color={active ? BLUE : '#616871'} />}
             </View>
             <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className="text-center text-[13px] font-semibold leading-[17px]"
-              style={{ color: active ? '#327044' : '#454B54' }}>{option.title}</Text>
+              style={{ color: active ? BLUE : '#454B54' }}>{option.title}</Text>
           </View>
         </Pressable>;
       })}

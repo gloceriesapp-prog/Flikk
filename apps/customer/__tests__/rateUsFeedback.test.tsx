@@ -36,3 +36,18 @@ it('does not show a late acknowledgement in the next account session', async () 
   expect(view.queryByText('Thanks for the feedback')).toBeNull();
   expect(view.getByText('Tap a star to rate your experience')).toBeTruthy();
 });
+it('opens the store review sheet after a 4 or 5 star rating', async () => {
+  const StoreReview = jest.requireMock('expo-store-review') as { requestReview: jest.Mock };
+  jest.mocked(apiRequest).mockResolvedValue({ ok: true });
+  const view = await render(<RateUsModal visible onClose={() => {}} />);
+  await fireEvent.press(view.getAllByLabelText('Rate star')[4]);
+  await waitFor(() => expect(StoreReview.requestReview).toHaveBeenCalledTimes(1));
+});
+it('keeps low ratings in the app', async () => {
+  const StoreReview = jest.requireMock('expo-store-review') as { requestReview: jest.Mock };
+  jest.mocked(apiRequest).mockResolvedValue({ ok: true });
+  const view = await render(<RateUsModal visible onClose={() => {}} />);
+  await fireEvent.press(view.getAllByLabelText('Rate star')[1]);
+  expect(view.getByText('Thanks for the feedback')).toBeTruthy();
+  expect(StoreReview.requestReview).not.toHaveBeenCalled();
+});

@@ -51,6 +51,7 @@ import { PaymentStatusScreen } from '../screens/payment-status/PaymentStatusScre
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { PurchaseScreen } from '../screens/purchase/PurchaseScreen';
 import { ReorderScreen } from '../screens/reorder/ReorderScreen';
+import { PreOrderScreen } from '../screens/pre-order/PreOrderScreen';
 import { OrderPlacedScreen } from '../screens/order-placed/OrderPlacedScreen';
 import { ReferralScreen } from '../screens/referral/ReferralScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
@@ -119,6 +120,7 @@ export function AppNavigator() {
       <Stack.Screen name="Store" component={StoreListScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Purchase" component={PurchaseScreen} />
       <Stack.Screen name="Reorder" component={ReorderScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="PreOrder" component={PreOrderScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       {__DEV__ && <Stack.Screen name="OrderRating" component={OrderRatingScreen} />}
       {__DEV__ && <Stack.Screen name="PaymentProcessingPreview" component={PaymentProcessingPreviewScreen} options={{ gestureEnabled: false }} />}

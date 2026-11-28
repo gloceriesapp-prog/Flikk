@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NammaBrandsSection, twoLineTitle } from '../src/screens/home/namma-brands/NammaBrandsSection';
+import { NammaBrandsSection, pillParts, twoLineTitle } from '../src/screens/home/namma-brands/NammaBrandsSection';
 import { fetchNammaBrands, type NammaBrandCard } from '../src/api/brands';
 
 const mockNavigate = jest.fn();
@@ -50,3 +50,11 @@ it('puts every title on two lines, split near the middle', () => {
   expect(twoLineTitle('  Udupi   Snacks ')).toBe('Udupi\nSnacks');
   expect(twoLineTitle('Nandini')).toBe('Nandini');
 });
+
+it('splits the offer pill into a lead and a bold value', () => {
+  expect(pillParts('Upto 20% Off')).toEqual({ lead: 'Up to', value: '20% OFF' });
+  expect(pillParts('Starting from ₹35')).toEqual({ lead: 'Starting at', value: '₹35' });
+  expect(pillParts('New')).toEqual({ lead: '', value: 'New' });
+  expect(pillParts('  ')).toBeNull();
+});
+

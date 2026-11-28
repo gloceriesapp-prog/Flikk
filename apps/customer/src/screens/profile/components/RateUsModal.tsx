@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StarIcon } from '@hugeicons/core-free-icons';
 import * as Haptics from 'expo-haptics';
 import * as StoreReview from 'expo-store-review';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -15,6 +15,11 @@ interface Props {
 }
 
 const STAR_INDICES = [1, 2, 3, 4, 5];
+const PLAY_LISTING = 'market://details?id=com.gloceries.customer';
+// Stores never accept a rating from an app: the best we can do is open their
+// own review sheet (or, on Android, the Play listing) so the customer can
+// leave the same stars there.
+const OPENS_STORE_FROM = 4;
 
 function Star({ filled, onPress, bounce }: { filled: boolean; onPress: () => void; bounce: ReturnType<typeof useSharedValue<number>> }) {
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: bounce.value }] }));
@@ -88,6 +93,7 @@ function RateUsContent({ onClose }: Omit<Props, 'visible'>) {
       await apiRequest('/reviews/app', { method: 'POST', body: { rating: score } });
       if (current !== generation.current) return;
       setHasSubmitted(true);
+      if (score >= OPENS_STORE_FROM) void handleStoreReview();
     } catch { if (current === generation.current) setError('Could not save your rating. Tap a star to retry.'); }
     finally { if (current === generation.current) sending.current = false; }
 
@@ -97,6 +103,8 @@ function RateUsContent({ onClose }: Omit<Props, 'visible'>) {
     const current = generation.current;
     try {
       if (!await StoreReview.isAvailableAsync()) {
+        // Not installed from Play (sideload/dev build): open the listing.
+        if (Platform.OS === 'android' && await Linking.canOpenURL(PLAY_LISTING)) { await Linking.openURL(PLAY_LISTING); return; }
         if (current === generation.current) setError('Store reviews are unavailable right now.');
         return;
       }

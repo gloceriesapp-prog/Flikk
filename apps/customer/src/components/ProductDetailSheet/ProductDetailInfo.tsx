@@ -116,6 +116,7 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
         {hasRealVariants ? (
           <ProductVariantOptions
             variants={variants!}
+            imageUrl={product.imageUrl}
             deliveryLabel={product.preorder ? 'Pre-order' : `${estimatedMinutes} mins`}
             selectedId={selectedVariantId ?? variants![0]!.id}
             onSelect={(id) => onSelectVariant?.(id)}

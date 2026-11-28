@@ -87,7 +87,7 @@ it('adds either real pack from the picker when a product has no flavours', async
     { id: 'sold-out', label: '1 L', price: 90, isAvailable: false },
   ] };
   const view = await render(<FlavourPickerSheet product={sized} visible onClose={jest.fn()} isAvailable />);
-  expect(view.getByText('Choose your pack')).toBeTruthy();
+  expect(view.getByText('Select quantity')).toBeTruthy();
   await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk, 500 ml to cart' }));
   expect(addToCart).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'milk::large', variantId: 'large', optionId: undefined, weight: '500 ml', price: 50, originalPrice: 60 }), undefined);
   await fireEvent.press(view.getByRole('button', { name: 'Add Badam Milk, 170 ml to cart' }));

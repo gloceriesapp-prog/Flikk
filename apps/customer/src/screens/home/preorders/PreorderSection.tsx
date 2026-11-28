@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { ScrollView, View , useWindowDimensions } from 'react-native';
 import { DEFAULT_PREORDER_BANNER } from '../../../../../../packages/home-content/sectionLayout.js';
 import { AppImage } from '../../../components/AppImage';
-import { bookingDates, dayOpen } from '../../../store/preorder';
 import { HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { ProductCard } from '../products/ProductCard';
 import { usePreorders } from './usePreorders';
+import { openPreorderProducts } from './openPreorders';
 
 const PREVIEW_LIMIT = 4;
-const PREORDER_BACKGROUND = '#E7F2FC';
+export const PREORDER_BACKGROUND = '#E7F2FC';
 
 export function PreorderSection({ title, bannerImageUrl }: { title: string; bannerImageUrl?: string | null }) {
   const { width: viewportWidth } = useWindowDimensions();
@@ -17,13 +17,7 @@ export function PreorderSection({ title, bannerImageUrl }: { title: string; bann
   const { data } = usePreorders();
   const [failedBanner, setFailedBanner] = useState<string>();
   const banner = bannerImageUrl && bannerImageUrl !== failedBanner ? bannerImageUrl : DEFAULT_PREORDER_BANNER;
-  const now = new Date();
-  const dates = bookingDates(now);
-  const slots = data?.slots ?? [];
-  const products = (data?.products ?? []).filter((product) =>
-    product.isAvailable !== false &&
-    dates.some((date) => dayOpen(date, product.preorder?.leadDays ?? 0, slots, now)),
-  );
+  const products = openPreorderProducts(data);
   if (!products.length) return null;
 
   const preview = products.slice(0, PREVIEW_LIMIT);

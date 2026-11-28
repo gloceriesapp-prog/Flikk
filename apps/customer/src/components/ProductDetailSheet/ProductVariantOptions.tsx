@@ -1,69 +1,78 @@
-// Real pack selection: each id and price still feeds the checkout footer.
-// The border stock label stays in its original position between the lines.
+// "Select quantity" on the product page: one card per real pack, in a
+// sideways row. Each card shows the product photo, the pack label and its
+// price; the selected pack is tinted blue. When a pack is nearly sold out
+// (stockLabel: 1-5 left, from real stock), a red strip along the card's
+// bottom says so; a sold-out pack shows a grey "Out of stock" strip and
+// can't be picked. Each id and price still feeds the checkout footer.
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { StockBorderLabel } from '../StockBorderLabel';
+import { AppImage } from '../AppImage';
 import { stockLabel } from '../stockLabel';
-import { priceComparison, discountPercentLabel } from '../priceComparison';
+import { priceComparison } from '../priceComparison';
 import { RupeePrice } from '../RupeePrice';
 import { GILROY } from '../../theme/fonts';
+import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import type { Product } from '../../screens/home/products/types';
-import { actionColors } from '../../theme/tokens';
 
 type ProductVariant = NonNullable<Product['variants']>[number];
 interface Props {
   variants: ProductVariant[];
   selectedId: string;
   onSelect: (id: string) => void;
+  // The product photo; packs have no photos of their own.
+  imageUrl?: string;
+  // Kept for callers; the cards no longer show a delivery time.
   deliveryLabel?: string;
 }
-const CARD_WIDTH = 176;
-const SELECTED = actionColors.fill;
+
+// Product photos are 720x810 (8:9); the box keeps that shape.
+const PHOTO = 104;
+const PHOTO_HEIGHT = Math.round(PHOTO * 810 / 720);
+const PAD = 8;
+const CARD_WIDTH = PHOTO + PAD * 2 + 3;
+const SELECTED_BG = '#F1F6FF';
+const SELECTED_BORDER = '#9DB8FF';
 const money = (amount: number) => Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
 
 export function discountPercentOf(price: number, originalPrice?: number): number | null {
   return priceComparison(price, originalPrice).discount ?? null;
 }
 
-function UnitCard({ variant, selected, onSelect, deliveryLabel }: { variant: ProductVariant; selected: boolean; onSelect: () => void; deliveryLabel?: string }) {
+function UnitCard({ variant, selected, onSelect, imageUrl }: { variant: ProductVariant; selected: boolean; onSelect: () => void; imageUrl?: string }) {
   const outOfStock = variant.isAvailable === false;
-  const percent = discountPercentLabel(variant.price, variant.originalPrice);
   const showMrp = variant.originalPrice != null && variant.originalPrice > variant.price;
-  return <View style={{ width: CARD_WIDTH, paddingBottom: 8 }}>
-    <Pressable disabled={outOfStock} onPress={onSelect} accessibilityRole="radio"
-      accessibilityLabel={`${variant.label}, ₹${money(variant.price)}`}
-      accessibilityState={{ selected, disabled: outOfStock }}
-      className="gap-2 rounded-2xl bg-white px-3 pb-4 pt-3"
-      style={{ minHeight: 104, borderWidth: selected ? 1.5 : 1, borderColor: selected ? SELECTED : '#E1E4E8' }}>
-      <View className="flex-row items-start justify-between gap-2">
-        <Text className="min-w-0 flex-1 text-[14px] leading-[19px] text-[#737579]" style={{ fontFamily: GILROY.semibold }} numberOfLines={2}>{variant.label}</Text>
-        {percent ? <Text className="pt-0.5 text-[11px] leading-[16px]" style={{ fontFamily: GILROY.bold, color: '#258C3D' }}>{percent}% OFF</Text> : null}
+  const lowStock = stockLabel(variant.availableQuantity, !outOfStock);
+  const strip = outOfStock ? (variant.unavailableReason === 'stock_unconfirmed' ? 'Stock updating' : 'Out of stock')
+    : lowStock ? `Only ${lowStock}` : null;
+  return <Pressable disabled={outOfStock} onPress={onSelect} accessibilityRole="radio"
+    accessibilityLabel={`${variant.label}, ₹${money(variant.price)}`}
+    accessibilityState={{ selected, disabled: outOfStock }}
+    style={{ width: CARD_WIDTH, opacity: outOfStock ? 0.6 : 1 }}>
+    {/* The card (fully rounded); a stock tab may hang below it. */}
+    <View style={{ padding: PAD, paddingBottom: 10, gap: 6, borderRadius: 16, borderWidth: selected ? 1.5 : 1,
+      borderColor: selected ? SELECTED_BORDER : '#E6E8EC', backgroundColor: selected ? SELECTED_BG : '#FFFFFF', zIndex: 1 }}>
+      <View style={{ width: PHOTO, height: PHOTO_HEIGHT, borderRadius: 11, overflow: 'hidden', backgroundColor: '#F7F8FA' }}>
+        <AppImage source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} style={{ width: '100%', height: '100%' }} resizeMode="contain" accessible={false} />
       </View>
-      <View className="flex-row flex-wrap items-center" style={{ columnGap: 4, rowGap: 2 }}>
+      <Text className="text-[14px] leading-[18px] text-ink" style={{ fontFamily: GILROY.semibold }} numberOfLines={2}>{variant.label}</Text>
+      <View className="flex-row flex-wrap items-baseline" style={{ columnGap: 6 }}>
         <RupeePrice amount={money(variant.price)} size={16} style={{ fontFamily: GILROY.bold }} />
-        {showMrp && <RupeePrice amount={money(variant.originalPrice!)} size={12} strike color="#9B9EA4" style={{ fontFamily: GILROY.medium }} />}
-        {variant.unitPriceLabel && <Text className="text-[10px] leading-[14px] text-[#9B9EA4]" style={{ fontFamily: GILROY.medium }}>({variant.unitPriceLabel})</Text>}
+        {showMrp && <RupeePrice amount={money(variant.originalPrice!)} size={13} strike color="#9B9EA4" style={{ fontFamily: GILROY.medium }} />}
       </View>
-      {outOfStock ? <Text className="text-[12px] text-[#737579]" style={{ fontFamily: GILROY.medium }}>{variant.unavailableReason === 'stock_unconfirmed' ? 'Stock updating' : 'Out of stock'}</Text> : deliveryLabel ? <View className="flex-row items-center gap-1">
-        <Svg width={12} height={14} viewBox="0 0 24 24" fill="none" accessible={false}>
-          <Path d="M13.5 2 5 13h6l-.5 9L19 10h-6l.5-8Z" fill="#505257" />
-        </Svg>
-        <Text className="text-[12px] text-[#505257]" style={{ fontFamily: GILROY.semibold }}>{deliveryLabel}</Text>
-      </View> : null}
-    </Pressable>
-    <StockBorderLabel label={stockLabel(variant.availableQuantity, !outOfStock)} />
-  </View>;
+    </View>
+    {strip ? <View style={{ marginTop: -14, marginHorizontal: 1, paddingTop: 19, paddingBottom: 6, alignItems: 'center',
+      backgroundColor: outOfStock ? '#F1F2F4' : '#FDE8E6', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
+      <Text className="text-[12.5px]" style={{ fontFamily: GILROY.bold, color: outOfStock ? '#737579' : '#D92D20' }}>{strip}</Text>
+    </View> : null}
+  </Pressable>;
 }
 
-export function ProductVariantOptions({ variants, selectedId, onSelect, deliveryLabel }: Props) {
+export function ProductVariantOptions({ variants, selectedId, onSelect, imageUrl }: Props) {
   if (variants.length <= 1) return null;
-  const selected = variants.find(variant => variant.id === selectedId) ?? variants[0]!;
-  return <View className="gap-2.5">
-    <Text className="text-[14px] leading-[20px] text-[#737579]" style={{ fontFamily: GILROY.medium }}>
-      Pack sizes - <Text className="text-ink" style={{ fontFamily: GILROY.bold }}>{selected.label}</Text>
-    </Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
-      {variants.map(variant => <UnitCard key={variant.id} variant={variant} selected={variant.id === selectedId} onSelect={() => onSelect(variant.id)} deliveryLabel={deliveryLabel} />)}
+  return <View className="gap-3">
+    <Text className="text-[17px] leading-[22px] text-ink" style={{ fontFamily: GILROY.bold }}>Select quantity</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4, alignItems: 'flex-start' }}>
+      {variants.map(variant => <UnitCard key={variant.id} variant={variant} selected={variant.id === selectedId}
+        onSelect={() => onSelect(variant.id)} imageUrl={imageUrl} />)}
     </ScrollView>
   </View>;
 }

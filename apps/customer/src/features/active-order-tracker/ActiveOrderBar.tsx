@@ -1,5 +1,5 @@
 // The floating "active order" tracker pill — a white card with a soft charcoal
-// border (bike icon, green "Arriving in N minutes", "Gloceries", chevron) that sits
+// border (blue minutes tile like Track Order's, status, "Arriving in N mins", chevron) that sits
 // just above the bottom nav whenever the customer has an in-flight order and
 // taps through to TrackOrder. All data/logic lives in useActiveOrder (one
 // shared purchase-history query, no fetch of its own); this file is purely
@@ -12,7 +12,8 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue } from 'react-n
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconlyChevronRight, IconlyMotor } from '../../components/icons/iconly';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IconlyChevronRight } from '../../components/icons/iconly';
 import { HomeNavigationProgressContext } from '../../navigation/home/HomeNavigationProgressContext';
 import type { AppStackParamList } from '../../navigation/types';
 import { activeOrderLabel } from './activeOrderLabel';
@@ -29,7 +30,8 @@ import { useBrowseClock } from '../../utils/useBrowseClock';
 const PILL_HEIGHT = 73;
 const NAV_BOTTOM_OFFSET = Platform.OS === 'android' ? 0 : -10;
 const GAP = 4;
-const ARRIVING_GREEN = '#1F8A3B';
+// Same blue as Track Order's minutes tile (OnTheWayCard).
+const ETA_GRADIENT = ['#3B82FF', '#155DFC'] as const;
 
 export function ActiveOrderBar({ onHeightChange, navigationBarHeight = PILL_HEIGHT }: { onHeightChange?: (height: number) => void; navigationBarHeight?: number }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -78,16 +80,18 @@ export function ActiveOrderBar({ onHeightChange, navigationBarHeight = PILL_HEIG
         className="w-full flex-row items-center gap-2.5 self-center rounded-[17px] bg-white px-2.5 py-[7px] active:opacity-90"
         style={{ maxWidth: 340, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.24)' }}
       >
-        <View className="h-[38px] w-[38px] items-center justify-center rounded-xl bg-[#F0F5F0]">
-          <IconlyMotor size={22} color="#101C10" />
-        </View>
+        <LinearGradient colors={ETA_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={{ width: 44, height: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center' }}>
+          <Text className="text-[18px] font-bold leading-[20px] text-white">{mins}</Text>
+          <Text className="text-[10.5px] font-semibold leading-[12px] text-white">{mins === 1 ? 'min' : 'mins'}</Text>
+        </LinearGradient>
 
         <View className="min-w-0 flex-1">
           {/* Live countdown via computeDisplayEta: never shows 0 — once the
               recorded deadline passes it restarts from the order's reset
               window (15 min, 10 for a short order). */}
-          <Text numberOfLines={1} className="text-[15px] font-bold leading-[18px]" style={{ color: ARRIVING_GREEN }}>{arrival}</Text>
-          <Text numberOfLines={1} className="text-[13px] font-medium leading-[16px] text-ink/75">Gloceries</Text>
+          <Text numberOfLines={1} className="text-[15px] font-bold leading-[19px] text-ink">{title}</Text>
+          <Text numberOfLines={1} className="text-[13px] font-medium leading-[17px] text-ink/60">Gloceries</Text>
         </View>
 
         <IconlyChevronRight size={18} color="#454C45" />

@@ -16,7 +16,7 @@ import type { AppStackParamList } from '../types';
 import { HomeNavigationProgressContext } from './HomeNavigationProgressContext';
 import { AppTopHeader } from '../../screens/home/top-header/AppTopHeader';
 import { TopHeaderScrollContext } from '../../screens/home/top-header/topHeaderScroll';
-import { HomeCartNotice, HomeRevealSurface } from '../../screens/home/components/HomeReveal';
+import { HomeRevealSurface } from '../../screens/home/components/HomeReveal';
 
 interface Props {
   children: ReactNode;
@@ -26,6 +26,9 @@ interface Props {
 
 // The bar lives outside native-stack's moving screen surface. Its instance,
 // cart and scroll progress survive pushes/pops between Home and categories.
+// "How was the delivery?" pop-up: hidden for now; flip to true to bring it back.
+const DELIVERY_RATING_PROMPT_ON = false;
+
 export function HomeNavigationShell({ children, route, navigation }: Props) {
   useHomeLocationRefresh(route.name === 'Home' || route.name === 'HomeCategory');
   const hidden = useSharedValue(0);
@@ -54,7 +57,6 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
             </NavigationRouteContext.Provider>
           </NavigationContext.Provider>
         )}
-        {showTopHeader && <HomeCartNotice />}
         {/* The space reserved under the content for the floating cart must be
             painted: unpainted, the root window colour (the blue splash colour)
             showed as a full-width blue strip behind the Cart pill. */}
@@ -69,7 +71,7 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
             </NavigationRouteContext.Provider>
           </NavigationContext.Provider>
         )}
-        <DeliveryRatingPrompt enabled={canPromptForRating} />
+        <DeliveryRatingPrompt enabled={DELIVERY_RATING_PROMPT_ON && canPromptForRating} />
         <View pointerEvents={showBar ? 'box-none' : 'none'} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, display: showBar ? 'flex' : 'none' }}>
           <NavigationContext.Provider value={navigation}>
             <NavigationRouteContext.Provider value={route}>
