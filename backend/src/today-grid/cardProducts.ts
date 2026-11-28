@@ -1,24 +1,30 @@
-// Pure: the live, in-stock products behind a card, in popularity order — the
-// same rows the card's data check counted, so a tap never opens an empty or
-// different list than the tag promised.
+// Pure: the live, in-stock products a card tap opens — from its target, so
+// the list matches what the card promised.
 import type { LiveProduct, NearbyLive } from './availability.js';
-import type { CardDef, UserSummary } from '../../../packages/today-grid/index.js';
+import type { ItemConfig, UserSummary } from '../../../packages/today-grid/index.js';
 
 export const CARD_PRODUCT_LIMIT = 60;
 
-export function cardProductIds(def: CardDef, live: Pick<NearbyLive, 'products' | 'ranked' | 'popularWeek' | 'brandIds'>, user: UserSummary): string[] {
+export function cardProductIds(item: ItemConfig, live: Pick<NearbyLive, 'products' | 'ranked' | 'popularWeek' | 'availability'>, user: UserSummary): string[] {
   const { products } = live;
   const pick = (keep: (p: LiveProduct) => boolean) => products.filter(keep).map(p => p.id);
+  const t = item.target;
   const ids = (() => {
-    switch (def.check.kind) {
-      case 'categories': case 'storeOpen': return pick(p => !!p.category && def.categories.includes(p.category));
-      case 'usuals': return user.usualIds;
-      case 'offers': return user.offerIds;
-      case 'popular': { const inStock = new Set(products.map(p => p.id)); return live.popularWeek.filter(id => inStock.has(id)); }
-      case 'bulk': return pick(p => Number(p.bulk_min_kg) > 0);
-      case 'party': return pick(p => !!p.party_enabled);
-      case 'brands': { const brands = new Set(live.brandIds); return pick(p => !!p.brand_id && brands.has(p.brand_id)); }
-      case 'preorder': return pick(p => !!p.morning_slot);
+    switch (t.type) {
+      case 'categories': { const names = t.categories.length ? t.categories : item.categories; return pick(p => !!p.category && names.includes(p.category)); }
+      case 'subcategory': return pick(p => p.sub_category_id === t.id);
+      case 'products': { const inStock = new Set(products.map(p => p.id)); return t.productIds.filter(id => inStock.has(id)); }
+      case 'brands': { const local = new Set(live.availability.localBrands.brandIds); return pick(p => !!p.brand_id && local.has(p.brand_id)); }
+      case 'tab': return [];
+      case 'action':
+        switch (t.id) {
+          case 'add-usuals': return user.usualIds;
+          case 'offers': return user.offerIds;
+          case 'popular': { const inStock = new Set(products.map(p => p.id)); return live.popularWeek.filter(id => inStock.has(id)); }
+          case 'bulk': return pick(p => Number(p.bulk_min_kg) > 0);
+          case 'party-form': return pick(p => !!p.party_enabled);
+          case 'preorder-list': return pick(p => !!p.morning_slot);
+        }
     }
   })();
   const rank = new Map(live.ranked.map((id, index) => [id, index]));

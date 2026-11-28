@@ -1,24 +1,22 @@
-// India time from an instant, without Date.now(): every caller passes `now`
-// so the grid is deterministic and the server's own time zone never matters.
+// India time from an instant: the grid never depends on the server time zone.
 const IST_OFFSET_MS = 330 * 60_000;
 export function istClock(now) {
     const shifted = new Date(now.getTime() + IST_OFFSET_MS);
     const hour = shifted.getUTCHours();
-    return {
-        minute: hour * 60 + shifted.getUTCMinutes(),
-        hour,
-        date: shifted.toISOString().slice(0, 10),
-        dayOfMonth: shifted.getUTCDate(),
-        weekday: shifted.getUTCDay(),
-    };
+    return { minute: hour * 60 + shifted.getUTCMinutes(), hour, date: shifted.toISOString().slice(0, 10), dayOfMonth: shifted.getUTCDate(), weekday: shifted.getUTCDay() };
 }
 // Half-open [from, to) in minutes; wraps past midnight when from > to.
 export function inWindow(minute, from, to) {
     return from <= to ? minute >= from && minute < to : minute >= from || minute < to;
 }
-// "7:30 AM" for an IST minute of the day (same format as lib/orderingHours).
-export function formatIstMinute(minuteOfDay) {
+// Next IST midnight after `now` (daily inputs expire then).
+export function nextIstMidnight(now) {
+    return new Date(Date.parse(`${istClock(now).date}T00:00:00+05:30`) + 86_400_000);
+}
+// "7:30 AM"; whole hours as "4 AM" when short is set.
+export function formatIstMinute(minuteOfDay, short = false) {
     const m = ((Math.trunc(minuteOfDay) % 1440) + 1440) % 1440;
     const hour = Math.floor(m / 60);
-    return `${hour % 12 === 0 ? 12 : hour % 12}:${String(m % 60).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+    const text = `${hour % 12 === 0 ? 12 : hour % 12}:${String(m % 60).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+    return short ? text.replace(':00 ', ' ') : text;
 }
