@@ -3,25 +3,9 @@
 import { apiRequest } from '../../../api/client';
 import { mapApiProduct, type ApiProduct } from '../../../api/products';
 import type { Product } from '../products/types';
-
-export type CardTarget =
-  | { type: 'categories'; categories: string[] }
-  | { type: 'tab'; id: 'fresh' | 'preorder' | 'udupi' }
-  | { type: 'usuals' } | { type: 'popular' } | { type: 'offers' } | { type: 'bulk' } | { type: 'brands' }
-  | { type: 'form'; id: 'party' };
-
-export interface GridCard {
-  id: string;
-  title: string;
-  tag: string;
-  line: string;
-  accent: string;
-  tagBg: string;
-  tagText: string;
-  imageUrls: string[];
-  target: CardTarget;
-  price?: { amount: number; mrp: number | null };
-}
+// Card shapes come from the shared rules package, so app and server never drift.
+import type { GridCard } from '../../../../../../packages/today-grid/index.js';
+export type { CardTarget, GridCard } from '../../../../../../packages/today-grid/index.js';
 
 export interface TodayGrid {
   enabled: boolean;
