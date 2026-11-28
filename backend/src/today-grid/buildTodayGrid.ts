@@ -129,6 +129,17 @@ function toCard(def: CardDef, stat: Stat, a: Availability): GridCard {
   };
 }
 
+// Next instant the grid can change on its own (a slot or hero window edge),
+// so the app refetches exactly then instead of polling.
+export function nextChangeAt(now: Date, config: TodayGridConfig): Date {
+  const clock = istClock(now);
+  const edges = new Set([...config.slots.flatMap(slot => [slot.from, slot.to]), ...HERO_WINDOWS.map(w => w.from)].map(m => m % 1440));
+  const ahead = [...edges].map(edge => (edge - clock.minute + 1440) % 1440 || 1440);
+  const minutes = Math.min(...ahead);
+  const startOfMinute = now.getTime() - (now.getTime() % 60_000);
+  return new Date(startOfMinute + minutes * 60_000);
+}
+
 // ---- the whole grid ----------------------------------------------------------
 export function buildTodayGrid({ now, user, availability: a, config }: BuildInput): TodayGrid {
   const clock = istClock(now);
@@ -152,5 +163,5 @@ export function buildTodayGrid({ now, user, availability: a, config }: BuildInpu
     if (cards.length >= MAX_CARDS) break;
     if (!tryCard(id)) backups.find(backup => !wanted.includes(backup) && tryCard(backup));
   }
-  return { hero: pickHero(clock, a), cards, slot: slot.key };
+  return { hero: pickHero(clock, a), cards, slot: slot.key, refreshAt: nextChangeAt(now, config).toISOString() };
 }

@@ -89,4 +89,4 @@ export interface GridCard {
   price?: { amount: number; mrp: number | null };
 }
 
-export interface TodayGrid { hero: GridCard; cards: GridCard[]; slot: string }
+export interface TodayGrid { hero: GridCard; cards: GridCard[]; slot: string; refreshAt: string }

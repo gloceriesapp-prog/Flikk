@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTodayGrid, renderTag } from './buildTodayGrid.js';
+import { buildTodayGrid, nextChangeAt, renderTag } from './buildTodayGrid.js';
 import { CARD_CATALOG } from './catalog.js';
 import { DEFAULT_CONFIG, parseConfig, type TodayGridConfig } from './config.js';
 import { EMPTY_STAT, type Availability, type CardId, type Stat, type UserSummary } from './types.js';
@@ -180,5 +180,13 @@ describe('config parsing', () => {
     expect(config.backups).toEqual(DEFAULT_CONFIG.backups);
     expect(config.cards['tea-coffee']).toEqual({});
     expect(config.rain).toBe(false);
+  });
+});
+
+describe('refreshAt', () => {
+  it('is the next slot or hero edge in IST', () => {
+    expect(nextChangeAt(ist(TUESDAY, '07:30'), DEFAULT_CONFIG).toISOString()).toBe(ist(TUESDAY, '09:00').toISOString());
+    expect(nextChangeAt(ist(TUESDAY, '10:15'), DEFAULT_CONFIG).toISOString()).toBe(ist(TUESDAY, '11:00').toISOString());
+    expect(nextChangeAt(ist(TUESDAY, '23:00'), DEFAULT_CONFIG).toISOString()).toBe(ist('2026-12-16', '06:00').toISOString());
   });
 });
