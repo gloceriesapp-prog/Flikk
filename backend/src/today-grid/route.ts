@@ -10,15 +10,15 @@ import { AppError } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { customerSummary, nearbyAvailability } from './availability.js';
-import { buildTodayGrid } from './buildTodayGrid.js';
-import { parseConfig } from './config.js';
-import { CARD_CATALOG, CARD_IDS, HERO_CATALOG } from './catalog.js';
+import { buildTodayGrid } from '../../../packages/today-grid/index.js';
+import { parseConfig } from '../../../packages/today-grid/index.js';
+import { CARD_CATALOG, CARD_IDS, HERO_CATALOG } from '../../../packages/today-grid/index.js';
 import { cardProductIds } from './cardProducts.js';
-import { cardDefinition } from './buildTodayGrid.js';
+import { cardDefinition } from '../../../packages/today-grid/index.js';
 import { hydrateBrowse } from '../customer-experience/browse.js';
 import { applyCustomerPrices } from '../lib/customerPrice.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
-import type { CardId } from './types.js';
+import type { CardId } from '../../../packages/today-grid/index.js';
 
 export const todayGridRouter = Router();
 

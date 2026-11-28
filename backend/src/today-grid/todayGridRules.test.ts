@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildTodayGrid, nextChangeAt, renderTag } from './buildTodayGrid.js';
-import { CARD_CATALOG } from './catalog.js';
-import { DEFAULT_CONFIG, parseConfig, type TodayGridConfig } from './config.js';
-import { EMPTY_STAT, type Availability, type CardId, type Stat, type UserSummary } from './types.js';
+import { buildTodayGrid, nextChangeAt, renderTag } from '../../../packages/today-grid/index.js';
+import { CARD_CATALOG } from '../../../packages/today-grid/index.js';
+import { DEFAULT_CONFIG, parseConfig, type TodayGridConfig } from '../../../packages/today-grid/index.js';
+import { EMPTY_STAT, type Availability, type CardId, type Stat, type UserSummary } from '../../../packages/today-grid/index.js';
 
 const stat = (count: number, minPrice = 20, mrp: number | null = 25, pct: number | null = 20): Stat =>
   ({ count, minPrice, minPriceMrp: mrp, maxDiscountPct: pct, imageUrls: ['https://img/a', 'https://img/b', 'https://img/c'] });

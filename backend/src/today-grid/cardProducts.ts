@@ -2,7 +2,7 @@
 // same rows the card's data check counted, so a tap never opens an empty or
 // different list than the tag promised.
 import type { LiveProduct, NearbyLive } from './availability.js';
-import type { CardDef, UserSummary } from './types.js';
+import type { CardDef, UserSummary } from '../../../packages/today-grid/index.js';
 
 export const CARD_PRODUCT_LIMIT = 60;
 

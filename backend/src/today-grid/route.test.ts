@@ -5,7 +5,7 @@ vi.mock('./availability.js', () => ({ nearbyAvailability: m.live, customerSummar
 vi.mock('../db/supabase.js', () => ({ supabase: { from: () => {
   const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: m.config.value, error: null }) }; return q; } } }));
 import { todayGridRouter } from './route.js';
-import { EMPTY_STAT } from './types.js';
+import { EMPTY_STAT } from '../../../packages/today-grid/index.js';
 
 const stat = { count: 5, minPrice: 20, minPriceMrp: 25, maxDiscountPct: 20, imageUrls: ['https://img/a'] };
 const availability = { openStores: 1, categories: { 'Snacks': stat }, fish: { ...EMPTY_STAT, arrivedMinute: null }, villagePickedToday: EMPTY_STAT,

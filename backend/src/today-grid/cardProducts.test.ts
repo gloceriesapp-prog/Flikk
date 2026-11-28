@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
 import type { LiveProduct } from './availability.js';
-import { cardDefinition } from './buildTodayGrid.js';
+import { cardDefinition } from '../../../packages/today-grid/index.js';
 import { cardProductIds } from './cardProducts.js';
-import { DEFAULT_CONFIG, parseConfig } from './config.js';
-import { EMPTY_STAT, type UserSummary } from './types.js';
+import { DEFAULT_CONFIG, parseConfig } from '../../../packages/today-grid/index.js';
+import { EMPTY_STAT, type UserSummary } from '../../../packages/today-grid/index.js';
 
 const p = (id: string, patch: Partial<LiveProduct> = {}): LiveProduct => ({ id, store_id: 's', category: 'Chips & Namkeen', price: 10, original_price: null,
   image_url: null, bulk_min_kg: null, morning_slot: false, picked_at: null, party_enabled: false, brand_id: null, ...patch });

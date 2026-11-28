@@ -7,8 +7,8 @@ import { supabase } from '../db/supabase.js';
 import { storeIsOpen, type EligibilityStore } from '../lib/checkoutEligibility.js';
 import { applyCustomerPrices } from '../lib/customerPrice.js';
 import { activeMorningSlots, PREORDER_CUTOFF_MS, type PreorderSlot } from '../lib/preorders.js';
-import { istClock } from './istClock.js';
-import { EMPTY_STAT, type Availability, type Stat, type UserSummary } from './types.js';
+import { istClock } from '../../../packages/today-grid/index.js';
+import { EMPTY_STAT, type Availability, type Stat, type UserSummary } from '../../../packages/today-grid/index.js';
 
 export interface LiveProduct {
   id: string; store_id: string; category: string | null; price: number; original_price: number | null;
