@@ -48,7 +48,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CartBar } from '../CartBar/CartBar';
 import { BOTTOM_NAV_HORIZONTAL_INSET } from './layout';
 import { BottomNavBarItem } from './BottomNavBarItem';
-import { PreOrderNavButton } from './PreOrderNavButton';
+import { PRE_ORDER_WIDTH, PreOrderNavButton } from './PreOrderNavButton';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -64,8 +64,8 @@ const PILL_BOTTOM_OFFSET = -10;
 // iOS: pill + round Pre-order button share the row, 16 pt from each edge.
 const ROW_INSET = 16;
 const SIDE_GAP = 8;
-// Pre-order tab runs to the right screen edge (no right inset).
-const PRE_ORDER_WIDTH = 108;
+// Pre-order tab runs to the right screen edge (no right inset); its width
+// (PRE_ORDER_WIDTH) lives with the button.
 
 // isLiquidGlassAvailable() alone only confirms the GlassView *component*
 // exists — expo-glass-effect's own isGlassEffectAPIAvailable() doc note
@@ -195,7 +195,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
             {BOTTOM_NAV_TABS.map((tab) => (
               <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
             ))}
-            <View style={{ marginRight: -8 }}><PreOrderNavButton width={104} height={44} onPress={openPreOrder} /></View>
+            <View style={{ marginRight: -8 }}><PreOrderNavButton height={44} onPress={openPreOrder} /></View>
           </View>
         </View>
       ) : (<>
@@ -266,7 +266,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }
         </View>
         <View style={{ position: 'absolute', right: 0, bottom: insets.bottom + PILL_BOTTOM_OFFSET, shadowColor: '#000000',
           shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.18, shadowRadius: 16 }}>
-          <PreOrderNavButton width={PRE_ORDER_WIDTH} height={pillHeight} onPress={openPreOrder} />
+          <PreOrderNavButton height={pillHeight} onPress={openPreOrder} />
         </View>
       </>)}
 
