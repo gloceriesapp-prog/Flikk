@@ -40,8 +40,9 @@ function item(title, line, tag, fallbackTag, accent, target, categories = [], ta
 // #C2410C / #0369A1). The originals stay in the presets; saving them with a
 // failing text colour is blocked by validateConfig.
 // Photo slots per card type: the hero rotates up to 4 products (photo,
-// price, MRP, name); every other card shows 2 photos.
-export const IMAGE_SLOTS = { hero: 4, rotating: 2, special: 2 };
+// price, MRP, name); every other card shows one image across its foot (a
+// wide photo can hold several products).
+export const IMAGE_SLOTS = { hero: 4, rotating: 1, special: 1 };
 export const imageSlotsFor = (id) => IMAGE_SLOTS[ITEM_FACTS[id].type];
 export const DEFAULT_ITEMS = {
     'todays-catch': item("Today's Catch", 'Fresh from Malpe harbour', 'Landed {time}', 'Fresh catch', '#0B1F4D', { type: 'tab', id: 'fresh' }, ['Non Veg'], Y),

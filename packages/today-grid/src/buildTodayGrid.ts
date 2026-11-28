@@ -88,18 +88,17 @@ export function pickedSlots(item: ItemConfig, a: Availability, slots: number): P
     .slice(0, slots);
 }
 
-// Card photos: picked slots first, else automatic. The hero's own photo is
-// its first product (its rotation is `products`, below).
-function images(id: ItemId, item: ItemConfig, stat: Stat, a: Availability): string[] {
-  const count = ITEM_FACTS[id].type === 'hero' ? 1 : IMAGE_SLOTS[ITEM_FACTS[id].type];
-  const picked = pickedSlots(item, a, count);
-  return (picked.length ? picked.map(p => p.imageUrl) : stat.imageUrls).slice(0, count);
+// Card image: one per card (picked slot first, else automatic). The hero's
+// rotation is `products`, below; its own image is its first product.
+function images(item: ItemConfig, stat: Stat, a: Availability): string[] {
+  const picked = pickedSlots(item, a, 1);
+  return (picked.length ? picked.map(p => p.imageUrl) : stat.imageUrls).slice(0, 1);
 }
 
 function toCard(id: ItemId, item: ItemConfig, stat: Stat, a: Availability): GridCard {
   return {
     id, title: item.title, tag: renderTag(item, stat, a), line: item.line, accent: item.accent, tagBg: item.accent, tagText: item.tagText,
-    imageUrls: images(id, item, stat, a),
+    imageUrls: images(item, stat, a),
     bannerUrl: item.bannerUrl, categories: item.categories,
     target: item.target.type === 'categories' && !item.target.categories.length ? { type: 'categories', categories: item.categories } : item.target,
   };

@@ -31,11 +31,12 @@ export function MiniCard({ title, tag, images = [], width = 120, height = 166, h
             <span style={{ background: '#E2E175', color: '#111715', fontWeight: 700, fontSize: 16, padding: '2px 10px' }}>₹{price.amount}</span>
           </div>
         )}
-        <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: 0, padding: hero ? 8 : 0, boxSizing: 'border-box' }}>
-          {images.slice(0, hero ? 1 : 2).map((src, index) => (
+        {/* One image across the foot, full card width, flush with the bottom edge. */}
+        <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: 0, paddingTop: 6 }}>
+          {images[0] && (
             // eslint-disable-next-line @next/next/no-img-element -- product photo URLs from Storage, preview only
-            <img key={src} src={src} alt="" style={{ height: '100%', maxWidth: hero ? '100%' : '54%', marginLeft: index ? '-6%' : 0, objectFit: 'contain' }} />
-          ))}
+            <img src={images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom center', display: 'block' }} />
+          )}
         </div>
 
       </div>

@@ -54,9 +54,9 @@ function HeroSlide({ slide, width }: { slide: Slide; width: number }) {
         </View>
         {slide.name ? <Text numberOfLines={2} className="mt-1 px-1.5 text-center text-[13px] font-semibold leading-[16px] text-ink">{slide.name}</Text> : null}
       </View>
-      {/* Photo fills everything below, sitting on the card's foot. */}
-      <View className="w-full flex-1 justify-end px-1.5 pb-1.5 pt-2">
-        <AppImage source={{ uri: slide.imageUrl }} resizeMode="contain" accessible={false} testID="today-photo" style={{ width: '100%', height: '100%' }} />
+      {/* Photo fills everything below, flush with the card's bottom edge. */}
+      <View className="w-full flex-1 justify-end pt-2">
+        <AppImage source={{ uri: slide.imageUrl }} resizeMode="contain" contentPosition="bottom center" accessible={false} testID="today-photo" style={{ width: '100%', height: '100%' }} />
       </View>
     </View>
   );

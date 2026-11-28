@@ -62,7 +62,7 @@ it('a card or hero without photos gets stand-in product photos, never an empty f
   const g = grid(4);
   await render(<TodayGridView headerImageUrl="https://img/header" grid={{ ...g, hero: { ...g.hero, imageUrls: [] }, cards: g.cards.map((c, i) => (i ? c : { ...c, imageUrls: [] })) }} onTap={jest.fn()} />);
   const stand = screen.getAllByTestId('today-photo').filter((n) => String(n.props.source?.uri).startsWith('https://images.gloceries.com/products/'));
-  expect(stand).toHaveLength(3); // hero: 1, first card: 2
+  expect(stand).toHaveLength(2); // hero: 1, first card: 1
 });
 
 it('no sub heading on any card: titles only', async () => {

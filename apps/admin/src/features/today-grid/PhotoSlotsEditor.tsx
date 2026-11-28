@@ -1,7 +1,7 @@
 'use client';
 
 // A card's photo slots. The card type sets how many (IMAGE_SLOTS: the big
-// card rotates up to 4 products, every other card shows 2). Automatic =
+// card rotates up to 4 products, every other card shows 1 image). Automatic =
 // top in-stock products. Picked = these products in order; price, MRP and
 // name always come live from the product, and each slot may swap in a
 // custom photo. Out-of-stock picks, and picks with no photo at all, are
@@ -34,7 +34,7 @@ export function PhotoSlotsEditor({ id, images, products, onChange }: { id: ItemI
     <div>
       <p className="text-xs font-medium text-muted">Photos · {slots} slot{slots === 1 ? '' : 's'}</p>
       <p className="mb-2 text-[11px] text-muted">
-        {hero ? 'The big card rotates through these products: each shows its photo, store price, MRP (only when higher) and name.' : 'This card shows 2 product photos.'}
+        {hero ? 'The big card rotates through these products: each shows its photo, store price, MRP (only when higher) and name.' : 'This card shows one image across its bottom, full card width. Tip: upload a wide custom photo (e.g. 600×400, transparent PNG) holding 2–3 products.'}
       </p>
       <div className="flex gap-4 text-xs">
         <label className="flex items-center gap-1"><input type="radio" checked={images.mode === 'auto'} onChange={() => onChange({ mode: 'auto' })} />Automatic (top {slots} in-stock)</label>

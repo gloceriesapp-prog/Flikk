@@ -118,7 +118,7 @@ describe('data checks, backups and trace', () => {
     const two = availability({ localBrands: { count: 2, brandIds: ['b1', 'b2'], logoUrls: ['https://logo/1'] } });
     expect(ids(build(ist(TUESDAY, '14:00'), { a: two }))).not.toContain('namma-brands');
     const card = build(ist(TUESDAY, '14:00')).cards.find(c => c.id === 'namma-brands');
-    expect(card).toMatchObject({ tag: 'Local makers', line: 'Made in Udupi', imageUrls: ['https://logo/1', 'https://logo/2'], target: { type: 'brands' } });
+    expect(card).toMatchObject({ tag: 'Local makers', line: 'Made in Udupi', imageUrls: ['https://logo/1'], target: { type: 'brands' } });
   });
   it('picked images show only products in stock now, else automatic images', () => {
     const id = '00000000-0000-4000-8000-000000000001';
@@ -126,7 +126,7 @@ describe('data checks, backups and trace', () => {
     const card = build(ist(TUESDAY, '07:30'), { config: picked, a: availability({ products: { [id]: { id, name: 'Chai', price: 40, mrp: null, imageUrl: 'https://img/picked' } } }) }).cards.find(c => c.id === 'tea-coffee');
     expect(card?.imageUrls).toEqual(['https://img/picked']);
     const gone = build(ist(TUESDAY, '07:30'), { config: picked }).cards.find(c => c.id === 'tea-coffee');
-    expect(gone?.imageUrls).toEqual(['https://img/a', 'https://img/b']);
+    expect(gone?.imageUrls).toEqual(['https://img/a']); // one image per card
   });
   it('a custom photo replaces the product photo; price, MRP and name stay the product\'s', () => {
     const [a1, a2] = ['00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000a2'];

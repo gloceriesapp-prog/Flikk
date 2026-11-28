@@ -5,8 +5,8 @@ import { BORDER, RADIUS, TAG_HEIGHT, titleMetrics, twoLineTitle } from '../layou
 import { CardImages } from './CardImages';
 import { CardTag } from './CardTag';
 
-// White bento card: tag pill and short centred title on top, product photos
-// filling the rest.
+// White bento card: tag pill and short centred title on top, one image
+// filling the rest down to the card's bottom edge.
 export function TodayCard({ card, width, height, onPress }: { card: GridCard; width: number; height: number; onPress: () => void }) {
   const title = titleMetrics(width);
   const top = TAG_HEIGHT + 6 + title.height;
@@ -17,7 +17,8 @@ export function TodayCard({ card, width, height, onPress }: { card: GridCard; wi
       <CardTag label={card.tag} />
       <Text numberOfLines={2} className="mt-1.5 px-1.5 text-center font-semibold tracking-[-0.2px] text-ink"
         style={{ fontSize: title.size, lineHeight: title.line, height: title.height }}>{twoLineTitle(card.title)}</Text>
-      <CardImages urls={photosFor(card.id, card.imageUrls)} width={width} height={Math.max(1, height - top - 6)} />
+      {/* Down to the bottom edge: card height minus the text above and the 1 pt border (top + bottom). */}
+      <CardImages urls={photosFor(card.id, card.imageUrls, 1)} height={Math.max(1, height - top - 2)} />
     </Pressable>
   );
 }
