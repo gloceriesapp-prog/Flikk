@@ -26,7 +26,7 @@ beforeEach(() => {
   m.config.value = { enabled: true, config: {} };
   m.stores.mockResolvedValue(['s1']);
   m.live.mockResolvedValue({ availability, products: [], ranked: [] });
-  m.user.mockResolvedValue({ kind: 'guest', deliveredOrders: 0, usuals: EMPTY_STAT, offers: EMPTY_STAT });
+  m.user.mockResolvedValue({ kind: 'guest', deliveredOrders: 0, usuals: EMPTY_STAT, offers: EMPTY_STAT, usualIds: [], offerIds: [] });
 });
 it('returns hero, cards, slot and generatedAt, uncached', async () => {
   const { res } = await get({ lat: '13.3', lng: '74.7' });

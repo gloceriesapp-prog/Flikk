@@ -86,22 +86,24 @@ export function summarizeAvailability(input: {
 // in categories bought before. Both only from what is in stock right now.
 export function summarizeUser(history: { order_id: string; product_id: string; category: string | null }[] | null,
   deliveredOrders: number, products: LiveProduct[], ranked: string[]): UserSummary {
-  if (!history) return { kind: 'guest', deliveredOrders: 0, usuals: EMPTY_STAT, offers: EMPTY_STAT };
+  if (!history) return { kind: 'guest', deliveredOrders: 0, usuals: EMPTY_STAT, offers: EMPTY_STAT, usualIds: [], offerIds: [] };
   const ordersPerProduct = new Map<string, Set<string>>();
   for (const row of history) ordersPerProduct.set(row.product_id, (ordersPerProduct.get(row.product_id) ?? new Set()).add(row.order_id));
   const repeat = new Set([...ordersPerProduct].filter(([, orders]) => orders.size >= 2).map(([id]) => id));
   const pastCategories = new Set(history.map(row => row.category).filter(Boolean));
+  const usuals = products.filter(p => repeat.has(p.id));
+  const offers = products.filter(p => p.category && pastCategories.has(p.category) && p.original_price != null && p.original_price > p.price);
   return {
     kind: 'customer', deliveredOrders,
-    usuals: statOf(products.filter(p => repeat.has(p.id)), ranked),
-    offers: statOf(products.filter(p => p.category && pastCategories.has(p.category) && p.original_price != null && p.original_price > p.price), ranked),
+    usuals: statOf(usuals, ranked), offers: statOf(offers, ranked),
+    usualIds: usuals.map(p => p.id), offerIds: offers.map(p => p.id),
   };
 }
 
 // ---- database reads ----------------------------------------------------------
 const PRODUCT_FIELDS = 'id, store_id, category, price, original_price, image_url, bulk_min_kg, morning_slot, picked_at, party_enabled, brand_id, product_variants(*)';
 const CACHE_MS = 120_000;
-const cache = new Map<string, { at: number; value: Promise<{ availability: Availability; products: LiveProduct[]; ranked: string[] }> }>();
+const cache = new Map<string, { at: number; value: Promise<NearbyLive> }>();
 
 async function readAvailability(storeIds: string[], now: Date) {
   const today = istClock(now).date;
@@ -124,8 +126,11 @@ async function readAvailability(storeIds: string[], now: Date) {
     morningSlots: slots, fishArrivals: ((arrivals.data ?? []) as { fish_arrived_at: string }[]).map(row => row.fish_arrived_at),
     brandIds: ((brandCards.data ?? []) as { brand_id: string }[]).map(row => row.brand_id),
   });
-  return { availability, products: live, ranked };
+  return { availability, products: live, ranked,
+    popularWeek: ((popularWeek.data ?? []) as { id: string }[]).map(row => row.id),
+    brandIds: ((brandCards.data ?? []) as { brand_id: string }[]).map(row => row.brand_id) };
 }
+export type NearbyLive = Awaited<ReturnType<typeof readAvailability>>;
 
 // Cached per store set for 2 minutes; a failed read is not cached.
 export function nearbyAvailability(storeIds: string[], now: Date) {

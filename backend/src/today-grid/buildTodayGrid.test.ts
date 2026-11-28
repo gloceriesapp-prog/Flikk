@@ -19,9 +19,9 @@ function availability(patch: Partial<Availability> = {}): Availability {
     ...patch,
   };
 }
-const REGULAR: UserSummary = { kind: 'customer', deliveredOrders: 6, usuals: stat(5), offers: stat(3, 40, 60, 33) };
+const REGULAR: UserSummary = { kind: 'customer', deliveredOrders: 6, usuals: stat(5), offers: stat(3, 40, 60, 33), usualIds: [], offerIds: [] };
 const NEW_USER: UserSummary = { ...REGULAR, deliveredOrders: 1 };
-const GUEST: UserSummary = { kind: 'guest', deliveredOrders: 0, usuals: EMPTY_STAT, offers: EMPTY_STAT };
+const GUEST: UserSummary = { kind: 'guest', deliveredOrders: 0, usuals: EMPTY_STAT, offers: EMPTY_STAT, usualIds: [], offerIds: [] };
 
 // IST wall time -> the UTC instant a server would see (server TZ irrelevant).
 const ist = (date: string, time: string) => new Date(`${date}T${time}:00+05:30`);

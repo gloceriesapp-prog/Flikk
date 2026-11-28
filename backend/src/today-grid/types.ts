@@ -46,6 +46,9 @@ export interface UserSummary {
   usuals: Stat;
   // Live real discounts in categories the customer bought before.
   offers: Stat;
+  // The in-stock products behind usuals/offers (card tap lists).
+  usualIds: string[];
+  offerIds: string[];
 }
 
 export type CardTarget =

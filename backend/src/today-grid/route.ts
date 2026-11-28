@@ -12,7 +12,13 @@ import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { customerSummary, nearbyAvailability } from './availability.js';
 import { buildTodayGrid } from './buildTodayGrid.js';
 import { parseConfig } from './config.js';
-import { CARD_IDS, HERO_CATALOG } from './catalog.js';
+import { CARD_CATALOG, CARD_IDS, HERO_CATALOG } from './catalog.js';
+import { cardProductIds } from './cardProducts.js';
+import { cardDefinition } from './buildTodayGrid.js';
+import { hydrateBrowse } from '../customer-experience/browse.js';
+import { applyCustomerPrices } from '../lib/customerPrice.js';
+import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
+import type { CardId } from './types.js';
 
 export const todayGridRouter = Router();
 
@@ -36,6 +42,21 @@ todayGridRouter.get('/', optionalAuth, async (req: AuthedRequest, res, next) => 
     const user = await customerSummary(customerId, live.products, live.ranked);
     const grid = buildTodayGrid({ now, user, availability: live.availability, config });
     res.json({ enabled: true, ...grid, generatedAt: now.toISOString() });
+  } catch (error) { next(error); }
+});
+
+// GET /home/today-grid/cards/:id/products — the products a card tap opens.
+todayGridRouter.get('/cards/:id/products', optionalAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const id = req.params.id as CardId;
+    if (!(id in CARD_CATALOG)) throw new AppError(404, 'CARD_NOT_FOUND', 'This card is no longer available.');
+    res.setHeader('Cache-Control', 'private, no-store');
+    const [{ config }, stores] = await Promise.all([readGridConfig(), deliveryStores(req.query)]);
+    if (!stores.length) return res.json({ products: [] });
+    const live = await nearbyAvailability(stores, new Date());
+    const user = await customerSummary(req.user?.role === 'customer' ? req.user.id : null, live.products, live.ranked);
+    const ids = cardProductIds(cardDefinition(id, config), live, user);
+    res.json({ products: applyCustomerPrices(await hydrateBrowse(ids.map(value => ({ id: value })), stores, PRODUCT_WITH_VARIANTS_SELECT)) });
   } catch (error) { next(error); }
 });
 

@@ -70,7 +70,7 @@ export function applyModifiers(base: CardId[], clock: IstClock, user: UserSummar
 }
 
 // ---- data checks -----------------------------------------------------------
-function definition(id: CardId, config: TodayGridConfig): CardDef {
+export function cardDefinition(id: CardId, config: TodayGridConfig): CardDef {
   const base = CARD_CATALOG[id];
   const o = config.cards[id] ?? {};
   return { ...base, id, title: o.title ?? base.title, line: o.line ?? base.line, accent: o.accent ?? base.accent, categories: o.categories ?? base.categories };
@@ -152,7 +152,7 @@ export function buildTodayGrid({ now, user, availability: a, config }: BuildInpu
   const cards: GridCard[] = [];
   const tryCard = (id: CardId) => {
     if (used.has(id) || !enabled(id)) return false;
-    const def = definition(id, config);
+    const def = cardDefinition(id, config);
     const stat = cardStat(def, user, a);
     if (!stat) return false;
     used.add(id); cards.push(toCard(def, stat, a));
